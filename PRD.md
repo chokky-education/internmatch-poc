@@ -161,16 +161,86 @@ InternMatch คือเครื่องมือที่พานักศ�
 
 ---
 
-## 6. ข้อมูลและสถาปัตยกรรม (ระดับสูง)
+## 6. สถาปัตยกรรมและการไหลของข้อมูล (Data Pipeline Architecture)
 
-**Entities:** User, SeasonConfig (มหาวิทยาลัย/คณะ/ประเภท/กำหนดการ), Internship + Source, Application + ApplicationEvent (มีฟิลด์ `source_of_truth`: system / user / ai), Document + DocumentVersion, DocumentRequirement (ใบสมัคร × เอกสาร), UniversityStep, NotificationPreference / Delivery
+InternMatch ออกแบบสถาปัตยกรรมแบบ **Event-Driven & Dual-Channel Sync** เพื่อรองรับการทำงานประสานกันอย่างไร้รอยต่อระหว่างนักศึกษา (ผ่าน LINE OA และ Web) และอาจารย์/เจ้าหน้าที่คณะ (ผ่าน Admin Portal)
 
-**ส่วนประกอบหลัก:**
-- Web app (responsive, mobile-first สำหรับเวอร์ชันจริง)
-- Backend: Node.js + PostgreSQL + queue สำหรับงานแจ้งเตือน
-- Object storage แบบ private สำหรับเอกสาร
-- LINE Messaging API + Official Account
-- **Paxa API เรียกผ่าน backend proxy เท่านั้น** (POC เรียกจากเบราว์เซอร์โดยตรง ซึ่งไม่ปลอดภัยสำหรับ production)
+### 6.1 แผนผังการไหลของข้อมูล (Mermaid Diagram)
+
+```mermaid
+flowchart TD
+    %% INPUT CHANNELS
+    subgraph Channels["1. Input Channels (ช่องทางรับข้อมูล)"]
+        U_LINE["📱 LINE OA (ข้อความ/รูป/PDF)"]
+        U_WEB["💻 Web Client (Form/Drag Kanban/Doc)"]
+        A_PORTAL["👩‍🏫 Admin Portal (อาจารย์/คณะ)"]
+    end
+
+    %% GATEWAY & QUEUE
+    subgraph Gateway["2. Ingestion & Security Gateway"]
+        LINE_GW["LINE Webhook Gateway\n(Signature Verify & Account Link)"]
+        API_GW["REST / GraphQL API Gateway\n(JWT Auth, RBAC & Rate-limit)"]
+        QUEUE["BullMQ Buffer Queue (Redis)\n- Image/OCR Queue\n- Event Queue\n- Notification Queue"]
+    end
+
+    %% PROCESSING & AI
+    subgraph Processing["3. AI & Processing Engine"]
+        PAXA["📸 Paxa Labs OCR Worker\n(paxa-doc-extract-v1)"]
+        GEMINI["🧠 Gemini 3.8 Flash Worker\n(NLP & Function Calling)"]
+        DOC_GEN["⚙️ Official PDF Generator\n(ตราคณะ & ลายเซ็นดิจิทัล)"]
+    end
+
+    %% TRUTH & STORAGE
+    subgraph Storage["4. Truth Tagging & Persistence"]
+        TRUTH{"🏷️ Truth Tagging Rule Engine\n- SYSTEM_VERIFIED (สูงสุด)\n- USER_REPORTED\n- AI_EXTRACTED (ต้องตรวจ)"}
+        PG[("🗄️ PostgreSQL\n(Users, Applications, Audit Events)")]
+        S3[("🔒 Encrypted S3 Bucket\n(Transcripts, Resumes, Official PDFs)")]
+    end
+
+    %% DUAL SYNC & OUTPUT
+    subgraph Output["5. Dual-Sync & Consumers"]
+        WS["⚡ WebSocket / SSE Gateway\n(Push Real-time ไปหน้าเว็บ นศ.)"]
+        LINE_PUSH["📢 LINE Messaging API Gateway\n(Push Flex Message & Reminder)"]
+        ADMIN_VIEW["📊 Admin Cohort Analytics\n(เตือนกลุ่มเสี่ยง & อนุมัติคำขอ)"]
+    end
+
+    %% CONNECTIONS
+    U_LINE --> LINE_GW --> QUEUE
+    U_WEB --> API_GW --> QUEUE
+    A_PORTAL --> API_GW
+
+    QUEUE --> PAXA
+    QUEUE --> GEMINI
+    QUEUE --> DOC_GEN
+
+    PAXA --> TRUTH
+    GEMINI --> TRUTH
+    DOC_GEN --> TRUTH
+
+    TRUTH --> PG
+    TRUTH --> S3
+
+    PG --> WS --> U_WEB
+    PG --> LINE_PUSH --> U_LINE
+    PG --> ADMIN_VIEW --> A_PORTAL
+```
+
+### 6.2 การไหลของข้อมูลในแต่ละสถานการณ์ (Data Flow Scenarios)
+
+#### 1) เมื่อนักศึกษากรอกข้อมูลผ่าน LINE OA:
+* **กรณีส่งภาพโพสต์งาน:** LINE Webhook รับ Binary ➔ เข้า Queue ➔ Paxa OCR สกัดข้อมูล (บริษัท, ตำแหน่ง, วันปิดรับ, เอกสาร) ➔ ติดป้าย `AI_EXTRACTED` ➔ บันทึกลง PostgreSQL ➔ ตอบกลับ LINE ด้วย Flex Message เพื่อให้ นศ. ตรวจสอบ ➔ ยิง WebSocket อัปเดตการ์ดในบอร์ด Kanban บนเว็บทันที
+* **กรณีพิมพ์ข้อความภาษาพูด ("บริษัท B นัดสัมภาษณ์ 20 พ.ย."):** LINE Webhook ➔ Gemini Function Calling สกัด Intent ➔ ตรวจสอบ Business Rules ➔ ติดป้าย `USER_REPORTED` ➔ อัปเดต DB ➔ ตั้ง Schedule Job ใน BullMQ ล่วงหน้า 1 วันเพื่อเตือนใน LINE ➔ หน้าเว็บย้ายการ์ดไปยังคอลัมน์ "สัมภาษณ์"
+
+#### 2) เมื่อนักศึกษากรอกข้อมูลผ่าน Website:
+* อัปโหลด Transcript / เอกสารผ่าน HTTPS ➔ ตรวจสอบ JWT Session ➔ เก็บไฟล์ลง Private S3 Bucket (เข้ารหัส AES-256) ➔ Paxa OCR ตรวจสอบวันที่ออกเอกสาร (อายุไม่เกิน 90 วัน) ➔ อัปเดตสถานะในตาราง Matrix ความพร้อมของเอกสาร ➔ แจ้งเตือนสถานะความพร้อมไปยัง Admin Portal ของอาจารย์
+
+#### 3) เมื่ออาจารย์ / แอดมินคณะ อนุมัติข้อมูล (Admin Flow):
+* อาจารย์เห็นภาพรวม Cohort และคิวคำขอรอตรวจ ➔ อาจารย์กด **"อนุมัติ & ออกหนังสือ"** ➔ ตรวจสอบ RBAC Token ➔ Background Worker สร้างไฟล์ PDF หนังสือขอความอนุเคราะห์ฉบับทางการ ➔ สแตมป์สถานะเป็น `SYSTEM_VERIFIED` ➔ บันทึก Audit Log ➔ **Dual-Push ทันที:** ยิง LINE แจ้งเตือน นศ. พร้อมลิงก์ดาวน์โหลด PDF + ติ๊กผ่านในหน้าเช็กลิสต์ของคณะบนเว็บ นศ. แบบ Real-time
+
+### 6.3 กฎลำดับชั้นความน่าเชื่อถือของข้อมูล (Truth Hierarchy)
+1. **`SYSTEM_VERIFIED` (สูงสุด):** ข้อมูลที่ออกโดยคณะ (เช่น หนังสือขอความอนุเคราะห์ที่อนุมัติแล้ว) หรือสถานะจากบริษัทที่สมัครผ่าน InternMatch ➔ *ผู้ใช้ไม่สามารถแก้ไขเองได้*
+2. **`USER_REPORTED`:** ข้อมูลที่นักศึกษากรอกหรืออัปเดตเองผ่าน Web หรือ LINE ➔ *สามารถแก้ไขได้ และมีประวัติ Audit Log กำกับ*
+3. **`AI_EXTRACTED` (ชั่วคราว):** ข้อมูลที่อ่านจากรูปภาพหรือเอกสารโดย AI ➔ *ต้องผ่านการตรวจทานและกดยืนยันจากนักศึกษาก่อนเลื่อนระดับเป็น USER_REPORTED*
 
 ---
 

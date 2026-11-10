@@ -65,6 +65,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
     <a data-s="saved">⭐ ที่บันทึกไว้ <span class="badge" id="savedCount">0</span></a>
     <a data-s="tracker">📋 ติดตามการสมัคร</a>
     <a data-s="notif">🔔 แจ้งเตือน & LINE</a>
+    <a data-s="pipeline">⚡ Data Pipeline & Admin <span class="badge" style="background:#6366f1">ผังข้อมูล</span></a>
   </nav>
 </aside>
 <main>
@@ -235,6 +236,108 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
     <p class="sub" style="margin-top:12px">ยกเลิกได้ทุกเมื่อ หรือพิมพ์ “หยุด” ใน LINE</p>
   </div>
   <div><b>ตัวอย่างข้อความ</b><div class="phone"><div class="bubble">🔔 <b>InternMatch</b><br>พรุ่งนี้ 10:00 สัมภาษณ์<br><b>Data Analyst Intern – บริษัท A</b><br><br><span style="color:var(--pri)">ดูรายละเอียด →</span></div></div></div>
+  </div>
+</section>
+
+<!-- PIPELINE & ADMIN -->
+<section class="screen" id="pipeline">
+  <div class="row" style="justify-content:space-between">
+    <div>
+      <h1>⚡ Data Pipeline & ระบบ Admin คณะ</h1>
+      <p class="sub">ผังการไหลของข้อมูล (End-to-End Data Lineage) เมื่อ User กรอกผ่าน LINE หรือ Website และวิธีเชื่อมต่อไปยัง Admin คณะ</p>
+    </div>
+    <div class="row">
+      <span class="chip ok">✔ Dual-Sync (LINE ↔ Web)</span>
+      <span class="chip pri">🤖 Paxa + Gemini AI</span>
+      <span class="chip warn">🔒 PDPA Compliant</span>
+    </div>
+  </div>
+
+  <!-- SCENARIO SELECTOR -->
+  <div class="card" style="margin-bottom:18px">
+    <label style="margin-top:0"><b>เลือกสถานการณ์จำลอง (Simulate Data Flow Scenario):</b></label>
+    <div class="pick" id="scenPick">
+      <span class="on" data-scen="0">📱 1. นศ. ส่งภาพโพสต์งานทาง LINE</span>
+      <span data-scen="1">💬 2. นศ. พิมพ์อัปเดตสถานะใน LINE</span>
+      <span data-scen="2">💻 3. นศ. อัปโหลด Transcript บน Website</span>
+      <span data-scen="3">👩‍🏫 4. อาจารย์/แอดมิน อนุมัติเอกสารใน Admin Portal</span>
+    </div>
+  </div>
+
+  <!-- PIPELINE STAGES VISUALIZER -->
+  <div class="card" style="margin-bottom:18px;background:#1a1d2e;color:#fff" id="pipeBox">
+    <div class="row" style="justify-content:space-between;border-bottom:1px solid #2d334d;padding-bottom:10px;margin-bottom:14px">
+      <b style="font-size:15px;color:#a5b4fc" id="pipeTitle">📱 การไหลของข้อมูล: นักศึกษาส่งภาพโพสต์งานผ่าน LINE OA</b>
+      <span class="chip" style="background:#2d334d;color:#cbd5e1" id="pipeLatency">⚡ Average Latency: ~1.8s</span>
+    </div>
+
+    <!-- STAGES DIAGRAM -->
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px" id="pipeStages"></div>
+
+    <!-- STAGE DETAIL & PAYLOAD -->
+    <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin-top:16px;padding-top:14px;border-top:1px solid #2d334d">
+      <div>
+        <h4 style="margin:0 0 6px;color:#818cf8">📋 ขั้นตอนการประมวลผล (Processing Walkthrough)</h4>
+        <div id="pipeSteps" style="font-size:13px;line-height:1.7;color:#e2e8f0"></div>
+      </div>
+      <div>
+        <h4 style="margin:0 0 6px;color:#818cf8">📦 Data Event Payload (JSON Schema)</h4>
+        <pre id="pipeJson" style="background:#0f111c;border:1px solid #2d334d;border-radius:10px;padding:12px;font-size:11.5px;color:#a5f3fc;overflow:auto;max-height:220px;margin:0"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN PORTAL POC -->
+  <h2 style="margin:26px 0 6px">👩‍🏫 Admin Portal: มุมมองอาจารย์ / เจ้าหน้าที่คณะ</h2>
+  <p class="sub">อาจารย์เห็นความคืบหน้าของนักศึกษาทั้งรุ่น กรองกลุ่มเสี่ยง และอนุมัติเอกสารทางการแบบ Real-time</p>
+
+  <div class="stats" style="margin-bottom:16px">
+    <div class="card stat"><b style="color:var(--pri)">60</b><span>นักศึกษาทั้งหมด</span></div>
+    <div class="card stat"><b style="color:var(--ok)">38</b><span>ได้ที่ฝึกงานแล้ว (63%)</span></div>
+    <div class="card stat"><b style="color:var(--warn)">14</b><span>รอผลสัมภาษณ์ (23%)</span></div>
+    <div class="card stat"><b style="color:var(--bad)" id="riskCount">8</b><span>⚠️ เสี่ยงตกเทอม (14%)</span></div>
+  </div>
+
+  <div class="row" style="align-items:flex-start">
+    <!-- APPROVAL QUEUE -->
+    <div class="card" style="flex:1.4;min-width:340px">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px">
+        <h3 style="margin:0">📥 คำขอรออาจารย์อนุมัติ (Pending Approvals)</h3>
+        <span class="chip warn" id="pendingBadge">รออนุมัติ 1 รายการ</span>
+      </div>
+      <div class="list" id="adminQueue">
+        <div class="it" id="qMeen">
+          <div style="font-size:26px">📄</div>
+          <div style="flex:1">
+            <b>มีน (สาขาวิทยาการข้อมูล) · รหัส 6601xxxx</b>
+            <div style="font-size:12.5px;color:var(--mute)">ขอหนังสือขอความอนุเคราะห์: <b>บริษัท A (FinTech)</b> · ยื่นเมื่อ 8 พ.ย.</div>
+            <div style="margin-top:4px"><span class="chip ok">✔ หน่วยกิตครบ</span> <span class="chip pri">GPAX 3.42</span> <span class="chip">ฝึกงานภาคบังคับ 240 ชม.</span></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <button class="btn sm" onclick="adminApprove('A')">✔ อนุมัติ & ออกหนังสือ</button>
+            <button class="btn sm ghost" onclick="alert('ส่งข้อความสอบถามนักศึกษา')">💬 ถาม นศ.</button>
+          </div>
+        </div>
+      </div>
+      <div id="adminActionLog" style="margin-top:12px;display:none;background:var(--okbg);color:var(--ok);padding:10px 14px;border-radius:10px;font-size:13px"></div>
+    </div>
+
+    <!-- COHORT RISK RADAR -->
+    <div class="card" style="flex:1;min-width:280px">
+      <h3 style="margin-top:0">🚨 นักศึกษากลุ่มเสี่ยง (Action Required)</h3>
+      <p class="sub" style="margin:0 0 10px">ยังไม่มีใบสมัครหรือไม่ได้อัปเดตเกิน 21 วัน (เหลือ 82 วันก่อนเส้นตาย)</p>
+      <div class="list">
+        <div class="it">
+          <div style="flex:1"><b>ต้น (รหัส 66010045)</b><br><small style="color:var(--mute)">สมัคร 0 ที่ · Transcript ยังไม่อัปโหลด</small></div>
+          <button class="btn sm ghost" onclick="alert('ยิง LINE เตือนต้นแล้ว')">🔔 เตือนใน LINE</button>
+        </div>
+        <div class="it">
+          <div style="flex:1"><b>ภัทร (รหัส 66010112)</b><br><small style="color:var(--mute)">ยื่น 1 ที่ (บริษัท F) · ไม่อัปเดต 24 วัน</small></div>
+          <button class="btn sm ghost" onclick="alert('ยิง LINE เตือนภัทรแล้ว')">🔔 เตือนใน LINE</button>
+        </div>
+      </div>
+      <button class="btn line sm" style="width:100%;margin-top:12px" onclick="alert('ระบบส่ง LINE Broadcast เตือน นศ. กลุ่มเสี่ยงทั้ง 8 คนแล้ว')">📢 บรอดแคสต์เตือนเฉพาะกลุ่มเสี่ยง (8 คน)</button>
+    </div>
   </div>
 </section>
 </main>
@@ -484,11 +587,117 @@ function renderUni(){const n=uni.filter(u=>u.done).length;$('#uniPct').textConte
   ['🔄','บริษัท F ไม่มีความเคลื่อนไหว 21 วัน: ตามผลหรือปิดใบสมัคร','อัปเดตเอง',"appDetail(2)"],
   ['⏳','บริษัท D ปิดรับใน 5 วัน: ตรงกับสายที่คุณสนใจ','แนะนำ',"detail(4)"]];
  $('#todo').innerHTML=todo.map(t=>`<div class="it"><span style="font-size:20px">${t[0]}</span><div style="flex:1"><b>${t[1]}</b><br><small style="color:var(--mute)">${t[2]}</small></div><button class="btn sm" onclick="${t[3]}">ทำเลย</button></div>`).join('');}
+const PIPELINES=[
+ {title:'📱 1. นักศึกษาส่งภาพโพสต์งานผ่าน LINE OA',latency:'⚡ Average Latency: ~1.8s (รวม Paxa OCR)',
+  stages:[
+   {name:'1. Ingestion',icon:'📱',desc:'LINE Messaging API Webhook รับ Image payload'},
+   {name:'2. Queue & Auth',icon:'🛡️',desc:'Verify signature, โยน job เข้า BullMQ (Redis)'},
+   {name:'3. AI Parsing',icon:'🤖',desc:'Paxa OCR สกัดฟิลด์ภาษาไทย (paxa-doc-extract-v1)'},
+   {name:'4. Truth Tagging',icon:'🏷️',desc:'แปะป้าย AI_EXTRACTED รอผู้ใช้ตรวจก่อน'},
+   {name:'5. Database & S3',icon:'🗄️',desc:'บันทึก PostgreSQL applications + เก็บภาพใน S3'},
+   {name:'6. Dual-Sync',icon:'🔄',desc:'ส่ง LINE Flex Msg ยืนยัน + WebSocket ดันเข้าบอร์ดเว็บ'}
+  ],
+  steps:[
+   '1. <b>LINE Webhook:</b> นศ. แคปหน้าจอโพสต์จาก Facebook/LINE กลุ่ม แล้วแชร์เข้า @internmatch',
+   '2. <b>Buffer & Auth:</b> ระบบตรวจ User ID เทียบกับตารางผูกบัญชี (Account Linking) แล้วโยนงานเข้า BullMQ Queue',
+   '3. <b>AI OCR Worker:</b> Worker ดึงงาน ส่งภาพเข้า Paxa Labs OCR ได้ฟิลด์: บริษัท, ตำแหน่ง, วันปิดรับ, เอกสารที่ต้องใช้',
+   '4. <b>Truth Tagging:</b> ข้อมูลถูกติดป้าย <code>AI_EXTRACTED</code> (สถานะชั่วคราวเพื่อให้ User ตรวจสอบ ไม่สวมรอยเป็นข้อมูลจริง)',
+   '5. <b>Persistence:</b> บันทึกลง PostgreSQL พร้อมประวัติ Event Log และเพิ่มข้อกำหนดเอกสารลง Matrix',
+   '6. <b>Bidirectional Sync:</b> บอทตอบกลับใน LINE ทันที พร้อมยิง WebSocket อัปเดตบอร์ด Kanban บนคอมของนักศึกษา และอัปเดตสถิติคณะ'
+  ],
+  payload:{event_id:"evt_9a8f21c0",channel:"LINE_OA",user_id:"usr_meen_6601",event_type:"JOB_POST_IMAGE_UPLOADED",source_of_truth:"AI_EXTRACTED",extracted_data:{company:"บริษัท ไทยดาต้า โซลูชันส์ จำกัด",role:"Data Analyst Intern",work_mode:"Hybrid",deadline:"2026-11-30",required_documents:["Resume","Transcript","สำเนาบัตรนักศึกษา"]},audit:{client_ip:"line-webhook-gw",latency_ms:1820}}},
+
+ {title:'💬 2. นักศึกษาพิมพ์อัปเดตสถานะใน LINE ("บริษัท B เรียกสัมภาษณ์ 20 พ.ย.")',latency:'⚡ Average Latency: ~650ms',
+  stages:[
+   {name:'1. Ingestion',icon:'💬',desc:'LINE Webhook รับ Text Message ภาษาพูด'},
+   {name:'2. Gateway',icon:'🛡️',desc:'Token Bucket Rate-limit + Load Context'},
+   {name:'3. Gemini NLP',icon:'🧠',desc:'Gemini 3.8 Flash สกัด Intent -> เรียก tool update_application_status'},
+   {name:'4. Truth Tagging',icon:'🏷️',desc:'แปะป้าย USER_REPORTED (นศ. เป็นผู้แจ้ง)'},
+   {name:'5. DB & Scheduler',icon:'🗄️',desc:'Update PostgreSQL status=Interview, ตั้ง BullMQ Schedule เตือน 19 พ.ย.'},
+   {name:'6. Live Sync',icon:'🔄',desc:'ตอบ LINE ข้อความยืนยัน + Kanban บนเว็บย้ายการ์ด + Admin Cohort อัปเดต'}
+  ],
+  steps:[
+   '1. <b>Text Input:</b> นศ. พิมพ์ข้อความภาษาพูดอย่างเป็นธรรมชาติใน LINE ไม่ต้องเข้าเว็บ',
+   '2. <b>Intent Recognition:</b> Gemini Function Calling จับคู่ชื่อ "บริษัท B" และสถานะ "Interview" พร้อมวันนัด 20 พ.ย.',
+   '3. <b>Business Rule Check:</b> ตรวจสอบว่าไม่ใช่ใบสมัครประเภท <code>SYSTEM_VERIFIED</code> (ห้าม นศ. เมคสถานะงานที่สมัครตรงกับระบบ)',
+   '4. <b>Audit Trail:</b> บันทึก Event Log ว่าอัปเดตผ่าน LINE เมื่อเวลาใด',
+   '5. <b>Reminder Scheduling:</b> คำนวณวันล่วงหน้า 1 วัน (19 พ.ย. 20:00) ยัดเข้า BullMQ Cron เพื่อทักเตือน',
+   '6. <b>Live Sync:</b> หาก นศ. เปิดเว็บอยู่ การ์ดจะเด้งไปช่องสัมภาษณ์ทันที และแดชบอร์ดอาจารย์เห็นว่า นศ. มีนัดสัมภาษณ์เพิ่ม 1 คน'
+  ],
+  payload:{event_id:"evt_7b120c4e",channel:"LINE_OA",user_id:"usr_meen_6601",event_type:"STATUS_UPDATE",target_company:"บริษัท B",new_status:"Interview",interview_at:"2026-11-20T10:00:00+07:00",source_of_truth:"USER_REPORTED",reminder_scheduled:"2026-11-19T20:00:00+07:00"}},
+
+ {title:'💻 3. นักศึกษาอัปโหลด Transcript บน Website',latency:'⚡ Average Latency: ~1.2s',
+  stages:[
+   {name:'1. Direct Upload',icon:'💻',desc:'Web Client ส่งไฟล์ผ่าน HTTPS (Next.js API)'},
+   {name:'2. Auth & Check',icon:'🛡️',desc:'JWT Session Check + Magic Bytes validation'},
+   {name:'3. S3 Storage',icon:'🔒',desc:'Upload to Encrypted Private S3 Bucket (AES-256)'},
+   {name:'4. Paxa AI Check',icon:'🤖',desc:'Paxa OCR ตรวจ Issue Date, ตรวจเกรด GPAX'},
+   {name:'5. Matrix Update',icon:'🗄️',desc:'Update documents table, ปรับ Matrix ความพร้อมเป็น "พร้อม"'},
+   {name:'6. Alert Sync',icon:'🔄',desc:'เว็บขึ้นเครื่องหมาย ✔ + แจ้งเตือนเข้า LINE นศ. ยืนยัน'}
+  ],
+  steps:[
+   '1. <b>Direct Web Upload:</b> นศ. อัปโหลดไฟล์ PDF จากคอมพิวเตอร์เข้าสู่หน้าคลังเอกสาร',
+   '2. <b>Security & PDPA:</b> ตรวจสอบสิทธิ์ เข้าถึงได้เฉพาะเจ้าของบัญชีและอาจารย์ที่ปรึกษาที่ได้รับอนุญาตเท่านั้น',
+   '3. <b>Intelligent Validation:</b> Paxa OCR อ่านวันที่ออกเอกสาร หากเกิน 90 วัน ระบบจะติด Flag <code>WARNING_EXPIRING</code>',
+   '4. <b>Matrix Synchronization:</b> อัปเดตตารางความพร้อมของทุกบริษัทที่ต้องใช้ Transcript ทันที',
+   '5. <b>Faculty Notification:</b> อาจารย์เห็นใน Admin Portal ว่านักศึกษาเตรียมเอกสารพร้อมสำหรับการขอหนังสือรับรองแล้ว'
+  ],
+  payload:{event_id:"evt_3c559d81",channel:"WEB_CLIENT",user_id:"usr_meen_6601",document_type:"TRANSCRIPT",file_s3_key:"secure/docs/usr_meen_6601/transcript_v1_2569.pdf",ocr_metadata:{issue_date:"2026-08-15",gpax:3.42,validity:"VALID",age_months:2.8},source_of_truth:"SYSTEM_VERIFIED_DOCUMENT"}},
+
+ {title:'👩‍🏫 4. อาจารย์/แอดมินคณะ อนุมัติเอกสารใน Admin Portal',latency:'⚡ Average Latency: ~400ms (High Priority)',
+  stages:[
+   {name:'1. Admin Action',icon:'👩‍🏫',desc:'อาจารย์กดปุ่ม "อนุมัติ & ออกหนังสือ" ใน Admin Portal'},
+   {name:'2. RBAC Gateway',icon:'🛡️',desc:'Verify Admin Token (Role: FACULTY_ADVISOR)'},
+   {name:'3. PDF Worker',icon:'⚙️',desc:'Auto-generate หนังสือขอความอนุเคราะห์ (ตราครุฑ/ลายเซ็น)'},
+   {name:'4. Truth Tagging',icon:'🏷️',desc:'แปะป้าย SYSTEM_VERIFIED (ระดับสูงสุด)'},
+   {name:'5. DB State Update',icon:'🗄️',desc:'PostgreSQL: university_steps.status = APPROVED'},
+   {name:'6. Instant Push',icon:'🚀',desc:'ยิง LINE Push Flex ส่ง PDF ให้ นศ. + ติ๊กผ่านในเว็บ นศ.'}
+  ],
+  steps:[
+   '1. <b>Faculty Approval:</b> อาจารย์ตรวจคุณสมบัติ นศ. (ชั่วโมง, เกรด, บริษัท) แล้วกดปุ่มอนุมัติคำขอ',
+   '2. <b>Automated Letter Generation:</b> ระบบดึง Template หนังสือขอความอนุเคราะห์ของคณะ เติมชื่อ นศ. และชื่อผู้บริหารบริษัท แล้ว Gen PDF ทันที',
+   '3. <b>Authority Stamp:</b> สแตมป์สถานะ <code>SYSTEM_VERIFIED</code> ซึ่งเป็นระดับความน่าเชื่อถือสูงสุด',
+   '4. <b>Student Instant Notification:</b> ระบบยิง LINE Push Notification หา นศ. ทันที: "หนังสือขอความอนุเคราะห์ออกแล้ว ดาวน์โหลดได้เลย"',
+   '5. <b>Checklist Progression:</b> เช็กลิสต์ในหน้า "เอกสาร & ขั้นตอนคณะ" ของ นศ. เปลี่ยนเป็นสีเขียว ✔ โดยอัตโนมัติ'
+  ],
+  payload:{event_id:"evt_1f44e892",channel:"ADMIN_PORTAL",admin_id:"adm_somjai_prof",student_id:"usr_meen_6601",action:"APPROVE_OFFICIAL_LETTER",target_company:"บริษัท A (FinTech)",official_letter_no:"วท.2569/1108",source_of_truth:"SYSTEM_VERIFIED",output_actions:[{type:"LINE_PUSH_NOTIFICATION",to:"LINE_MEEN",template:"FLEX_LETTER_READY"},{type:"WEBSOCKET_BROADCAST",room:"usr_meen_6601",update:"CHECKLIST_PASSED"}]}}
+];
+
+let curScen=0;
+function renderPipeline(idx){
+ curScen=idx;const p=PIPELINES[idx];
+ $('#pipeTitle').textContent=p.title;$('#pipeLatency').textContent=p.latency;
+ $('#pipeStages').innerHTML=p.stages.map((s,i)=>`
+   <div style="background:#222638;border:1px solid ${i===3?'#6366f1':'#374151'};border-radius:10px;padding:10px 8px;text-align:center">
+     <div style="font-size:20px">${s.icon}</div>
+     <b style="font-size:12px;display:block;margin:4px 0;color:#c7d2fe">${s.name}</b>
+     <small style="font-size:10.5px;color:#94a3b8;line-height:1.3;display:block">${s.desc}</small>
+   </div>
+ `).join('');
+ $('#pipeSteps').innerHTML=p.steps.map(s=>`<div style="margin-bottom:8px">• ${s}</div>`).join('');
+ $('#pipeJson').textContent=JSON.stringify(p.payload,null,2);
+ document.querySelectorAll('#scenPick span').forEach((s,i)=>s.classList.toggle('on',i===idx));
+}
+$('#scenPick').onclick=e=>{const idx=e.target.dataset.scen;if(idx!==undefined)renderPipeline(Number(idx));};
+
+function adminApprove(co){
+ const log=$('#adminActionLog');log.style.display='block';
+ log.innerHTML=`<b>⚡ Data Pipeline กำลังทำงาน (High Priority Queue):</b><br>
+ 1. PostgreSQL: ปรับสถานะคำขอของ <b>มีน</b> เป็น <code>SYSTEM_VERIFIED (APPROVED)</code><br>
+ 2. Worker: สร้างหนังสือขอความอนุเคราะห์เลขที่ วท.2569/1108 พร้อมตรามหาวิทยาลัย (PDF)<br>
+ 3. Push Gateway: ส่ง LINE Flex Message แจ้งเตือนมีนแล้ว: <i>"หนังสือขอความอนุเคราะห์เสร็จแล้ว"</i><br>
+ 4. WebSocket: ติ๊กผ่านในหน้า "เอกสาร & ขั้นตอนคณะ" เรียบร้อยแล้ว! 🎉`;
+ $('#qMeen').style.opacity='.5';$('#qMeen button').disabled=true;
+ $('#pendingBadge').textContent='✔ อนุมัติครบแล้ว 0 รายการ';$('#pendingBadge').className='chip ok';
+ uni[1].done=true;uni[2].done=true;uniDocs[0].st=3;uniDocs[0].upd='อนุมัติโดยอาจารย์ (SYSTEM_VERIFIED)';
+ renderUni();renderDash();
+}
+
 function autofill(){const u=$('#aUrl').value;if(!u){$('#afMsg').textContent='วางลิงก์ก่อน';return}
  if(/linkedin|facebook/i.test(u)){$('#afMsg').innerHTML='⚠ เว็บนี้ไม่อนุญาตให้ดึงข้อมูล: กรอกชื่อบริษัทและตำแหน่งเอง (ใช้เวลาไม่ถึง 10 วินาที)';return}
  $('#aCo').value='บริษัท H';$('#aRole').value='Data Analyst Intern';$('#afMsg').innerHTML='<span style="color:var(--ok)">✔ ดึงข้อมูลแล้ว: ตรวจให้ถูกต้องก่อนบันทึก</span>';}
 function render(){const nu=$('#newUser')&&$('#newUser').checked;$('#emptyState').style.display=nu?'block':'none';$('#activeState').style.display=nu?'none':'block';
- renderDocs();renderUni();renderDash();renderJobs();renderKanban();$('#savedCount').textContent=saved.size;
+ renderDocs();renderUni();renderDash();renderJobs();renderKanban();renderPipeline(curScen);$('#savedCount').textContent=saved.size;
  $('#savedList').innerHTML=jobs.filter(j=>saved.has(j.id)).map(jobCard).join('')||'<p class="sub">ยังไม่มีงานที่บันทึก</p>';}
 document.querySelectorAll('.pick span').forEach(s=>s.onclick=()=>s.classList.toggle('on'));
 render();
