@@ -60,6 +60,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
     <a data-s="uni">🎓 เอกสาร & ขั้นตอนคณะ</a>
     <a data-s="docs">📁 คลังเอกสาร <span class="badge" style="background:var(--bad)" id="docAlert">2</span></a>
     <a data-s="ocr">📸 อ่านเอกสาร (AI) <span class="badge" style="background:var(--ok)">ใหม่</span></a>
+    <a data-s="chat">💬 พี่ฝึกงาน (LINE) <span class="badge" style="background:var(--line-green)">concept</span></a>
     <a data-s="discover">🔎 ค้นหาฝึกงาน</a>
     <a data-s="saved">⭐ ที่บันทึกไว้ <span class="badge" id="savedCount">0</span></a>
     <a data-s="tracker">📋 ติดตามการสมัคร</a>
@@ -162,6 +163,36 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
       <button class="btn" style="margin-top:12px;width:100%" onclick="runOcr()" id="runBtn">✨ อ่านเอกสาร</button>
     </div>
     <div class="card" style="flex:1.2;min-width:340px" id="ocrOut"><p class="sub" style="margin:0">ผลลัพธ์จะแสดงที่นี่ · ข้อมูลที่ AI อ่านได้ต้องตรวจก่อนบันทึกเสมอ</p></div>
+  </div>
+</section>
+
+<!-- CHAT -->
+<section class="screen" id="chat">
+  <h1>💬 พี่ฝึกงาน: ผู้ช่วยใน LINE</h1>
+  <p class="sub">บอกไว้ครั้งเดียว ไม่ลืม · พิมพ์ภาษาพูด ส่งรูป ส่งไฟล์ แล้วข้อมูลเข้าเว็บเอง (ต้นแบบแนวคิด อ้างอิงรูปแบบจาก abdul.chat)</p>
+  <div class="row" style="align-items:flex-start;gap:24px">
+    <div>
+      <div class="row" style="gap:6px;margin-bottom:8px"><button class="btn sm" id="tabMe" onclick="chatTab('me')">แชทส่วนตัว</button><button class="btn sm ghost" id="tabGroup" onclick="chatTab('group')">กลุ่ม "ฝึกงาน DS ปี 3"</button></div>
+      <div style="width:340px;background:#8cabd9;border-radius:26px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.15)">
+        <div style="color:#fff;font-weight:600;padding:4px 8px 10px" id="chatTitle">← พี่ฝึกงาน · InternMatch</div>
+        <div id="msgs" style="height:470px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:4px"></div>
+        <div style="display:flex;gap:6px;margin-top:8px;background:#fff;border-radius:99px;padding:4px">
+          <button class="save" style="border:0" title="ส่งรูป" onclick="sendMsg('[📷 รูปโพสต์งาน บริษัท H]')">📷</button>
+          <input id="chatIn" placeholder="พิมพ์ข้อความ…" style="flex:1;border:0;padding:8px" onkeydown="if(event.key==='Enter')sendMsg()">
+          <button class="btn sm line" onclick="sendMsg()">ส่ง</button></div>
+      </div>
+      <div class="pick" style="margin-top:10px;max-width:340px" id="quick"></div>
+    </div>
+    <div style="flex:1;min-width:300px">
+      <div class="card" style="margin-bottom:14px"><h3 style="margin-top:0">🔄 สิ่งที่เข้าเว็บจากแชท</h3><div class="list" id="syncLog"><p class="sub" style="margin:0">ลองพิมพ์ในแชท หรือแตะข้อความตัวอย่าง</p></div></div>
+      <div class="card"><h3 style="margin-top:0">ทำไมต้องรวมสองแบบ</h3>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <tr style="color:var(--mute);text-align:left"><th style="padding:6px">LINE (แบบอับดุล)</th><th>เว็บ InternMatch</th></tr>
+          <tr style="border-top:1px solid var(--line)"><td style="padding:6px">จดเร็ว ส่งรูป/ลิงก์ทันทีที่เจอ</td><td>ดูภาพรวม บอร์ด ตารางเอกสาร</td></tr>
+          <tr style="border-top:1px solid var(--line)"><td style="padding:6px">เตือนตรงเวลา ถามตอบภาษาพูด</td><td>แก้ไขละเอียด ตั้งค่า เช็กลิสต์คณะ</td></tr>
+          <tr style="border-top:1px solid var(--line)"><td style="padding:6px">ใช้ในกลุ่มเพื่อน/อาจารย์ได้</td><td>อัปโหลดเอกสาร PDF ขนาดใหญ่</td></tr>
+        </table></div>
+    </div>
   </div>
 </section>
 
@@ -370,6 +401,43 @@ function saveJob(){const f=lastRes.fields;apps.unshift({co:f.company||'ไม่
  if(f.documents?.length)need[f.company||'ใหม่']=Object.fromEntries(myDocs.map(d=>[d.k,f.documents.some(x=>x.toLowerCase().includes(d.t.toLowerCase().split(' ')[0].slice(0,6))||(d.k==='id'&&/บัตร/.test(x)))?'bad':'-']));
  go('tracker');}
 function saveHandbook(){(lastRes.fields.milestones||[]).forEach(m=>uni.push({t:m.task||'กำหนดการ',d:m.date?thd(m.date)+' · จากคู่มือ (AI)':'จากคู่มือ (AI)',done:false}));go('uni');}
+let chatMode='me';
+const bub=(t,me,who)=>`<div style="align-self:${me?'flex-end':'flex-start'};max-width:82%">${who?`<small style="color:#fff">${who}</small>`:''}<div style="background:${me?'#9be15d':'#fff'};border-radius:16px;padding:9px 12px;font-size:13px;line-height:1.5">${t}</div></div>`;
+const card=(h,rows,btn)=>`<b>${h}</b><div style="margin:6px 0;font-size:12px;color:#555">${rows.join('<br>')}</div>${btn?`<div style="border-top:1px solid #eee;padding-top:6px;color:var(--pri);font-weight:600">${btn}</div>`:''}`;
+const SEED={me:[
+ [1,'[📷 รูปโพสต์งานจาก Facebook]'],
+ [0,card('✅ บันทึกแล้ว: Data Analyst Intern',['🏢 บริษัท ไทยดาต้า โซลูชันส์','📅 ปิดรับ 30 พ.ย. (อีก 20 วัน)','📄 ต้องใช้: Resume, Transcript, บัตรนศ.','⚠ ยังขาด: สำเนาบัตรนักศึกษา'],'ดูในเว็บ →')],
+ [1,'พรุ่งนี้สัมภาษณ์บริษัท A สิบโมงนะ'],
+ [0,'รับทราบครับ 👍 ย้ายบริษัท A ไปช่อง <b>สัมภาษณ์</b> แล้ว<br>⏰ จะเตือนคืนนี้ 20:00 และพรุ่งนี้ 08:30<br>💡 รุ่นพี่บอกว่าบริษัท A ชอบถามเรื่อง SQL window function']],
+ group:[
+ [0,'สวัสดีครับทุกคน 👋 ผมพี่ฝึกงาน เรียก "พี่ฝึกงาน" ได้เลย','',''],
+ [1,'พี่ฝึกงาน หนังสือขอความอนุเคราะห์ต้องยื่นถึงวันไหน','ต้น'],
+ [0,'📌 คณะวิทย์ฯ ให้ยื่นภายใน <b>15 ธ.ค.</b> ครับ เจ้าหน้าที่ใช้เวลาออก ~5 วันทำการ<br>เตือนทั้งกลุ่ม 3 วันก่อนไหมครับ?<br><span style="color:var(--pri)">[เตือนทั้งกลุ่ม] [เฉพาะฉัน]</span>'],
+ [1,'เตือนทั้งกลุ่มเลย','มีน'],
+ [0,'✅ ตั้งเตือนกลุ่มแล้ว 12 ธ.ค. 09:00<br>👥 สถานะกลุ่ม: ได้ที่ฝึกงานแล้ว 4/12 คน 🎉']]};
+const QUICK={me:['เหลืออะไรที่ยังไม่ส่งบ้าง','บริษัท B ตอบกลับแล้ว ให้ไปสัมภาษณ์ 20 พ.ย.','transcript ของฉันหมดอายุยัง','[📷 รูปโพสต์งาน บริษัท H]'],
+ group:['พี่ฝึกงาน ใครได้ที่ฝึกงานแล้วบ้าง','พี่ฝึกงาน บริษัท A จ่ายเบี้ยเลี้ยงเท่าไหร่']};
+function chatTab(m){chatMode=m;$('#tabMe').className='btn sm'+(m==='me'?'':' ghost');$('#tabGroup').className='btn sm'+(m==='group'?'':' ghost');
+ $('#chatTitle').textContent=m==='me'?'← พี่ฝึกงาน · InternMatch':'← ฝึกงาน DS ปี 3 (12)';
+ $('#msgs').innerHTML=SEED[m].map(x=>bub(x[1],x[0],x[2])).join('');
+ $('#quick').innerHTML=QUICK[m].map(q=>`<span onclick="sendMsg(this.textContent)">${q}</span>`).join('');$('#msgs').scrollTop=1e9;}
+function logSync(i,t){const l=$('#syncLog');if(l.querySelector('.sub'))l.innerHTML='';l.insertAdjacentHTML('afterbegin',`<div class="it"><span style="font-size:20px">${i}</span><div style="flex:1">${t}<br><small style="color:var(--mute)">เมื่อสักครู่ · จาก LINE</small></div></div>`);}
+function reply(t){
+ if(/รูป|📷/.test(t)){apps.unshift({co:'บริษัท H',role:'Data Analyst Intern',st:'Saved',verified:false,ev:[['10 พ.ย.','บันทึกจาก LINE (AI อ่านรูป)']],next:'ปิดรับ 5 ธ.ค.',upd:0});logSync('📋','เพิ่ม <b>บริษัท H</b> ในช่อง "บันทึกไว้"');
+  return card('✅ บันทึกแล้ว: Data Analyst Intern',['🏢 บริษัท H','📅 ปิดรับ 5 ธ.ค.','🤖 อ่านจากรูปด้วย AI: แตะเพื่อตรวจ'],'แก้ไข | ดูในเว็บ →');}
+ if(/ยังไม่ส่ง|เหลืออะไร/.test(t))return card('📋 ยังค้างอยู่ 3 เรื่อง',['1. บริษัท B: ขาดสำเนาบัตรนักศึกษา','2. ขออาจารย์อนุมัติบริษัท A','3. บริษัท F: ไม่อัปเดตมา 21 วัน'],'ส่งบัตรนศ.ตรงนี้ได้เลย 📎');
+ if(/บริษัท B.*สัมภาษณ์/.test(t)){const a=apps.find(x=>x.co==='บริษัท B');if(a){a.st='Interview';a.next='สัมภาษณ์ 20 พ.ย.';a.ev.push(['10 พ.ย.','อัปเดตผ่าน LINE → สัมภาษณ์'])}
+  logSync('🗣️','ย้าย <b>บริษัท B</b> → สัมภาษณ์ · นัด 20 พ.ย.');return 'ยินดีด้วยครับ 🎉 ย้ายบริษัท B ไป <b>สัมภาษณ์</b> แล้ว<br>⏰ เตือน 19 พ.ย. 20:00<br><small>✎ บันทึกว่าคุณเป็นคนอัปเดต</small>';}
+ if(/transcript/i.test(t))return '📄 Transcript ของคุณออกเมื่อ ภาค 1/2569<br>⚠ บริษัท B ต้องการฉบับไม่เกิน 3 เดือน: <b>ควรขอใหม่ก่อน 1 ธ.ค.</b><br>ให้เตือนไหมครับ? <span style="color:var(--pri)">[เตือน]</span>';
+ if(/ใครได้/.test(t))return '👥 ได้ที่ฝึกงานแล้ว 4/12 คน: มีน ✔ ปอ ✔ เจ ✔ บีม ✔<br><small>แสดงเฉพาะคนที่เปิดแชร์สถานะ</small>';
+ if(/เบี้ยเลี้ยง/.test(t))return '💰 บริษัท A: 15,000/เดือน (จากประกาศ)<br>รุ่นพี่ 6 คนบอกว่าได้จริงตามนั้น';
+ const m=t.match(/(\d{1,2})\s*(พ\.ย\.|ธ\.ค\.)|พรุ่งนี้|มะรืน/);
+ if(/เตือน|นัด/.test(t)||m){logSync('⏰','ตั้งเตือน: '+t);return '⏰ ตั้งเตือนให้แล้วครับ: “'+t+'”';}
+ return 'รับทราบครับ 📝 จดไว้ในโน้ตแล้ว ถามหาได้ทีหลัง เช่น “เมื่อกี้จดอะไรไว้เรื่องบริษัท A”';}
+function sendMsg(t){t=t||$('#chatIn').value.trim();if(!t)return;$('#chatIn').value='';
+ $('#msgs').insertAdjacentHTML('beforeend',bub(t,1,chatMode==='group'?'คุณ':''));$('#msgs').scrollTop=1e9;
+ setTimeout(()=>{$('#msgs').insertAdjacentHTML('beforeend',bub(reply(t),0));$('#msgs').scrollTop=1e9;},600);}
+chatTab('me');
 const myDocs=[
  {k:'resume',i:'📄',t:'Resume',v:'v3 · Data (TH/EN)',s:'ok',n:'อัปเดต 5 พ.ย. · มี 2 เวอร์ชัน'},
  {k:'tr',i:'🎓',t:'Transcript',v:'ภาค 1/2569',s:'warn',n:'ใกล้หมดอายุ: บริษัท B ต้องการฉบับไม่เกิน 3 เดือน'},
