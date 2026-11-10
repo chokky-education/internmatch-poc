@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>InternMatch – POC</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--ink:#1b1f3b;--mute:#6b7090;--line:#e6e8f0;--pri:#4f46e5;--pri2:#eef0ff;--ok:#0f9d6b;--okbg:#e6f7f0;--warn:#c27c0e;--warnbg:#fff4e0;--bad:#d93f3f;--line-green:#06c755}
+*{box-sizing:border-box}body{margin:0;font-family:'IBM Plex Sans Thai',sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+.app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+aside{background:#fff;border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:0;height:100vh}
+.logo{font-weight:700;font-size:20px;margin:0 8px 24px}.logo b{color:var(--pri)}
+nav a{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:10px;color:var(--ink);text-decoration:none;cursor:pointer;margin-bottom:2px}
+nav a.on{background:var(--pri2);color:var(--pri);font-weight:600}nav a:hover{background:#f2f3f8}
+.badge{margin-left:auto;background:var(--pri);color:#fff;border-radius:99px;font-size:11px;padding:1px 7px}
+main{padding:28px 36px;max-width:1200px}
+h1{font-size:24px;margin:0 0 4px}.sub{color:var(--mute);margin:0 0 22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+input,select{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.btn{font:inherit;border:0;border-radius:10px;padding:10px 16px;cursor:pointer;font-weight:600;background:var(--pri);color:#fff}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}.btn.line{background:var(--line-green)}
+.btn.sm{padding:6px 10px;font-size:13px}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;font-size:12px;background:#f0f1f6;color:var(--mute)}
+.chip.ok{background:var(--okbg);color:var(--ok)}.chip.warn{background:var(--warnbg);color:var(--warn)}.chip.pri{background:var(--pri2);color:var(--pri)}.chip.bad{background:#fde8e8;color:var(--bad)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.job h3{margin:6px 0 2px;font-size:16px}.job .co{color:var(--mute)}
+.meta{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.src{font-size:12px;color:var(--mute);border-top:1px dashed var(--line);padding-top:10px;margin-top:10px;display:flex;justify-content:space-between;align-items:center}
+.save{background:none;border:1px solid var(--line);border-radius:8px;padding:5px 9px;cursor:pointer;font-size:16px}.save.on{background:#fff4e0;border-color:#f3c46b}
+.kanban{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.col{background:#eef0f6;border-radius:12px;padding:10px;min-height:300px}.col h4{margin:4px 4px 10px;font-size:13px;display:flex;justify-content:space-between}
+.app-card{background:#fff;border-radius:10px;padding:10px;margin-bottom:8px;border:1px solid var(--line);cursor:pointer}
+.app-card b{display:block}.app-card small{color:var(--mute)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.stat b{font-size:26px;display:block}.stat span{color:var(--mute)}
+.list .it{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}.list .it:last-child{border:0}
+.date{width:46px;text-align:center;background:var(--pri2);color:var(--pri);border-radius:10px;padding:4px 0;font-weight:700;line-height:1.1}.date small{display:block;font-weight:500;font-size:11px}
+.modal{position:fixed;inset:0;background:rgba(20,22,50,.45);display:none;align-items:center;justify-content:center;z-index:9}
+.modal.show{display:flex}.modal .card{width:520px;max-height:90vh;overflow:auto}
+label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+input,label+select{width:100%}
+.note{background:var(--warnbg);color:#7a520a;border-radius:10px;padding:10px 12px;font-size:13px;margin-top:12px}
+.timeline{border-left:2px solid var(--line);margin-left:6px;padding-left:16px}.timeline div{position:relative;margin-bottom:12px}
+.timeline div:before{content:'';position:absolute;left:-22px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--pri)}
+.screen{display:none}.screen.on{display:block}
+.onb{max-width:560px;margin:40px auto}.steps{display:flex;gap:6px;margin-bottom:18px}.steps i{flex:1;height:4px;border-radius:4px;background:var(--line)}.steps i.on{background:var(--pri)}
+.pick{display:flex;gap:8px;flex-wrap:wrap}.pick span{padding:8px 14px;border:1px solid var(--line);border-radius:99px;cursor:pointer}.pick span.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.phone{width:300px;background:#8cabd9;border-radius:24px;padding:16px;margin-top:10px}.bubble{background:#fff;border-radius:14px;padding:12px;font-size:13px}
+.toggle{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.sw{width:40px;height:22px;border-radius:99px;background:var(--pri);position:relative;cursor:pointer}.sw:after{content:'';position:absolute;right:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff}.sw.off{background:#ccd}.sw.off:after{right:auto;left:3px}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <div class="logo">Intern<b>Match</b><div style="font-size:11px;font-weight:500;color:var(--mute)">ผู้ช่วยพาคุณผ่านฤดูฝึกงาน</div></div>
+  <nav id="nav">
+    <a data-s="onboard">✨ เริ่มต้นใช้งาน</a>
+    <a data-s="dash" class="on">🏠 วันนี้ต้องทำอะไร</a>
+    <a data-s="uni">🎓 เอกสาร & ขั้นตอนคณะ</a>
+    <a data-s="docs">📁 คลังเอกสาร <span class="badge" style="background:var(--bad)" id="docAlert">2</span></a>
+    <a data-s="discover">🔎 ค้นหาฝึกงาน</a>
+    <a data-s="saved">⭐ ที่บันทึกไว้ <span class="badge" id="savedCount">0</span></a>
+    <a data-s="tracker">📋 ติดตามการสมัคร</a>
+    <a data-s="notif">🔔 แจ้งเตือน & LINE</a>
+  </nav>
+</aside>
+<main>
+
+<!-- ONBOARDING -->
+<section class="screen" id="onboard"><div class="onb card">
+  <div class="steps"><i class="on"></i><i class="on"></i><i></i></div>
+  <h1>ตั้งค่าฤดูฝึกงานของคุณ</h1><p class="sub">เราจะสร้างแผนและเช็กลิสต์ตามเงื่อนไขของคณะคุณ</p>
+  <label>มหาวิทยาลัย / คณะ</label><select><option>มหาวิทยาลัย X · คณะวิทยาศาสตร์ · สาขาวิทยาการข้อมูล</option></select>
+  <label>ประเภท</label><div class="pick"><span class="on">ฝึกงานภาคบังคับ (≥ 240 ชม.)</span><span>สหกิจศึกษา (16 สัปดาห์)</span><span>สมัครใจ</span></div>
+  <label>คณะต้องการเอกสารตอบรับภายใน</label><input type="date" value="2027-01-31"><small style="color:var(--ok)">✔ ดึงจากคู่มือคณะให้อัตโนมัติ (แก้ได้) · หรือ <a href="#">อัปโหลดคู่มือ PDF ให้ระบบอ่าน</a></small>
+  <label>สาขา / สายงาน</label><div class="pick"><span class="on">Data</span><span>Software</span><span>UX/UI</span><span>Marketing</span><span>Business</span></div>
+  <label>รูปแบบการทำงาน</label><div class="pick"><span class="on">Onsite</span><span class="on">Hybrid</span><span>Remote</span></div>
+  <label>พื้นที่</label><select><option>กรุงเทพฯ และปริมณฑล</option><option>เชียงใหม่</option></select>
+  <label>ช่วงฝึกงาน</label><select><option>มี.ค. – พ.ค. 2570</option><option>มิ.ย. – ส.ค. 2570</option></select>
+  <div class="row" style="margin-top:20px;justify-content:space-between"><a class="btn ghost" onclick="go('dash')">ข้าม</a><button class="btn" onclick="go('discover')">ดูประกาศที่เหมาะกับฉัน →</button></div>
+</div></section>
+
+<!-- DASHBOARD -->
+<section class="screen on" id="dash">
+  <div class="row" style="justify-content:space-between"><h1>สวัสดี มีน 👋</h1>
+  <label style="margin:0;display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="newUser" onchange="render()"> จำลองผู้ใช้ใหม่ (วันแรก)</label></div>
+  <div id="emptyState" style="display:none;margin-bottom:16px" class="card">
+    <h3 style="margin-top:0">🚀 เริ่มฤดูฝึกงานใน 4 ขั้น</h3><p class="sub">ใช้เวลาราว 10 นาที แล้วระบบจะเริ่มเตือนเรื่องที่ต้องทำให้</p>
+    <div class="list">
+      <div class="it"><span style="font-size:20px">📄</span><div style="flex:1"><b>อัปโหลด Resume</b><br><small style="color:var(--mute)">ใช้ซ้ำได้ทุกใบสมัคร</small></div><button class="btn sm" onclick="go('docs')">ทำเลย</button></div>
+      <div class="it"><span style="font-size:20px">💚</span><div style="flex:1"><b>เพิ่มเพื่อน LINE @internmatch</b><br><small style="color:var(--mute)">เจองานที่ไหนก็แชร์ลิงก์เข้า LINE ได้เลย</small></div><button class="btn sm line" onclick="go('notif')">เชื่อม</button></div>
+      <div class="it"><span style="font-size:20px">⭐</span><div style="flex:1"><b>บันทึกบริษัทเป้าหมาย 5 ที่</b><br><small style="color:var(--mute)">จากหน้าค้นหา หรือวางลิงก์ที่เจอเอง</small></div><button class="btn sm" onclick="go('discover')">ทำเลย</button></div>
+      <div class="it"><span style="font-size:20px">🎓</span><div style="flex:1"><b>ลงทะเบียนวิชาฝึกงาน</b><br><small style="color:var(--mute)">คณะกำหนดภายใน 15 พ.ย.</small></div><button class="btn sm ghost" onclick="go('uni')">ดูขั้นตอน</button></div>
+    </div></div>
+  <div id="activeState">
+  <p class="sub">ฝึกงานภาคบังคับ · มี.ค.–พ.ค. 2570 · คณะต้องการใบตอบรับภายใน <b>31 ม.ค.</b> (อีก 82 วัน)</p>
+  <div class="card" style="margin-bottom:16px">
+    <div class="row" style="justify-content:space-between"><b>🧭 เส้นทางฤดูฝึกงานของคุณ</b><span class="chip pri" id="phaseTxt"></span></div>
+    <div id="journey" style="display:flex;gap:6px;margin-top:12px"></div>
+  </div>
+  <div class="card" style="margin-bottom:16px;border-color:var(--pri)"><h3 style="margin-top:0">✅ วันนี้ต้องทำ</h3><div class="list" id="todo"></div></div>
+  <div class="stats" id="stats"></div>
+  <div class="row" style="align-items:flex-start">
+    <div class="card" style="flex:1.3;min-width:320px"><h3 style="margin-top:0">⏰ กำหนดการที่ใกล้ถึง</h3><div class="list" id="upcoming"></div></div>
+    <div class="card" style="flex:1;min-width:280px"><h3 style="margin-top:0">⚠️ ต้องอัปเดตสถานะ</h3>
+      <p class="sub" style="margin:0 0 8px">ใบสมัครภายนอกที่ไม่ได้อัปเดตเกิน 14 วัน</p><div class="list" id="stale"></div></div>
+  </div>
+  </div>
+</section>
+
+<!-- UNI -->
+<section class="screen" id="uni">
+  <h1>เอกสาร & ขั้นตอนคณะ</h1><p class="sub">มหาวิทยาลัย X · คณะวิทยาศาสตร์ · ฝึกงานภาคบังคับ ≥ 240 ชม. <span class="chip">ข้อมูลจากคู่มือคณะ ปี 2569 · ตรวจ 1 พ.ย.</span></p>
+  <div class="row" style="align-items:flex-start">
+    <div class="card" style="flex:1.4;min-width:340px"><h3 style="margin-top:0">เช็กลิสต์ <span class="chip ok" id="uniPct"></span></h3><div class="list" id="uniList"></div></div>
+    <div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:14px">
+      <div class="card"><h3 style="margin-top:0">👩‍🏫 อาจารย์ที่ปรึกษา</h3><b>อ.ดร.สมใจ ใจดี</b><br><small style="color:var(--mute)">เห็นความคืบหน้าของคุณ (คุณอนุญาตแล้ว)</small>
+        <div class="row" style="margin-top:10px"><button class="btn sm ghost">ส่งขออนุมัติบริษัท</button><button class="btn sm ghost">ปิดการแชร์</button></div></div>
+      <div class="card"><h3 style="margin-top:0">📄 สร้างหนังสือขอความอนุเคราะห์</h3><small style="color:var(--mute)">เลือกบริษัทจากใบสมัคร ระบบกรอกแบบฟอร์มคณะให้ แล้วส่งเจ้าหน้าที่เซ็น</small>
+        <select style="width:100%;margin-top:10px" id="letterCo"></select><button class="btn sm" style="margin-top:10px" onclick="alert('สร้างร่าง PDF แล้ว (POC)')">สร้างร่างเอกสาร</button></div>
+      <div class="card"><h3 style="margin-top:0">💬 จากรุ่นพี่สาขาเดียวกัน</h3><small>บริษัท A รับเด็กคณะนี้ 6 คนใน 2 ปี · ตอบกลับเฉลี่ย 9 วัน · ออกใบตอบรับให้ภายใน 1 สัปดาห์</small></div>
+    </div>
+  </div>
+</section>
+
+<!-- DOCS -->
+<section class="screen" id="docs">
+  <div class="row" style="justify-content:space-between"><div><h1>คลังเอกสาร</h1><p class="sub">เตรียมครั้งเดียว ใช้ได้ทุกใบสมัคร · ดูว่าเอกสารใดยังติดขัดอยู่</p></div>
+  <button class="btn" onclick="alert('อัปโหลดไฟล์ (POC)')">＋ อัปโหลดเอกสาร</button></div>
+
+  <h3>1 · เอกสารของฉัน</h3>
+  <div class="grid" id="myDocs"></div>
+
+  <h3 style="margin-top:26px">2 · ความพร้อมเอกสารรายใบสมัคร</h3>
+  <div class="card" style="overflow:auto"><table id="matrix" style="width:100%;border-collapse:collapse"></table>
+  <p class="sub" style="margin:10px 0 0">✔ แนบแล้ว · ⚠ ต้องแก้ · ✕ ขาด · — ไม่ต้องใช้</p></div>
+
+  <h3 style="margin-top:26px">3 · เอกสารจากคณะ (ส่วนที่มักใช้เวลานาน)</h3>
+  <p class="sub" style="margin-top:-6px">คณะไม่ได้เชื่อมต่อกับ InternMatch: <span class="chip">✎ อัปเดตโดยคุณ</span> กดที่ขั้นตอนเพื่ออัปเดต · วันที่คาดว่าจะได้คำนวณจากข้อมูลของรุ่นพี่</p>
+  <div class="card list" id="uniDocs"></div>
+</section>
+
+<!-- DISCOVER -->
+<section class="screen" id="discover">
+  <div class="row" style="justify-content:space-between"><div><h1>ค้นหาฝึกงาน</h1><p class="sub">ประกาศจากแหล่งที่ได้รับอนุญาต พร้อมลิงก์ต้นทางทุกรายการ</p></div>
+  <button class="btn ghost" onclick="openAdd()">＋ เพิ่มจาก URL เอง</button></div>
+  <div class="card row" style="margin-bottom:16px">
+    <input id="q" placeholder="ค้นหาตำแหน่ง / บริษัท เช่น Data Analyst" style="flex:1;min-width:220px" oninput="renderJobs()">
+    <select id="fMode" onchange="renderJobs()"><option value="">ทุกรูปแบบ</option><option>Onsite</option><option>Hybrid</option><option>Remote</option></select>
+    <select id="fSort" onchange="renderJobs()"><option value="close">ปิดรับเร็วสุด</option><option value="new">อัปเดตล่าสุด</option></select>
+  </div>
+  <div class="grid" id="jobs"></div>
+</section>
+
+<!-- SAVED -->
+<section class="screen" id="saved"><h1>ที่บันทึกไว้</h1><p class="sub">ตำแหน่งที่สนใจแต่ยังไม่ได้สมัคร</p><div class="grid" id="savedList"></div></section>
+
+<!-- TRACKER -->
+<section class="screen" id="tracker">
+  <div class="row" style="justify-content:space-between"><div><h1>ติดตามการสมัคร</h1>
+  <p class="sub"><span class="chip ok">✔ ยืนยันโดยระบบ</span> สมัครผ่าน InternMatch &nbsp; <span class="chip">✎ อัปเดตโดยคุณ</span> สมัครเว็บภายนอก</p></div>
+  <button class="btn" onclick="openAdd()">＋ บันทึกการสมัครภายนอก</button></div>
+  <div class="kanban" id="kanban"></div>
+</section>
+
+<!-- NOTIF -->
+<section class="screen" id="notif">
+  <h1>แจ้งเตือน & LINE</h1><p class="sub">เลือกช่องทางและเหตุการณ์ที่ต้องการให้เตือน</p>
+  <div class="row" style="align-items:flex-start">
+  <div class="card" style="flex:1;min-width:320px">
+    <h3 style="margin-top:0">เชื่อมต่อ LINE</h3>
+    <ol style="color:var(--mute);padding-left:18px;line-height:1.9"><li>เพิ่มเพื่อน LINE OA @internmatch</li><li>เชื่อมบัญชี InternMatch</li><li>ยินยอมรับการแจ้งเตือน</li></ol>
+    <button class="btn line" id="lineBtn" onclick="linkLine()">เชื่อมต่อ LINE</button>
+    <h3>เตือนเมื่อ</h3>
+    <div class="toggle">วันปิดรับสมัครของงานที่บันทึก (ล่วงหน้า 3 วัน)<div class="sw" onclick="this.classList.toggle('off')"></div></div>
+    <div class="toggle">นัดสัมภาษณ์ (ล่วงหน้า 1 วัน)<div class="sw" onclick="this.classList.toggle('off')"></div></div>
+    <div class="toggle">สถานะเปลี่ยน (เฉพาะที่ระบบยืนยันได้)<div class="sw" onclick="this.classList.toggle('off')"></div></div>
+    <div class="toggle">เตือนให้อัปเดตใบสมัครภายนอก<div class="sw off" onclick="this.classList.toggle('off')"></div></div>
+    <p class="sub" style="margin-top:12px">ยกเลิกได้ทุกเมื่อ หรือพิมพ์ “หยุด” ใน LINE</p>
+  </div>
+  <div><b>ตัวอย่างข้อความ</b><div class="phone"><div class="bubble">🔔 <b>InternMatch</b><br>พรุ่งนี้ 10:00 สัมภาษณ์<br><b>Data Analyst Intern – บริษัท A</b><br><br><span style="color:var(--pri)">ดูรายละเอียด →</span></div></div></div>
+  </div>
+</section>
+</main>
+</div>
+
+<!-- JOB DETAIL -->
+<div class="modal" id="mDetail" onclick="if(event.target===this)close_('mDetail')"><div class="card" id="detailBody"></div></div>
+
+<!-- ADD EXTERNAL -->
+<div class="modal" id="mAdd" onclick="if(event.target===this)close_('mAdd')"><div class="card">
+  <h2 style="margin-top:0">บันทึกการสมัครภายนอก</h2>
+  <div class="note" style="background:#e9fbf0;color:#0a6b3a;margin:0 0 6px">💚 เร็วกว่า: เจองานในมือถือ? แชร์ลิงก์เข้า LINE @internmatch แล้วระบบบันทึกให้ทันที</div>
+  <label>URL ประกาศ / หน้าสมัคร</label><div class="row" style="flex-wrap:nowrap"><input id="aUrl" placeholder="วางลิงก์ แล้วกด ‘ดึงข้อมูล’" style="flex:1"><button class="btn ghost" onclick="autofill()">✨ ดึงข้อมูล</button></div>
+  <small id="afMsg" style="color:var(--mute)"></small>
+  <label>บริษัท</label><input id="aCo" placeholder="บริษัท B">
+  <label>ตำแหน่ง</label><input id="aRole" placeholder="Data Analyst Intern">
+  <div class="row"><div style="flex:1"><label>วันที่สมัคร</label><input type="date" id="aDate" value="2026-11-10"></div>
+  <div style="flex:1"><label>สถานะ</label><select id="aStatus"><option>Applied</option><option>Saved</option><option>Interview</option></select></div></div>
+  <div class="note">ℹ️ InternMatch ไม่สามารถรู้สถานะจากเว็บภายนอกได้อัตโนมัติ — คุณจะอัปเดตเองได้ และเราจะเตือนหากไม่มีการอัปเดตนาน</div>
+  <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn ghost" onclick="close_('mAdd')">ยกเลิก</button><button class="btn" onclick="addExt()">บันทึก</button></div>
+</div></div>
+
+<script>
+const jobs=[
+ {id:1,role:'Data Analyst Intern',co:'บริษัท A (FinTech)',loc:'กรุงเทพฯ',mode:'Hybrid',pay:'15,000/เดือน',close:'2026-11-20',src:'InternMatch Direct',checked:'10 พ.ย.',via:'im',skills:['SQL','Excel','Power BI']},
+ {id:2,role:'Business Intelligence Intern',co:'บริษัท B (Retail)',loc:'กรุงเทพฯ',mode:'Onsite',pay:'ไม่ระบุ',close:'2026-11-28',src:'careers.company-b.com',checked:'8 พ.ย.',via:'ext',skills:['Python','Tableau']},
+ {id:3,role:'Data Science Intern',co:'บริษัท C (E‑commerce)',loc:'Remote',mode:'Remote',pay:'12,000/เดือน',close:'2026-12-05',src:'Partner Job Board',checked:'9 พ.ย.',via:'ext',skills:['Python','ML']},
+ {id:4,role:'Marketing Data Intern',co:'บริษัท D (Media)',loc:'นนทบุรี',mode:'Hybrid',pay:'10,000/เดือน',close:'2026-11-15',src:'InternMatch Direct',checked:'10 พ.ย.',via:'im',skills:['GA4','Excel']},
+ {id:5,role:'Product Analyst Intern',co:'บริษัท E (Startup)',loc:'กรุงเทพฯ',mode:'Onsite',pay:'13,000/เดือน',close:'2026-10-30',src:'careers.e.io',checked:'1 พ.ย.',via:'ext',skills:['SQL','Mixpanel'],stale:true},
+];
+const saved=new Set([3]);
+const STAGES=['Saved','Applied','Interview','Offer','Closed'];
+const TH={Saved:'บันทึกไว้',Applied:'สมัครแล้ว',Interview:'สัมภาษณ์',Offer:'ได้รับข้อเสนอ',Closed:'ปิด/ไม่ผ่าน'};
+let apps=[
+ {co:'บริษัท A',role:'Data Analyst Intern',st:'Interview',verified:true,ev:[['1 พ.ย.','สมัครผ่าน InternMatch'],['8 พ.ย.','บริษัทเปลี่ยนเป็นสัมภาษณ์']],next:'สัมภาษณ์ 11 พ.ย. 10:00'},
+ {co:'บริษัท B',role:'BI Intern',st:'Applied',verified:false,url:'careers.company-b.com',ev:[['3 พ.ย.','บันทึกเอง: สมัครบนเว็บบริษัท']],next:'รอผลพิจารณา',upd:7},
+ {co:'บริษัท F',role:'Data Engineer Intern',st:'Applied',verified:false,url:'jobs.f.co',ev:[['20 ต.ค.','บันทึกเอง']],next:'ยังไม่อัปเดต',upd:21},
+ {co:'บริษัท C',role:'Data Science Intern',st:'Saved',verified:false,ev:[],next:'ปิดรับ 5 ธ.ค.'},
+ {co:'บริษัท G',role:'Analyst Intern',st:'Closed',verified:true,ev:[['15 ต.ค.','ไม่ผ่านการคัดเลือก']],next:'—'},
+];
+const $=s=>document.querySelector(s);
+const today=new Date('2026-11-10');
+const days=d=>Math.round((new Date(d)-today)/864e5);
+const fmt=d=>new Date(d).toLocaleDateString('th-TH',{day:'numeric',month:'short'});
+
+function go(s){document.querySelectorAll('.screen').forEach(e=>e.classList.toggle('on',e.id===s));
+ document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.s===s));render();}
+document.querySelectorAll('nav a').forEach(a=>a.onclick=()=>go(a.dataset.s));
+function close_(id){$('#'+id).classList.remove('show')}
+
+function closeChip(j){const n=days(j.close);
+ if(n<0)return `<span class="chip bad">ปิดรับแล้ว</span>`;
+ if(n<=7)return `<span class="chip warn">⏳ ปิดรับใน ${n} วัน</span>`;
+ return `<span class="chip">ปิดรับ ${fmt(j.close)}</span>`;}
+function jobCard(j){return `<div class="card job">
+ <div class="row" style="justify-content:space-between">${closeChip(j)}
+ <button class="save ${saved.has(j.id)?'on':''}" onclick="toggleSave(${j.id})">${saved.has(j.id)?'⭐':'☆'}</button></div>
+ <h3 style="cursor:pointer" onclick="detail(${j.id})">${j.role}</h3><div class="co">${j.co}</div>
+ <div class="meta"><span class="chip">📍 ${j.loc}</span><span class="chip">${j.mode}</span><span class="chip">💰 ${j.pay}</span></div>
+ <div class="src"><span>🔗 ${j.src} · ตรวจล่าสุด ${j.checked}${j.stale?' <span class="chip warn">ข้อมูลอาจเก่า</span>':''}</span>
+ <a class="btn sm ${j.via==='im'?'':'ghost'}" onclick="detail(${j.id})">${j.via==='im'?'สมัครเลย':'ดูรายละเอียด'}</a></div></div>`}
+function renderJobs(){const q=$('#q').value.toLowerCase(),m=$('#fMode').value;
+ let l=jobs.filter(j=>(j.role+j.co).toLowerCase().includes(q)&&(!m||j.mode===m));
+ if($('#fSort').value==='close')l.sort((a,b)=>days(a.close)-days(b.close));
+ $('#jobs').innerHTML=l.map(jobCard).join('')||'<p class="sub">ไม่พบประกาศ</p>';}
+function toggleSave(id){saved.has(id)?saved.delete(id):saved.add(id);render();}
+function detail(id){const j=jobs.find(x=>x.id===id);
+ $('#detailBody').innerHTML=`<div class="row" style="justify-content:space-between">${closeChip(j)}<a style="cursor:pointer" onclick="close_('mDetail')">✕</a></div>
+ <h2 style="margin:8px 0 2px">${j.role}</h2><div class="co" style="color:var(--mute)">${j.co}</div>
+ <div class="meta"><span class="chip">📍 ${j.loc}</span><span class="chip">${j.mode}</span><span class="chip">💰 ${j.pay}</span><span class="chip">📅 มี.ค.–พ.ค. 2570</span></div>
+ <label>ทักษะที่ต้องการ</label><div class="meta">${j.skills.map(s=>`<span class="chip pri">${s}</span>`).join('')}</div>
+ <label>รายละเอียด</label><p>ช่วยทีมวิเคราะห์ข้อมูลยอดขาย จัดทำแดชบอร์ด และนำเสนอ insight ประจำสัปดาห์</p>
+ <div class="card" style="background:#fafbfe;padding:12px"><b>แหล่งที่มา</b><br><small>🔗 ${j.src} · ตรวจล่าสุด ${j.checked}</small><br><small><a href="#">รายงานข้อมูลผิด</a></small></div>
+ ${j.via==='ext'?'<div class="note">งานนี้สมัครบนเว็บไซต์ภายนอก หลังสมัครแล้วกด “ฉันสมัครแล้ว” เพื่อบันทึกไว้ติดตาม</div>':''}
+ <div class="row" style="justify-content:flex-end;margin-top:16px">
+ <button class="btn ghost" onclick="toggleSave(${j.id});detail(${j.id})">${saved.has(j.id)?'⭐ บันทึกแล้ว':'☆ บันทึก'}</button>
+ ${j.via==='im'?`<button class="btn" onclick="apply(${j.id},true)">สมัครผ่าน InternMatch</button>`:
+ `<button class="btn ghost">เปิดเว็บต้นทาง ↗</button><button class="btn" onclick="apply(${j.id},false)">✔ ฉันสมัครแล้ว</button>`}</div>`;
+ $('#mDetail').classList.add('show');}
+function apply(id,v){const j=jobs.find(x=>x.id===id);saved.delete(id);
+ apps.unshift({co:j.co.split(' (')[0],role:j.role,st:'Applied',verified:v,url:v?null:j.src,ev:[['10 พ.ย.',v?'สมัครผ่าน InternMatch':'บันทึกเอง: สมัครบนเว็บภายนอก']],next:'รอผลพิจารณา',upd:0});
+ close_('mDetail');go('tracker');}
+function openAdd(){$('#mAdd').classList.add('show')}
+function addExt(){apps.unshift({co:$('#aCo').value||'บริษัทใหม่',role:$('#aRole').value||'Intern',st:$('#aStatus').value,verified:false,url:$('#aUrl').value,ev:[['10 พ.ย.','บันทึกเอง']],next:'รอผลพิจารณา',upd:0});close_('mAdd');go('tracker');}
+function move(i,d){const k=STAGES.indexOf(apps[i].st)+d;if(k<0||k>=STAGES.length)return;apps[i].st=STAGES[k];apps[i].ev.push(['10 พ.ย.','อัปเดตเอง → '+TH[STAGES[k]]]);apps[i].upd=0;render();}
+function appDetail(i){const a=apps[i];
+ $('#detailBody').innerHTML=`<div class="row" style="justify-content:space-between">${a.verified?'<span class="chip ok">✔ ยืนยันโดยระบบ</span>':'<span class="chip">✎ อัปเดตโดยคุณ</span>'}<a style="cursor:pointer" onclick="close_('mDetail')">✕</a></div>
+ <h2 style="margin:8px 0 2px">${a.role}</h2><div style="color:var(--mute)">${a.co}${a.url?' · 🔗 '+a.url:''}</div>
+ <label>สถานะ</label>${a.verified?`<b>${TH[a.st]}</b> <small style="color:var(--mute)">(อัปเดตจากบริษัท)</small>`:
+ `<select onchange="apps[${i}].st=this.value;apps[${i}].ev.push(['10 พ.ย.','อัปเดตเอง → '+TH[this.value]]);render();appDetail(${i})">${STAGES.map(s=>`<option value="${s}" ${s===a.st?'selected':''}>${TH[s]}</option>`).join('')}</select>`}
+ <label>ขั้นตอนถัดไป</label><div>${a.next}</div>
+ <label>ประวัติ</label><div class="timeline">${a.ev.map(e=>`<div><small style="color:var(--mute)">${e[0]}</small><br>${e[1]}</div>`).join('')||'<small>—</small>'}</div>
+ <div class="row" style="justify-content:flex-end"><button class="btn ghost">＋ เพิ่มนัด/โน้ต</button></div>`;
+ $('#mDetail').classList.add('show');}
+function renderKanban(){$('#kanban').innerHTML=STAGES.map(s=>{const l=apps.map((a,i)=>[a,i]).filter(([a])=>a.st===s);
+ return `<div class="col"><h4>${TH[s]}<span>${l.length}</span></h4>${l.map(([a,i])=>`<div class="app-card" onclick="appDetail(${i})">
+ <b>${a.role}</b><small>${a.co}</small><div class="meta" style="margin:6px 0 4px">${a.verified?'<span class="chip ok">✔ ระบบ</span>':'<span class="chip">✎ เอง</span>'}${a.upd>14?'<span class="chip warn">ไม่อัปเดต '+a.upd+' วัน</span>':''}</div>
+ <small>➜ ${a.next}</small>${a.verified?'':`<div class="row" style="margin-top:6px;gap:4px" onclick="event.stopPropagation()"><button class="btn ghost sm" onclick="move(${i},-1)">←</button><button class="btn ghost sm" onclick="move(${i},1)">→</button></div>`}</div>`).join('')}</div>`}).join('');}
+function renderDash(){const c=s=>apps.filter(a=>a.st===s).length;
+ $('#stats').innerHTML=[['⭐ บันทึกไว้',saved.size],['📨 สมัครแล้ว',c('Applied')],['🗣️ สัมภาษณ์',c('Interview')],['🎉 ข้อเสนอ',c('Offer')]].map(([t,n])=>`<div class="card stat"><b>${n}</b><span>${t}</span></div>`).join('');
+ const up=[{d:'2026-11-11',t:'สัมภาษณ์ – บริษัท A',s:'Data Analyst Intern · 10:00',k:'pri',l:'สัมภาษณ์'}]
+  .concat(jobs.filter(j=>saved.has(j.id)&&days(j.close)>=0).map(j=>({d:j.close,t:'ปิดรับ – '+j.co,s:j.role,k:'warn',l:'ยังไม่สมัคร'})))
+  .concat([{d:'2026-11-15',t:'ปิดรับ – บริษัท D',s:'Marketing Data Intern',k:'',l:'แนะนำ'}]).sort((a,b)=>days(a.d)-days(b.d));
+ $('#upcoming').innerHTML=up.map(u=>{const dt=new Date(u.d);return `<div class="it"><div class="date">${dt.getDate()}<small>${dt.toLocaleDateString('th-TH',{month:'short'})}</small></div><div style="flex:1"><b>${u.t}</b><br><small style="color:var(--mute)">${u.s}</small></div><span class="chip ${u.k}">${u.l}</span></div>`}).join('');
+ $('#stale').innerHTML=apps.map((a,i)=>[a,i]).filter(([a])=>!a.verified&&a.upd>14).map(([a,i])=>`<div class="it"><div style="flex:1"><b>${a.co}</b><br><small style="color:var(--mute)">${a.role} · ${a.upd} วัน</small></div><button class="btn sm" onclick="appDetail(${i})">อัปเดต</button></div>`).join('')||'<p class="sub">ทุกอย่างเป็นปัจจุบัน 🎉</p>';}
+function linkLine(){const b=$('#lineBtn');b.textContent='✔ เชื่อมต่อแล้ว · @internmatch';b.classList.remove('line');b.classList.add('ghost');}
+const myDocs=[
+ {k:'resume',i:'📄',t:'Resume',v:'v3 · Data (TH/EN)',s:'ok',n:'อัปเดต 5 พ.ย. · มี 2 เวอร์ชัน'},
+ {k:'tr',i:'🎓',t:'Transcript',v:'ภาค 1/2569',s:'warn',n:'ใกล้หมดอายุ: บริษัท B ต้องการฉบับไม่เกิน 3 เดือน'},
+ {k:'port',i:'🗂️',t:'Portfolio',v:'ลิงก์ Notion',s:'ok',n:'ตรวจลิงก์ได้ 10 พ.ย.'},
+ {k:'cover',i:'✉️',t:'Cover Letter',v:'Template',s:'warn',n:'ยังไม่ได้ปรับให้ตรงกับบริษัท C'},
+ {k:'id',i:'🪪',t:'สำเนาบัตรนักศึกษา',v:'—',s:'bad',n:'ยังไม่ได้อัปโหลด'},
+];
+const need={'บริษัท A':{resume:'ok',tr:'ok',port:'ok',cover:'-',id:'-'},'บริษัท B':{resume:'ok',tr:'warn',port:'-',cover:'ok',id:'bad'},
+ 'บริษัท C':{resume:'ok',tr:'-',port:'ok',cover:'warn',id:'-'},'บริษัท F':{resume:'ok',tr:'ok',port:'-',cover:'-',id:'-'}};
+const uniDocs=[
+ {t:'หนังสือขอความอนุเคราะห์ – บริษัท A',st:2,upd:'อัปเดตโดยคุณ 8 พ.ย.',steps:['ยื่นคำขอ','เจ้าหน้าที่ตรวจ','รอคณบดีลงนาม','ได้รับเอกสาร','ส่งบริษัท'],eta:'คาดว่าได้ ~14 พ.ย. (รุ่นพี่ 23 คน รอเฉลี่ย 5 วันทำการ)'},
+ {t:'ใบตอบรับฝึกงาน – บริษัท A',st:0,upd:'ยังไม่อัปเดต',steps:['รอบริษัท','ได้รับแล้ว','ส่งคณะ'],eta:'บริษัท A ออกใบตอบรับเฉลี่ย 7 วัน (จากรุ่นพี่ 6 คน) · กำหนดส่งคณะ 31 ม.ค.'},
+];
+const ic={ok:'<span class="chip ok">✔</span>',warn:'<span class="chip warn">⚠</span>',bad:'<span class="chip bad">✕</span>','-':'<span style="color:var(--mute)">—</span>'};
+function renderDocs(){
+ $('#myDocs').innerHTML=myDocs.map(d=>`<div class="card"><div class="row" style="justify-content:space-between"><span style="font-size:22px">${d.i}</span>${ic[d.s]}</div>
+ <h3 style="margin:6px 0 2px">${d.t}</h3><small style="color:var(--mute)">${d.v}</small><p style="font-size:13px;margin:8px 0 10px">${d.n}</p>
+ <div class="row"><button class="btn sm ghost">${d.s==='bad'?'อัปโหลด':'แทนที่'}</button>${d.s==='ok'?'<button class="btn sm ghost">ดู</button>':''}</div></div>`).join('');
+ $('#matrix').innerHTML=`<tr style="text-align:left;color:var(--mute)"><th style="padding:8px">ใบสมัคร</th>${myDocs.map(d=>`<th>${d.t}</th>`).join('')}<th>ความพร้อม</th></tr>`+
+ Object.entries(need).map(([co,r])=>{const req=Object.values(r).filter(v=>v!=='-'),ok=req.filter(v=>v==='ok').length;
+  return `<tr style="border-top:1px solid var(--line)"><td style="padding:10px 8px"><b>${co}</b></td>${myDocs.map(d=>`<td>${ic[r[d.k]]}</td>`).join('')}
+  <td>${ok===req.length?'<span class="chip ok">พร้อมส่ง</span>':`<span class="chip warn">ขาด ${req.length-ok} รายการ</span>`}</td></tr>`}).join('');
+ $('#uniDocs').innerHTML=uniDocs.map((u,k)=>`<div class="it" style="display:block"><div class="row" style="justify-content:space-between"><b>${u.t}</b><span class="chip">✎ ${u.upd}</span></div>
+ <div style="display:flex;gap:4px;margin:10px 0 6px">${u.steps.map((s,i)=>`<div style="flex:1;cursor:pointer" title="กดเพื่อตั้งเป็นขั้นปัจจุบัน" onclick="uniDocs[${k}].st=${i};uniDocs[${k}].upd='อัปเดตโดยคุณ 10 พ.ย.';render()"><div style="height:6px;border-radius:6px;background:${i<u.st?'var(--ok)':i===u.st?'var(--warn)':'var(--line)'}"></div><small style="color:${i===u.st?'var(--warn)':'var(--mute)'}">${s}</small></div>`).join('')}</div>
+ <small style="color:var(--mute)">⏱ ${u.eta}</small> <button class="btn sm ghost" style="float:right">แจ้งเตือนทาง LINE เมื่อพร้อม</button></div>`).join('');}
+const uni=[
+ {t:'ลงทะเบียนรายวิชาฝึกงาน',d:'ภายใน 15 พ.ย.',done:true},
+ {t:'อาจารย์ที่ปรึกษาอนุมัติบริษัทเป้าหมาย',d:'ก่อนส่งหนังสือขอความอนุเคราะห์',done:false,act:'ขออนุมัติ'},
+ {t:'ยื่นขอหนังสือขอความอนุเคราะห์จากคณะ',d:'ใช้เวลาออกเอกสาร 5 วันทำการ',done:false,act:'สร้างร่าง'},
+ {t:'ได้รับใบตอบรับจากบริษัท',d:'ส่งคณะภายใน 31 ม.ค.',done:false},
+ {t:'ส่งแบบฟอร์มยืนยันสถานที่ฝึกงาน (ฝง.01)',d:'ภายใน 15 ก.พ.',done:false},
+ {t:'ปฐมนิเทศก่อนฝึกงาน',d:'1 มี.ค. ห้อง 301',done:false},
+];
+const PH=['ค้นหา','สมัคร','สัมภาษณ์','ได้ใบตอบรับ','เอกสารคณะ','เริ่มฝึกงาน'];
+function renderUni(){const n=uni.filter(u=>u.done).length;$('#uniPct').textContent=`${n}/${uni.length} เสร็จ`;
+ $('#uniList').innerHTML=uni.map((u,i)=>`<div class="it"><input type="checkbox" ${u.done?'checked':''} onchange="uni[${i}].done=this.checked;render()" style="width:18px;height:18px">
+ <div style="flex:1;${u.done?'text-decoration:line-through;color:var(--mute)':''}"><b>${u.t}</b><br><small style="color:var(--mute)">${u.d}</small></div>${u.act&&!u.done?`<button class="btn sm ghost">${u.act}</button>`:''}</div>`).join('');
+ $('#letterCo').innerHTML=apps.filter(a=>a.st!=='Closed'&&a.st!=='Saved').map(a=>`<option>${a.co} – ${a.role}</option>`).join('');
+ const cur=2;$('#phaseTxt').textContent='ตอนนี้: '+PH[cur];
+ $('#journey').innerHTML=PH.map((p,i)=>`<div style="flex:1;text-align:center"><div style="height:6px;border-radius:6px;background:${i<cur?'var(--ok)':i===cur?'var(--pri)':'var(--line)'}"></div><small style="color:${i===cur?'var(--pri)':'var(--mute)'};font-weight:${i===cur?600:400}">${p}</small></div>`).join('');
+ const todo=[['🗣️','เตรียมสัมภาษณ์บริษัท A พรุ่งนี้ 10:00','ดูคำถามที่รุ่นพี่เจอ',"go('tracker')"],
+  ['📝','ขออาจารย์อนุมัติบริษัท A ก่อนยื่นหนังสือขอความอนุเคราะห์','ขั้นตอนคณะ',"go('uni')"],
+  ['📁','บริษัท B: ขาดสำเนาบัตรนักศึกษา + Transcript ใกล้หมดอายุ','เอกสาร',"go('docs')"],
+  ['🔄','บริษัท F ไม่มีความเคลื่อนไหว 21 วัน: ตามผลหรือปิดใบสมัคร','อัปเดตเอง',"appDetail(2)"],
+  ['⏳','บริษัท D ปิดรับใน 5 วัน: ตรงกับสายที่คุณสนใจ','แนะนำ',"detail(4)"]];
+ $('#todo').innerHTML=todo.map(t=>`<div class="it"><span style="font-size:20px">${t[0]}</span><div style="flex:1"><b>${t[1]}</b><br><small style="color:var(--mute)">${t[2]}</small></div><button class="btn sm" onclick="${t[3]}">ทำเลย</button></div>`).join('');}
+function autofill(){const u=$('#aUrl').value;if(!u){$('#afMsg').textContent='วางลิงก์ก่อน';return}
+ if(/linkedin|facebook/i.test(u)){$('#afMsg').innerHTML='⚠ เว็บนี้ไม่อนุญาตให้ดึงข้อมูล: กรอกชื่อบริษัทและตำแหน่งเอง (ใช้เวลาไม่ถึง 10 วินาที)';return}
+ $('#aCo').value='บริษัท H';$('#aRole').value='Data Analyst Intern';$('#afMsg').innerHTML='<span style="color:var(--ok)">✔ ดึงข้อมูลแล้ว: ตรวจให้ถูกต้องก่อนบันทึก</span>';}
+function render(){const nu=$('#newUser')&&$('#newUser').checked;$('#emptyState').style.display=nu?'block':'none';$('#activeState').style.display=nu?'none':'block';
+ renderDocs();renderUni();renderDash();renderJobs();renderKanban();$('#savedCount').textContent=saved.size;
+ $('#savedList').innerHTML=jobs.filter(j=>saved.has(j.id)).map(jobCard).join('')||'<p class="sub">ยังไม่มีงานที่บันทึก</p>';}
+document.querySelectorAll('.pick span').forEach(s=>s.onclick=()=>s.classList.toggle('on'));
+render();
+</script>
+</body></html>
