@@ -59,6 +59,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
     <a data-s="dash" class="on">🏠 วันนี้ต้องทำอะไร</a>
     <a data-s="uni">🎓 เอกสาร & ขั้นตอนคณะ</a>
     <a data-s="docs">📁 คลังเอกสาร <span class="badge" style="background:var(--bad)" id="docAlert">2</span></a>
+    <a data-s="ocr">📸 อ่านเอกสาร (AI) <span class="badge" style="background:var(--ok)">ใหม่</span></a>
     <a data-s="discover">🔎 ค้นหาฝึกงาน</a>
     <a data-s="saved">⭐ ที่บันทึกไว้ <span class="badge" id="savedCount">0</span></a>
     <a data-s="tracker">📋 ติดตามการสมัคร</a>
@@ -139,6 +140,29 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
   <h3 style="margin-top:26px">3 · เอกสารจากคณะ (ส่วนที่มักใช้เวลานาน)</h3>
   <p class="sub" style="margin-top:-6px">คณะไม่ได้เชื่อมต่อกับ InternMatch: <span class="chip">✎ อัปเดตโดยคุณ</span> กดที่ขั้นตอนเพื่ออัปเดต · วันที่คาดว่าจะได้คำนวณจากข้อมูลของรุ่นพี่</p>
   <div class="card list" id="uniDocs"></div>
+</section>
+
+<!-- OCR -->
+<section class="screen" id="ocr">
+  <h1>อ่านเอกสารด้วย AI</h1><p class="sub">อัปโหลดภาพหรือ PDF แล้วระบบดึงข้อมูลให้ · ขับเคลื่อนโดย Paxa Labs Document Extraction</p>
+  <div class="card" style="margin-bottom:14px">
+    <div class="row"><b>🔑 Paxa API key</b><input id="pxKey" type="password" placeholder="pxa_..." style="flex:1;min-width:240px"><button class="btn ghost sm" onclick="saveKey()">บันทึกในเบราว์เซอร์นี้</button><button class="btn ghost sm" onclick="localStorage.removeItem('pxKey');$('#pxKey').value=''">ลบ</button></div>
+    <small style="color:var(--mute)">คีย์เก็บใน localStorage ของเครื่องคุณเท่านั้น ไม่ได้อยู่ในโค้ดเว็บ · ไฟล์ถูกส่งตรงไป api.paxalabs.com · ใช้ 13 เครดิตต่อหน้า</small>
+  </div>
+  <div class="row" style="align-items:flex-start">
+    <div class="card" style="flex:1;min-width:320px">
+      <label style="margin-top:0">ประเภทเอกสาร</label>
+      <div class="pick" id="docType"></div>
+      <label>ไฟล์ (PNG, JPG, WebP, PDF ≤ 10MB, ≤ 20 หน้า)</label>
+      <div id="drop" style="border:2px dashed var(--line);border-radius:12px;padding:28px;text-align:center;cursor:pointer" onclick="$('#file').click()">
+        <div style="font-size:30px">📤</div><b>ลากไฟล์มาวาง หรือคลิกเพื่อเลือก</b><br><small style="color:var(--mute)" id="fname">เช่น แคปโพสต์งานจาก Facebook</small></div>
+      <input type="file" id="file" accept=".png,.jpg,.jpeg,.webp,.pdf" style="display:none" onchange="pick(this.files[0])">
+      <img id="prev" style="max-width:100%;margin-top:10px;border-radius:8px;display:none">
+      <label><input type="checkbox" id="consent"> ฉันยินยอมให้ส่งไฟล์นี้ไปประมวลผลที่ Paxa Labs (ผู้ให้บริการภายนอก)</label>
+      <button class="btn" style="margin-top:12px;width:100%" onclick="runOcr()" id="runBtn">✨ อ่านเอกสาร</button>
+    </div>
+    <div class="card" style="flex:1.2;min-width:340px" id="ocrOut"><p class="sub" style="margin:0">ผลลัพธ์จะแสดงที่นี่ · ข้อมูลที่ AI อ่านได้ต้องตรวจก่อนบันทึกเสมอ</p></div>
+  </div>
 </section>
 
 <!-- DISCOVER -->
@@ -286,6 +310,66 @@ function renderDash(){const c=s=>apps.filter(a=>a.st===s).length;
  $('#upcoming').innerHTML=up.map(u=>{const dt=new Date(u.d);return `<div class="it"><div class="date">${dt.getDate()}<small>${dt.toLocaleDateString('th-TH',{month:'short'})}</small></div><div style="flex:1"><b>${u.t}</b><br><small style="color:var(--mute)">${u.s}</small></div><span class="chip ${u.k}">${u.l}</span></div>`}).join('');
  $('#stale').innerHTML=apps.map((a,i)=>[a,i]).filter(([a])=>!a.verified&&a.upd>14).map(([a,i])=>`<div class="it"><div style="flex:1"><b>${a.co}</b><br><small style="color:var(--mute)">${a.role} · ${a.upd} วัน</small></div><button class="btn sm" onclick="appDetail(${i})">อัปเดต</button></div>`).join('')||'<p class="sub">ทุกอย่างเป็นปัจจุบัน 🎉</p>';}
 function linkLine(){const b=$('#lineBtn');b.textContent='✔ เชื่อมต่อแล้ว · @internmatch';b.classList.remove('line');b.classList.add('ghost');}
+const S=(t,d,x={})=>({type:t,...(d?{description:d}:{}),...x});
+const arr=(d,n=10)=>({type:'array',max_items:n,items:{type:'string'},description:d});
+const DOCTYPES={
+ job:{l:'📢 โพสต์ประกาศงาน',f:{company:S('string','ชื่อบริษัท',{required:true}),role:S('string','ชื่อตำแหน่งฝึกงาน',{required:true}),location:S('string','สถานที่ทำงาน'),
+  work_mode:S('enum','รูปแบบการทำงาน',{values:['Onsite','Hybrid','Remote']}),period:S('string','ช่วงเวลาฝึกงาน'),allowance:S('string','เบี้ยเลี้ยง/ค่าตอบแทน'),
+  deadline:S('date','วันปิดรับสมัคร'),skills:arr('ทักษะ/คุณสมบัติที่ต้องการ'),documents:arr('เอกสารที่ต้องใช้สมัคร'),email:S('email'),phone:S('phone'),apply_url:S('string','ลิงก์สมัคร')}},
+ handbook:{l:'🎓 คู่มือ/ประกาศคณะ',f:{program:S('string','ชื่อหลักสูตรหรือรายวิชาฝึกงาน'),min_hours:S('integer','จำนวนชั่วโมงฝึกงานขั้นต่ำ'),
+  milestones:{type:'array',max_items:15,description:'กำหนดการ/วันสำคัญทั้งหมดในเอกสาร',items:{type:'object',fields:{task:S('string','สิ่งที่ต้องทำ'),date:S('date','วันที่กำหนด')}}},
+  required_forms:arr('แบบฟอร์มหรือเอกสารที่ต้องส่ง',15),contact:S('string','ผู้ประสานงาน/เจ้าหน้าที่')}},
+ transcript:{l:'📄 Transcript',f:{student_name:S('string','ชื่อนักศึกษา',{required:true}),student_id:S('id','รหัสนักศึกษา'),university:S('string'),major:S('string','สาขาวิชา'),
+  gpax:S('number','เกรดเฉลี่ยสะสม'),issue_date:S('date','วันที่ออกเอกสาร')}},
+ acceptance:{l:'✉️ หนังสือตอบรับ',f:{company:S('string','บริษัทที่ตอบรับ',{required:true}),student_name:S('string','ชื่อนักศึกษาที่ได้รับการตอบรับ'),start_date:S('date','วันเริ่มฝึกงาน'),
+  end_date:S('date','วันสิ้นสุดฝึกงาน'),position:S('string','ตำแหน่ง'),signer:S('string','ผู้ลงนาม'),issue_date:S('date','วันที่ของหนังสือ')}},
+};
+let curType='job',curFile=null,lastRes=null;
+$('#docType').innerHTML=Object.entries(DOCTYPES).map(([k,v])=>`<span data-k="${k}" class="${k==='job'?'on':''}">${v.l}</span>`).join('');
+$('#docType').onclick=e=>{const k=e.target.dataset.k;if(!k)return;curType=k;[...$('#docType').children].forEach(c=>c.classList.toggle('on',c.dataset.k===k));};
+const urlP=new URLSearchParams(location.search);
+const keyParam=urlP.get('key')||(location.hash.startsWith('#key=')?location.hash.slice(5):null);
+if(keyParam){localStorage.setItem('pxKey',keyParam);try{history.replaceState(null,'',location.pathname+(location.hash&&!location.hash.startsWith('#key=')?location.hash:''))}catch(e){}}
+$('#pxKey').value=localStorage.getItem('pxKey')||'';
+function saveKey(){localStorage.setItem('pxKey',$('#pxKey').value.trim());alert('บันทึกคีย์ในเบราว์เซอร์นี้แล้ว');}
+if(location.hash&&document.getElementById(location.hash.slice(1)))go(location.hash.slice(1));
+else if(keyParam)go('ocr');
+const drop=$('#drop');drop.ondragover=e=>{e.preventDefault();drop.style.borderColor='var(--pri)'};drop.ondragleave=()=>drop.style.borderColor='';
+drop.ondrop=e=>{e.preventDefault();drop.style.borderColor='';pick(e.dataTransfer.files[0])};
+function pick(f){if(!f)return;if(f.size>10485760){alert('ไฟล์ใหญ่เกิน 10MB');return}curFile=f;$('#fname').textContent=f.name+' · '+Math.round(f.size/1024)+' KB';
+ const p=$('#prev');if(f.type.startsWith('image/')){p.src=URL.createObjectURL(f);p.style.display='block'}else p.style.display='none';}
+const b64=f=>new Promise((r,j)=>{const fr=new FileReader();fr.onload=()=>r(fr.result.split(',')[1]);fr.onerror=j;fr.readAsDataURL(f)});
+const LBL={company:'บริษัท',role:'ตำแหน่ง',location:'สถานที่',work_mode:'รูปแบบ',period:'ช่วงฝึกงาน',allowance:'เบี้ยเลี้ยง',deadline:'ปิดรับสมัคร',skills:'ทักษะ',documents:'เอกสารที่ต้องใช้',email:'อีเมล',phone:'โทร',apply_url:'ลิงก์สมัคร',
+ program:'หลักสูตร/วิชา',min_hours:'ชั่วโมงขั้นต่ำ',milestones:'กำหนดการ',required_forms:'แบบฟอร์มที่ต้องส่ง',contact:'ผู้ประสานงาน',student_name:'ชื่อนักศึกษา',student_id:'รหัสนักศึกษา',university:'มหาวิทยาลัย',major:'สาขา',gpax:'GPAX',issue_date:'วันที่ออกเอกสาร',
+ start_date:'วันเริ่ม',end_date:'วันสิ้นสุด',position:'ตำแหน่ง',signer:'ผู้ลงนาม'};
+const thd=v=>/^\d{4}-\d{2}-\d{2}$/.test(v)?new Date(v).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}):v;
+function show(v){if(v===null||v===undefined)return '<span class="chip bad">อ่านไม่พบ</span>';
+ if(Array.isArray(v))return v.length?v.map(x=>typeof x==='object'?`<div>• ${thd(x.date)||'—'}: ${x.task||''}</div>`:`<span class="chip pri">${x}</span> `).join(''):'<span class="chip">ไม่มี</span>';return thd(String(v));}
+async function runOcr(){const key=$('#pxKey').value.trim();
+ if(!key)return alert('ใส่ Paxa API key ก่อน');if(!curFile)return alert('เลือกไฟล์ก่อน');if(!$('#consent').checked)return alert('กรุณายินยอมการส่งไฟล์ก่อน');
+ const btn=$('#runBtn');btn.disabled=true;btn.textContent='⏳ กำลังอ่าน… (อาจใช้เวลาสักครู่)';$('#ocrOut').innerHTML='<p class="sub">กำลังประมวลผล…</p>';
+ try{const r=await fetch('https://api.paxalabs.com/v1/extract',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},
+   body:JSON.stringify({document:await b64(curFile),model:'paxa-doc-extract-v1',schema:{fields:DOCTYPES[curType].f},include_pages:true})});
+  const d=await r.json();if(!r.ok||d.title)throw new Error(`${d.status||r.status} ${d.title||''} ${d.reason||d.detail||''}`);lastRes=d;renderOut(d);}
+ catch(e){$('#ocrOut').innerHTML=`<div class="note" style="background:#fde8e8;color:var(--bad)">❌ อ่านไม่สำเร็จ: ${e.message}</div>`;}
+ finally{btn.disabled=false;btn.textContent='✨ อ่านเอกสาร';}}
+function renderOut(d){const f=d.fields,un=Object.fromEntries((d.unverified||[]).map(u=>[u.path,u.reason]));
+ const okN=Object.values(f).filter(v=>v!==null&&!(Array.isArray(v)&&!v.length)).length;
+ let act='';
+ if(curType==='job')act=`<button class="btn" onclick="saveJob()">＋ บันทึกเข้าการติดตามการสมัคร</button>`;
+ if(curType==='handbook')act=`<button class="btn" onclick="saveHandbook()">＋ เพิ่มกำหนดการเข้าเช็กลิสต์คณะ</button>`;
+ if(curType==='transcript'&&f.issue_date){const m=Math.round((new Date()-new Date(f.issue_date))/2.63e9);act=`<div class="note" style="${m>3?'':'background:var(--okbg);color:var(--ok)'}">${m>3?'⚠ ออกมาแล้ว '+m+' เดือน: บางบริษัทต้องการฉบับไม่เกิน 3 เดือน':'✔ ออกเมื่อ '+m+' เดือนก่อน ใช้ได้'}</div>`}
+ if(curType==='acceptance')act=`<div class="note">${f.signer?'✔ พบชื่อผู้ลงนาม: '+f.signer:'⚠ ไม่พบชื่อผู้ลงนาม: ตรวจลายเซ็นก่อนส่งคณะ'}</div>`;
+ $('#ocrOut').innerHTML=`<div class="row" style="justify-content:space-between"><h3 style="margin:0">ผลการอ่าน</h3><span class="chip ${d.status==='complete'?'ok':'warn'}">${d.status==='complete'?'✔ ครบ':'⚠ ไม่ครบ'} · อ่านได้ ${okN}/${Object.keys(f).length} ช่อง · ${d.usage?.credits} เครดิต</span></div>
+ <p class="sub" style="margin:6px 0 10px"><span class="chip">🤖 อ่านโดย AI: ตรวจก่อนบันทึก</span></p>
+ <table style="width:100%;border-collapse:collapse">${Object.entries(f).map(([k,v])=>`<tr style="border-top:1px solid var(--line)"><td style="padding:8px 6px;color:var(--mute);width:34%;vertical-align:top">${LBL[k]||k}</td><td style="padding:8px 6px">${show(v)}${un[k]?` <small style="color:var(--warn)">(${un[k]})</small>`:''}</td></tr>`).join('')}</table>
+ ${d.status!=='complete'?'<div class="note">ข้อมูลสำคัญหลายช่องอ่านไม่พบ: อาจเลือกประเภทเอกสารผิด</div>':''}
+ <div style="margin-top:14px">${act}</div>
+ ${d.pages?`<details style="margin-top:12px"><summary style="cursor:pointer;color:var(--mute)">ดูข้อความที่อ่านได้ทั้งหมด</summary><pre style="white-space:pre-wrap;font-size:12px;background:#fafbfe;padding:10px;border-radius:8px">${d.pages.map(p=>p.markdown).join('\n\n').replace(/</g,'&lt;')}</pre></details>`:''}`;}
+function saveJob(){const f=lastRes.fields;apps.unshift({co:f.company||'ไม่ทราบบริษัท',role:f.role||'Intern',st:'Saved',verified:false,ev:[['10 พ.ย.','บันทึกจากเอกสาร (อ่านโดย AI)']],next:f.deadline?'ปิดรับ '+thd(f.deadline):'—',upd:0});
+ if(f.documents?.length)need[f.company||'ใหม่']=Object.fromEntries(myDocs.map(d=>[d.k,f.documents.some(x=>x.toLowerCase().includes(d.t.toLowerCase().split(' ')[0].slice(0,6))||(d.k==='id'&&/บัตร/.test(x)))?'bad':'-']));
+ go('tracker');}
+function saveHandbook(){(lastRes.fields.milestones||[]).forEach(m=>uni.push({t:m.task||'กำหนดการ',d:m.date?thd(m.date)+' · จากคู่มือ (AI)':'จากคู่มือ (AI)',done:false}));go('uni');}
 const myDocs=[
  {k:'resume',i:'📄',t:'Resume',v:'v3 · Data (TH/EN)',s:'ok',n:'อัปเดต 5 พ.ย. · มี 2 เวอร์ชัน'},
  {k:'tr',i:'🎓',t:'Transcript',v:'ภาค 1/2569',s:'warn',n:'ใกล้หมดอายุ: บริษัท B ต้องการฉบับไม่เกิน 3 เดือน'},
