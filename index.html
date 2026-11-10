@@ -493,4 +493,157 @@ function render(){const nu=$('#newUser')&&$('#newUser').checked;$('#emptyState')
 document.querySelectorAll('.pick span').forEach(s=>s.onclick=()=>s.classList.toggle('on'));
 render();
 </script>
+<!-- ===== AI CHATBOT: พี่ฝึกงาน (Gemini + Paxa OCR) ===== -->
+<style>
+#aiFab{position:fixed;right:22px;bottom:22px;width:62px;height:62px;border-radius:50%;background:var(--pri);color:#fff;border:0;font-size:28px;cursor:pointer;box-shadow:0 8px 24px rgba(79,70,229,.4);z-index:20}
+#aiPanel{position:fixed;right:22px;bottom:96px;width:410px;height:640px;max-height:calc(100vh - 120px);background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 18px 50px rgba(20,22,50,.25);display:none;flex-direction:column;z-index:20;overflow:hidden}
+#aiPanel.show{display:flex}
+#aiHead{background:var(--pri);color:#fff;padding:12px 14px;display:flex;align-items:center;gap:10px}
+#aiMsgs{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:#f7f8fc}
+.am{max-width:86%;padding:9px 12px;border-radius:14px;font-size:13.5px;line-height:1.6;white-space:normal;word-wrap:break-word}
+.am.u{align-self:flex-end;background:var(--pri);color:#fff;border-bottom-right-radius:4px}
+.am.b{align-self:flex-start;background:#fff;border:1px solid var(--line);border-bottom-left-radius:4px}
+.am.t{align-self:center;background:var(--okbg);color:var(--ok);font-size:12px;padding:4px 10px;border-radius:99px}
+.am.e{align-self:center;background:#fde8e8;color:var(--bad);font-size:12px}
+.am ul{margin:4px 0;padding-left:18px}.am p{margin:4px 0}
+#aiSugg{display:flex;gap:6px;overflow-x:auto;padding:8px 10px;border-top:1px solid var(--line)}
+#aiSugg span{white-space:nowrap;font-size:12px;padding:5px 10px;border:1px solid var(--line);border-radius:99px;cursor:pointer;background:#fff}
+#aiBar{display:flex;gap:6px;padding:10px;border-top:1px solid var(--line);align-items:flex-end}
+#aiIn{flex:1;resize:none;font:inherit;border:1px solid var(--line);border-radius:12px;padding:9px 11px;max-height:110px}
+#aiSet{padding:14px;border-bottom:1px solid var(--line);background:#fffdf5;display:none}
+#aiSet.show{display:block}
+</style>
+<button id="aiFab" onclick="aiToggle()" title="พี่ฝึกงาน AI">🤖</button>
+<div id="aiPanel">
+  <div id="aiHead"><span style="font-size:24px">🤖</span><div style="flex:1"><b>พี่ฝึกงาน</b><br><small style="opacity:.85">ผู้ช่วย AI เรื่องฝึกงาน · Gemini</small></div>
+    <button class="btn sm ghost" style="padding:4px 8px" onclick="$('#aiSet').classList.toggle('show')" title="ตั้งค่า">⚙️</button>
+    <button class="btn sm ghost" style="padding:4px 8px" onclick="aiReset()" title="เริ่มใหม่">🗑</button>
+    <button class="btn sm ghost" style="padding:4px 8px" onclick="aiToggle()">✕</button></div>
+  <div id="aiSet">
+    <label style="margin-top:0">Gemini API key</label><input id="gmKey" type="password" placeholder="AIza..." style="width:100%">
+    <label>โมเดล</label><input id="gmModel" style="width:100%" value="gemini-3.8-flash">
+    <label>Paxa API key (สำหรับอ่านรูป/PDF)</label><input id="pxKey2" type="password" placeholder="pxa_..." style="width:100%">
+    <small style="color:var(--mute)">คีย์เก็บใน localStorage ของเครื่องนี้เท่านั้น (POC: เวอร์ชันจริงต้องเรียกผ่าน backend)</small>
+    <div style="margin-top:8px"><button class="btn sm" onclick="aiSaveKeys()">บันทึก</button></div>
+  </div>
+  <div id="aiMsgs"></div>
+  <div id="aiSugg"></div>
+  <div id="aiFile" style="display:none;padding:6px 12px;font-size:12px;background:var(--pri2);color:var(--pri)"></div>
+  <div id="aiBar">
+    <button class="save" onclick="$('#aiAttach').click()" title="แนบรูป/PDF">📎</button>
+    <input type="file" id="aiAttach" accept=".png,.jpg,.jpeg,.webp,.pdf" style="display:none" onchange="aiPick(this.files[0])">
+    <textarea id="aiIn" rows="1" placeholder="ถามหรือสั่งงานได้เลย…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiSend()}"></textarea>
+    <button class="btn" id="aiGo" onclick="aiSend()">➤</button>
+  </div>
+</div>
+<script>
+const reminders=[];
+let aiHist=[],aiFileObj=null,aiBusy=false;
+const SUGG=['สรุปให้หน่อยว่าตอนนี้ต้องทำอะไรบ้าง','บริษัท B เรียกสัมภาษณ์ 20 พ.ย. 14:00','บริษัทไหนเอกสารยังไม่ครบ','ช่วยเขียนอีเมลตามผลบริษัท F','ช่วยร่าง Cover Letter สมัครบริษัท A','หนังสือขอความอนุเคราะห์คืออะไร ต้องทำยังไง'];
+const STAT_TH={Saved:'บันทึกไว้',Applied:'สมัครแล้ว',Interview:'สัมภาษณ์',Offer:'ได้รับข้อเสนอ',Closed:'ปิด/ไม่ผ่าน'};
+
+function aiSystem(){return `คุณคือ "พี่ฝึกงาน" ผู้ช่วย AI ของ InternMatch ช่วยนักศึกษาไทยผ่านฤดูฝึกงาน ตอบเป็นภาษาไทย น้ำเสียงเป็นกันเองแบบรุ่นพี่ใจดี กระชับ ใช้ bullet เมื่อมีหลายข้อ
+วันนี้คือ ${new Date('2026-11-10').toISOString().slice(0,10)} (10 พ.ย. 2569)
+ผู้ใช้: "มีน" ปี 3 สาขาวิทยาการข้อมูล คณะวิทยาศาสตร์ มหาวิทยาลัย X · ฝึกงานภาคบังคับ ≥ 240 ชม. ช่วง มี.ค.–พ.ค. 2570 · คณะต้องการใบตอบรับภายใน 31 ม.ค. 2570 · อาจารย์ที่ปรึกษา อ.ดร.สมใจ ใจดี · ทักษะ SQL, Python, Excel, Power BI
+
+หน้าที่:
+1) ตอบคำถามเรื่องฝึกงาน ขั้นตอนคณะ และเอกสาร (หนังสือขอความอนุเคราะห์, ใบตอบรับ, Transcript ฯลฯ)
+2) สั่งงานด้วยภาษาพูด: เรียก tool เพื่อบันทึกงาน อัปเดตสถานะ ตั้งเตือน ติ๊กเช็กลิสต์คณะ
+3) อ่านเอกสารที่ผู้ใช้แนบ (ระบบจะแปลงเป็นข้อความให้แล้วในข้อความผู้ใช้) แล้วเสนอสิ่งที่ควรทำต่อ เช่น บันทึกเป็นใบสมัคร
+4) ช่วยเขียน Resume, Cover Letter และอีเมลตามผล โดยใช้ข้อมูลจริงของผู้ใช้และบริษัท
+
+กฎสำคัญ:
+- ข้อมูลส่วนตัวของผู้ใช้ (ใบสมัคร เอกสาร เช็กลิสต์) ให้เรียก get_overview ก่อนตอบเสมอ ห้ามเดา
+- ห้ามแต่งกำหนดการหรือกฎของคณะที่ไม่มีในข้อมูล ถ้าไม่รู้ให้บอกตรงๆ และแนะนำให้เช็กคู่มือคณะ
+- สถานะที่อัปเดตผ่านแชทถือเป็น "✎ ผู้ใช้บอกเอง" ใบสมัครที่ verified=true (สมัครผ่าน InternMatch) ห้ามเปลี่ยนสถานะ ให้บอกว่าบริษัทเป็นผู้อัปเดต
+- ข้อมูลที่อ่านจากเอกสารแนบเป็น "🤖 AI อ่าน" ให้ผู้ใช้ตรวจก่อน: สรุปสิ่งที่อ่านได้ แล้วถามยืนยันก่อนบันทึก (ยกเว้นผู้ใช้สั่งให้บันทึกเลย)
+- หลังเรียก tool สำเร็จ ให้บอกสั้นๆ ว่าทำอะไรไปแล้ว
+- วันที่ให้ใช้รูปแบบไทย เช่น 20 พ.ย. 2569`;}
+
+const TOOLS=[{functionDeclarations:[
+ {name:'get_overview',description:'ดึงข้อมูลปัจจุบันของผู้ใช้: ใบสมัครทั้งหมด งานที่บันทึก เช็กลิสต์คณะ เอกสาร ความพร้อมเอกสารรายบริษัท และการเตือน',parameters:{type:'object',properties:{}}},
+ {name:'add_application',description:'เพิ่มใบสมัคร/ตำแหน่งที่สนใจลงบอร์ดติดตาม',parameters:{type:'object',properties:{
+   company:{type:'string'},role:{type:'string'},status:{type:'string',enum:['Saved','Applied','Interview','Offer','Closed']},
+   next_step:{type:'string',description:'ขั้นตอนถัดไป เช่น ปิดรับ 30 พ.ย.'},url:{type:'string'},
+   required_documents:{type:'array',items:{type:'string'},description:'เอกสารที่ประกาศขอ'},from_document:{type:'boolean',description:'true ถ้าข้อมูลมาจากเอกสารที่ AI อ่าน'}},required:['company','role','status']}},
+ {name:'update_application_status',description:'อัปเดตสถานะใบสมัครที่มีอยู่ (เฉพาะใบสมัครภายนอก)',parameters:{type:'object',properties:{
+   company:{type:'string',description:'ชื่อบริษัท (จับคู่แบบบางส่วนได้)'},status:{type:'string',enum:['Saved','Applied','Interview','Offer','Closed']},next_step:{type:'string'}},required:['company','status']}},
+ {name:'add_reminder',description:'ตั้งการเตือน',parameters:{type:'object',properties:{text:{type:'string'},datetime:{type:'string',description:'ISO 8601 เวลาไทย เช่น 2026-11-19T20:00'}},required:['text','datetime']}},
+ {name:'set_university_task',description:'ติ๊กหรือยกเลิกติ๊กรายการในเช็กลิสต์คณะ',parameters:{type:'object',properties:{task_keyword:{type:'string',description:'คำในชื่อรายการ'},done:{type:'boolean'}},required:['task_keyword','done']}},
+]}];
+
+function findApp(c){c=(c||'').replace(/บริษัท\s*/,'').trim().toLowerCase();return apps.find(a=>a.co.toLowerCase().includes(c)||c.includes(a.co.replace(/บริษัท\s*/,'').toLowerCase()));}
+const TOOL_FN={
+ get_overview:()=>({
+   applications:apps.map(a=>({company:a.co,role:a.role,status:a.st,status_th:STAT_TH[a.st],verified_by_system:a.verified,next_step:a.next,days_since_update:a.upd??null,url:a.url||null,history:a.ev.map(e=>e.join(': '))})),
+   saved_jobs:jobs.filter(j=>saved.has(j.id)).map(j=>({company:j.co,role:j.role,deadline:j.close,source:j.src})),
+   university_checklist:uni.map(u=>({task:u.t,detail:u.d,done:u.done})),
+   university_documents:uniDocs.map(u=>({doc:u.t,current_step:u.steps[u.st],eta:u.eta,source:'ผู้ใช้อัปเดตเอง'})),
+   my_documents:myDocs.map(d=>({name:d.t,version:d.v,status:{ok:'พร้อม',warn:'ต้องแก้',bad:'ขาด'}[d.s],note:d.n})),
+   document_readiness:Object.fromEntries(Object.entries(need).map(([co,r])=>[co,Object.fromEntries(myDocs.filter(d=>r[d.k]!=='-').map(d=>[d.t,{ok:'แนบแล้ว',warn:'ต้องแก้',bad:'ขาด'}[r[d.k]]]))])),
+   reminders}),
+ add_application:a=>{if(findApp(a.company))return{ok:false,error:'มีบริษัทนี้อยู่แล้ว ใช้ update_application_status แทน'};
+   apps.unshift({co:a.company,role:a.role,st:a.status,verified:false,url:a.url,ev:[['10 พ.ย.',a.from_document?'บันทึกจากเอกสาร (🤖 AI อ่าน) ผ่านแชท':'บันทึกผ่านแชท (✎)']],next:a.next_step||'—',upd:0});
+   if(a.required_documents?.length){need[a.company]=Object.fromEntries(myDocs.map(d=>{const hit=a.required_documents.some(x=>new RegExp(d.k==='id'?'บัตร|id':d.t.split(' ')[0].slice(0,5),'i').test(x));return[d.k,hit?(d.s==='ok'?'ok':d.s):'-']}));}
+   render();return{ok:true,saved:a.company+' – '+a.role};},
+ update_application_status:a=>{const x=findApp(a.company);if(!x)return{ok:false,error:'ไม่พบบริษัท '+a.company};
+   if(x.verified)return{ok:false,error:'ใบสมัครนี้สมัครผ่าน InternMatch สถานะอัปเดตโดยบริษัทเท่านั้น'};
+   x.st=a.status;if(a.next_step)x.next=a.next_step;x.upd=0;x.ev.push(['10 พ.ย.','อัปเดตผ่านแชท (✎) → '+STAT_TH[a.status]]);render();return{ok:true,company:x.co,status:STAT_TH[a.status]};},
+ add_reminder:a=>{reminders.push(a);return{ok:true,reminder:a,note:'ใน POC เก็บไว้ในรายการ (เวอร์ชันจริงส่งเตือนทาง LINE)'};},
+ set_university_task:a=>{const u=uni.find(u=>u.t.includes(a.task_keyword));if(!u)return{ok:false,error:'ไม่พบรายการ',available:uni.map(u=>u.t)};u.done=a.done;render();return{ok:true,task:u.t,done:a.done};},
+};
+const TOOL_LABEL={get_overview:'📊 ดูข้อมูลของคุณ',add_application:'📋 เพิ่มใบสมัคร',update_application_status:'🔄 อัปเดตสถานะ',add_reminder:'⏰ ตั้งเตือน',set_university_task:'🎓 อัปเดตเช็กลิสต์คณะ'};
+
+function aiMd(t){const esc=t.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+ return esc.split(/\n{2,}/).map(b=>{const lines=b.split('\n');
+  if(lines.every(l=>/^\s*([-*•]|\d+\.)\s+/.test(l)))return '<ul>'+lines.map(l=>'<li>'+l.replace(/^\s*([-*•]|\d+\.)\s+/,'')+'</li>').join('')+'</ul>';
+  return '<p>'+lines.join('<br>')+'</p>';}).join('').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<i>$2</i>').replace(/^#+\s*(.*)$/gm,'<b>$1</b>');}
+function aiAdd(cls,html){const d=document.createElement('div');d.className='am '+cls;d.innerHTML=html;$('#aiMsgs').appendChild(d);$('#aiMsgs').scrollTop=1e9;return d;}
+function aiToggle(){$('#aiPanel').classList.toggle('show');if($('#aiPanel').classList.contains('show'))$('#aiIn').focus();}
+function aiSaveKeys(){localStorage.setItem('gmKey',$('#gmKey').value.trim());localStorage.setItem('gmModel',$('#gmModel').value.trim());if($('#pxKey2').value.trim())localStorage.setItem('pxKey',$('#pxKey2').value.trim());$('#aiSet').classList.remove('show');aiAdd('t','✔ บันทึกการตั้งค่าแล้ว');}
+function aiReset(){aiHist=[];$('#aiMsgs').innerHTML='';aiWelcome();}
+function aiWelcome(){aiAdd('b',aiMd('สวัสดีมีน 👋 พี่ฝึกงานเอง\n\nถามเรื่องฝึกงานหรือสั่งงานได้เลย เช่น\n- "บริษัท B เรียกสัมภาษณ์ 20 พ.ย."\n- แนบรูปโพสต์งาน 📎 แล้วพี่จะบันทึกให้\n- "ช่วยเขียนอีเมลตามผลบริษัท F"'));
+ if(!localStorage.getItem('gmKey')){aiAdd('e','ยังไม่ได้ใส่ Gemini API key: กด ⚙️ ด้านบน');$('#aiSet').classList.add('show');}}
+function aiPick(f){if(!f)return;if(f.size>10485760)return alert('ไฟล์ใหญ่เกิน 10MB');aiFileObj=f;$('#aiFile').style.display='block';$('#aiFile').innerHTML=`📎 ${f.name} <a style="cursor:pointer;float:right" onclick="aiFileObj=null;this.parentNode.style.display='none'">✕</a>`;}
+
+async function paxaOcr(f){const key=localStorage.getItem('pxKey');if(!key)throw new Error('ยังไม่ได้ใส่ Paxa API key (กด ⚙️)');
+ const r=await fetch('https://api.paxalabs.com/v1/ocr',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({document:await b64(f),model:'paxa-ocr-lite-v1'})});
+ const d=await r.json();if(!r.ok||d.title)throw new Error('Paxa: '+(d.title||r.status)+' '+(d.reason||d.detail||''));return d.pages.map(p=>p.markdown).join('\n\n');}
+
+async function gemini(){const key=localStorage.getItem('gmKey'),model=localStorage.getItem('gmModel')||'gemini-3.8-flash';
+ const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},
+  body:JSON.stringify({systemInstruction:{parts:[{text:aiSystem()}]},contents:aiHist,tools:TOOLS})});
+ const d=await r.json();if(!r.ok)throw new Error('Gemini: '+(d.error?.message||r.status));
+ const c=d.candidates?.[0]?.content;if(!c)throw new Error('Gemini ไม่ตอบ ('+(d.candidates?.[0]?.finishReason||d.promptFeedback?.blockReason||'unknown')+')');return c;}
+
+async function aiSend(text){if(aiBusy)return;text=(text||$('#aiIn').value).trim();if(!text&&!aiFileObj)return;
+ if(!localStorage.getItem('gmKey')){$('#aiSet').classList.add('show');return aiAdd('e','ใส่ Gemini API key ก่อน');}
+ aiBusy=true;$('#aiGo').disabled=true;$('#aiIn').value='';
+ const f=aiFileObj;aiFileObj=null;$('#aiFile').style.display='none';
+ aiAdd('u',aiMd(text||'(แนบไฟล์)')+(f?`<div style="opacity:.8;font-size:12px">📎 ${f.name}</div>`:''));
+ let userText=text;
+ try{
+  if(f){if(!confirm('ส่งไฟล์ "'+f.name+'" ไปให้ Paxa Labs อ่าน (ผู้ให้บริการภายนอก)?'))throw new Error('ยกเลิกการส่งไฟล์');
+   const t=aiAdd('t','🤖 กำลังอ่านเอกสารด้วย Paxa OCR…');const md=await paxaOcr(f);t.textContent='✔ อ่านเอกสารแล้ว';
+   userText=(text||'ช่วยดูเอกสารนี้ให้หน่อย')+`\n\n[เอกสารแนบ "${f.name}" อ่านด้วย AI OCR (🤖 อาจมีผิด):]\n${md.slice(0,12000)}`;}
+  aiHist.push({role:'user',parts:[{text:userText}]});
+  const typing=aiAdd('b','<i style="color:var(--mute)">กำลังคิด…</i>');
+  for(let i=0;i<6;i++){const c=await gemini();aiHist.push(c);
+   const calls=(c.parts||[]).filter(p=>p.functionCall);
+   if(!calls.length){typing.remove();const txt=(c.parts||[]).filter(p=>p.text&&!p.thought).map(p=>p.text).join('');aiAdd('b',aiMd(txt||'(ไม่มีคำตอบ)'));break;}
+   const resp=[];for(const p of calls){const fc=p.functionCall;let out;try{out=TOOL_FN[fc.name]?TOOL_FN[fc.name](fc.args||{}):{error:'unknown tool'}}catch(e){out={error:e.message}}
+    if(fc.name!=='get_overview'||i===0)$('#aiMsgs').insertBefore(Object.assign(document.createElement('div'),{className:'am t',textContent:(out.ok===false?'⚠ ':'')+TOOL_LABEL[fc.name]+(out.ok===false?' ไม่สำเร็จ':'')}),typing);
+    resp.push({functionResponse:{name:fc.name,response:out,...(fc.id?{id:fc.id}:{})}});}
+   aiHist.push({role:'user',parts:resp});}
+ }catch(e){$('#aiMsgs').querySelectorAll('.am.b i').forEach(n=>n.closest('.am').remove());aiAdd('e','❌ '+e.message);
+  if(aiHist.length&&aiHist[aiHist.length-1].role==='user'&&aiHist[aiHist.length-1].parts[0].text)aiHist.pop();}
+ finally{aiBusy=false;$('#aiGo').disabled=false;$('#aiIn').focus();}}
+
+const gmParam=new URLSearchParams(location.search).get('gmKey')||new URLSearchParams(location.search).get('geminiKey');
+if(gmParam){localStorage.setItem('gmKey',gmParam);$('#aiPanel').classList.add('show');}
+if(location.hash==='#ai')$('#aiPanel').classList.add('show');
+$('#gmKey').value=localStorage.getItem('gmKey')||'';$('#gmModel').value=localStorage.getItem('gmModel')||'gemini-3.8-flash';$('#pxKey2').value=localStorage.getItem('pxKey')||'';
+$('#aiSugg').innerHTML=SUGG.map(s=>`<span onclick="aiSend(this.textContent)">${s}</span>`).join('');
+aiWelcome();
+</script>
 </body></html>
