@@ -43,8 +43,12 @@ export async function confirmExtraction(env, userId, extractionId, channel) {
 }
 
 export async function discardExtraction(env, userId, extractionId) {
+  const row = await env.DB.prepare('SELECT status FROM extractions WHERE id=? AND user_id=?').bind(extractionId, userId).first();
+  if (!row) return { ok: false, error: 'not_found' };
+  if (row.status === 'confirmed') return { ok: false, error: 'already_confirmed' };
+  if (row.status === 'discarded') return { ok: true };
   const r = await env.DB.prepare("UPDATE extractions SET status='discarded' WHERE id=? AND user_id=? AND status='pending'").bind(extractionId, userId).run();
-  return { ok: r.meta.changes > 0 };
+  return r.meta.changes > 0 ? { ok: true } : { ok: false, error: 'already_confirmed' };
 }
 
 export function formatExtraction({ doc_type, fields: f }) {
