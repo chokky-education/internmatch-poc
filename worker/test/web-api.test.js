@@ -80,6 +80,15 @@ describe('web api', () => {
     expect(a.truth_level).toBe('AI_EXTRACTED');
     expect((await post(`/api/extractions/${up.extraction.id}/confirm`, {})).status).toBe(409);
   });
+  it('DELETE /api/reminders/:id removes it, audits the channel, and 404s for an unknown id', async () => {
+    const { id } = await (await post('/api/reminders', { text: 'สร้าง Resume ใหม่', datetime: '2026-11-19T20:00' })).json();
+    expect((await api('/api/reminders/' + id, { method: 'DELETE' })).status).toBe(200);
+    expect((await (await api('/api/state')).json()).reminders).toEqual([]);
+    const a = await env.DB.prepare("SELECT channel, change_json FROM audit_log WHERE entity='reminder' AND entity_id=? ORDER BY rowid DESC").bind(id).first();
+    expect(a.channel).toBe('web');
+    expect(JSON.parse(a.change_json).op).toBe('delete');
+    expect((await api('/api/reminders/nope', { method: 'DELETE' })).status).toBe(404);
+  });
   it('POST /api/reminders stores a Bangkok-time reminder', async () => {
     const r = await post('/api/reminders', { text: 'สัมภาษณ์', datetime: '2026-11-19T20:00' });
     expect((await r.json()).due_at).toBe('2026-11-19T13:00:00.000Z');

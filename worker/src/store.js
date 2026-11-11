@@ -91,6 +91,18 @@ export async function addReminder(env, userId, { text, datetime }, channel) {
   return { ok: true, id, due_at: due };
 }
 
+export async function deleteReminder(env, userId, { id, text_keyword }, channel) {
+  const rows = (await env.DB.prepare('SELECT * FROM reminders WHERE user_id=? ORDER BY due_at').bind(userId).all()).results;
+  const k = String(text_keyword || '').toLowerCase();
+  const hit = id ? rows.filter(r => r.id === id) : k ? rows.filter(r => r.text.toLowerCase().includes(k)) : [];
+  if (!hit.length) return { ok: false, error: 'not_found' };
+  for (const r of hit) {
+    await env.DB.prepare('DELETE FROM reminders WHERE id=? AND user_id=?').bind(r.id, userId).run();
+    await audit(env, userId, 'reminder', r.id, { op: 'delete', text: r.text, due_at: r.due_at }, channel, 'USER_REPORTED');
+  }
+  return { ok: true, deleted: hit.map(r => r.text) };
+}
+
 export async function addDocument(env, userId, { kind, title, fields, truth_level }, channel) {
   const id = uuid();
   await env.DB.prepare('INSERT INTO documents (id,user_id,kind,title,status,note,fields_json,truth_level,created_at) VALUES (?,?,?,?,?,?,?,?,?)')

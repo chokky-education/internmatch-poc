@@ -276,7 +276,7 @@ const jobs=[
  {id:4,role:'Marketing Data Intern',co:'บริษัท D (Media)',loc:'นนทบุรี',mode:'Hybrid',pay:'10,000/เดือน',close:'2026-11-15',src:'InternMatch Direct',checked:'10 พ.ย.',via:'im',skills:['GA4','Excel']},
  {id:5,role:'Product Analyst Intern',co:'บริษัท E (Startup)',loc:'กรุงเทพฯ',mode:'Onsite',pay:'13,000/เดือน',close:'2026-10-30',src:'careers.e.io',checked:'1 พ.ย.',via:'ext',skills:['SQL','Mixpanel'],stale:true},
 ];
-const saved=new Set([3]);
+const saved=new Set();
 const STAGES=['Saved','Applied','Interview','Offer','Closed'];
 const TH={Saved:'บันทึกไว้',Applied:'สมัครแล้ว',Interview:'สัมภาษณ์',Offer:'ได้รับข้อเสนอ',Closed:'ปิด/ไม่ผ่าน'};
 let apps=[];const reminders=[];let serverState=null;
@@ -371,12 +371,13 @@ function renderKanban(){$('#kanban').innerHTML=STAGES.map(s=>{const l=apps.map((
  <small>➜ ${a.next}</small>${a.verified?'':`<div class="row" style="margin-top:6px;gap:4px" onclick="event.stopPropagation()"><button class="btn ghost sm" onclick="move(${i},-1)">←</button><button class="btn ghost sm" onclick="move(${i},1)">→</button></div>`}</div>`).join('')}</div>`}).join('');}
 function renderDash(){const c=s=>apps.filter(a=>a.st===s).length;
  $('#stats').innerHTML=[['⭐ บันทึกไว้',saved.size],['📨 สมัครแล้ว',c('Applied')],['🗣️ สัมภาษณ์',c('Interview')],['🎉 ข้อเสนอ',c('Offer')]].map(([t,n])=>`<div class="card stat"><b>${n}</b><span>${t}</span></div>`).join('');
- const up=reminders.filter(r=>Date.parse(r.due_at)>Date.now()-864e5).map(r=>({d:r.due_at,t:r.text,s:'เตือน',k:'pri',l:'เตือน'}))
+ const up=reminders.filter(r=>Date.parse(r.due_at)>Date.now()-864e5).map(r=>({d:r.due_at,t:esc(r.text),s:'เตือน',k:'pri',l:'เตือน',rid:r.id}))
   .concat(jobs.filter(j=>saved.has(j.id)&&days(j.close)>=0).map(j=>({d:j.close,t:'ปิดรับ – '+j.co,s:j.role,k:'warn',l:'ยังไม่สมัคร'}))).sort((a,b)=>days(a.d)-days(b.d));
- $('#upcoming').innerHTML=up.map(u=>{const dt=new Date(u.d);return `<div class="it"><div class="date">${dt.getDate()}<small>${dt.toLocaleDateString('th-TH',{month:'short'})}</small></div><div style="flex:1"><b>${u.t}</b><br><small style="color:var(--mute)">${u.s}</small></div><span class="chip ${u.k}">${u.l}</span></div>`}).join('');
+ $('#upcoming').innerHTML=up.map(u=>{const dt=new Date(u.d);return `<div class="it"><div class="date">${dt.getDate()}<small>${dt.toLocaleDateString('th-TH',{month:'short'})}</small></div><div style="flex:1"><b>${u.t}</b><br><small style="color:var(--mute)">${u.s}</small></div><span class="chip ${u.k}">${u.l}</span>${u.rid?`<button class="btn sm" title="ลบการเตือน" onclick="delRem('${u.rid}')">ลบ</button>`:''}</div>`}).join('')||'<p class="sub">ยังไม่มีกำหนดการ</p>';
  $('#stale').innerHTML=apps.map((a,i)=>[a,i]).filter(([a])=>!a.verified&&a.upd>14).map(([a,i])=>`<div class="it"><div style="flex:1"><b>${a.co}</b><br><small style="color:var(--mute)">${a.role} · ${a.upd} วัน</small></div><button class="btn sm" onclick="appDetail(${i})">อัปเดต</button></div>`).join('')||'<p class="sub">ทุกอย่างเป็นปัจจุบัน 🎉</p>';}
 function renderNotif(){if(!serverState)return;const lb=$('#lineBtn');if(lb)lb.innerHTML=serverState.user.line_linked?'<span class="chip ok">💚 ผูกบัญชี LINE แล้ว</span>':'<span class="chip warn">ยังไม่ได้ผูก LINE: ทักพี่ฝึกงานใน LINE แล้วทำตามที่บอท</span>';
- const rl=$('#remList');if(rl)rl.innerHTML=serverState.reminders.length?serverState.reminders.map(r=>`<div class="it"><div style="flex:1"><b>${esc(r.text)}</b><br><small style="color:var(--mute)">${new Date(r.due_at).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Bangkok'})} · ${r.sent_at?(r.delivery==='line'?'ส่งทาง LINE แล้ว':'ส่ง LINE ไม่สำเร็จ'):'รอเตือน'}</small></div></div>`).join(''):'<p class="sub">ยังไม่มีการเตือน</p>';}
+ const rl=$('#remList');if(rl)rl.innerHTML=serverState.reminders.length?serverState.reminders.map(r=>`<div class="it"><div style="flex:1"><b>${esc(r.text)}</b><br><small style="color:var(--mute)">${new Date(r.due_at).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Bangkok'})} · ${r.sent_at?(r.delivery==='line'?'ส่งทาง LINE แล้ว':'ส่ง LINE ไม่สำเร็จ'):'รอเตือน'}</small></div><button class="btn sm" onclick="delRem('${r.id}')">ลบ</button></div>`).join(''):'<p class="sub">ยังไม่มีการเตือน</p>';}
+async function delRem(id){if(!confirm('ลบการเตือนนี้?'))return;const r=await api('/api/reminders/'+id,{method:'DELETE'});toast(r.ok?'ลบการเตือนแล้ว':errMsg(r));await loadState();}
 async function addRem(){const t=$('#remText').value.trim(),d=$('#remAt').value;if(!t||!d)return toast('ใส่ข้อความและเวลาก่อน');const r=await api('/api/reminders',{method:'POST',body:JSON.stringify({text:t,datetime:d})});toast(r.ok?'ตั้งเตือนแล้ว ⏰':errMsg(r));if(r.ok){$('#remText').value='';await loadState();}}
 const DOCTYPES={job:{l:'📢 โพสต์ประกาศงาน',k:'job_post'},handbook:{l:'🎓 คู่มือ/ประกาศคณะ',k:'handbook'},transcript:{l:'📄 Transcript',k:'transcript'},acceptance:{l:'✉️ หนังสือตอบรับ',k:'acceptance'}};
 let curType='job',curFile=null,lastExt=null;

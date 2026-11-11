@@ -1,5 +1,5 @@
 import { json, readJson } from './http.js';
-import { getOverview, addApplication, updateApplicationStatus, setTaskById, addReminder, markReminderSeen } from './store.js';
+import { getOverview, addApplication, updateApplicationStatus, setTaskById, addReminder, deleteReminder, markReminderSeen } from './store.js';
 import { runAssistant } from './assistant.js';
 import { extractDocument, confirmExtraction, discardExtraction } from './ocr.js';
 
@@ -66,6 +66,10 @@ export async function handleApi(req, env, user, url) {
     if (!b.text || !b.datetime) return J({ error: 'bad_request' }, 400);
     const r = await addReminder(env, user.id, { text: b.text, datetime: b.datetime }, 'web');
     return r.ok ? J(r) : fail(J, r.error);
+  }
+  if (seg[1] === 'reminders' && seg[2] && !seg[3] && m === 'DELETE') {
+    const r = await deleteReminder(env, user.id, { id: seg[2] }, 'web');
+    return r.ok ? J(r) : fail(J, 'not_found');
   }
   if (seg[1] === 'reminders' && seg[2] && seg[3] === 'seen' && m === 'POST') {
     const r = await markReminderSeen(env, user.id, seg[2]);

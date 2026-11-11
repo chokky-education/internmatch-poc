@@ -39,6 +39,17 @@ describe('save-first behaviour', () => {
   });
 });
 
+describe('delete_reminder tool', () => {
+  it('deletes the reminder matching the keyword from LINE', async () => {
+    const { addReminder } = await import('../src/store.js');
+    await addReminder(env, U, { text: 'สร้าง Resume ใหม่', datetime: '2026-11-19T20:00' }, 'line');
+    queue = [fc('delete_reminder', { text_keyword: 'Resume' }), text('ลบแล้วค่ะ')];
+    const r = await runAssistant(env, U, 'line', 'ลบเตือนเรื่อง resume');
+    expect(r.actions).toEqual(['delete_reminder']);
+    expect((await env.DB.prepare('SELECT count(*) c FROM reminders WHERE user_id=?').bind(U).first()).c).toBe(0);
+  });
+});
+
 describe('runAssistant', () => {
   it('executes add_application as USER_REPORTED, returns the reply and persists both messages with the channel', async () => {
     queue = [fc('add_application', { company: 'บริษัท Z', role: 'Data Intern', status: 'Applied' }), text('บันทึกให้แล้วครับ')];

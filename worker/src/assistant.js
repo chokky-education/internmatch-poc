@@ -1,4 +1,4 @@
-import { getOverview, addApplication, updateApplicationStatus, setTask, addReminder } from './store.js';
+import { getOverview, addApplication, updateApplicationStatus, setTask, addReminder, deleteReminder } from './store.js';
 import { systemPrompt } from './prompt.js';
 
 const STATUS = ['Saved', 'Applied', 'Interview', 'Offer', 'Closed'];
@@ -16,6 +16,8 @@ export const TOOLS = [{ functionDeclarations: [
     company: { type: 'string', description: 'ชื่อบริษัท (จับคู่แบบบางส่วนได้)' }, status: { type: 'string', enum: STATUS }, next_step: { type: 'string' } }, required: ['company', 'status'] } },
   { name: 'add_reminder', description: 'ตั้งการเตือน', parameters: { type: 'object', properties: {
     text: { type: 'string' }, datetime: { type: 'string', description: 'ISO 8601 เวลาไทย เช่น 2026-11-19T20:00' } }, required: ['text', 'datetime'] } },
+  { name: 'delete_reminder', description: 'ลบการเตือนที่ตั้งไว้ (ลบทุกรายการที่ข้อความมีคำนี้)', parameters: { type: 'object', properties: {
+    text_keyword: { type: 'string', description: 'คำในข้อความเตือน' } }, required: ['text_keyword'] } },
   { name: 'set_university_task', description: 'ติ๊กหรือยกเลิกติ๊กรายการในเช็กลิสต์คณะ', parameters: { type: 'object', properties: {
     task_keyword: { type: 'string', description: 'คำในชื่อรายการ' }, done: { type: 'boolean' } }, required: ['task_keyword', 'done'] } },
 ] }];
@@ -25,6 +27,7 @@ const toolImpl = {
   add_application: (env, u, a, ch) => addApplication(env, u, { ...a, truth_level: a.from_document ? 'AI_EXTRACTED' : 'USER_REPORTED' }, ch),
   update_application_status: (env, u, a, ch) => updateApplicationStatus(env, u, a, ch),
   add_reminder: (env, u, a, ch) => addReminder(env, u, a, ch),
+  delete_reminder: (env, u, a, ch) => deleteReminder(env, u, { text_keyword: a.text_keyword }, ch),
   set_university_task: (env, u, a, ch) => setTask(env, u, a, ch),
 };
 

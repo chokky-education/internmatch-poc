@@ -12,5 +12,6 @@ describe('health', () => {
     const r = await SELF.fetch('https://x.test/api/health', { method: 'OPTIONS', headers: { Origin: origin } });
     expect(r.headers.get('Access-Control-Allow-Origin')).toBe(origin);
     expect(r.headers.get('Access-Control-Allow-Credentials')).toBe('true');
+    expect(r.headers.get('Access-Control-Allow-Methods')).toContain('DELETE');
   });
 });
