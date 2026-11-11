@@ -70,6 +70,10 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 | `docs/test-round-1.csv` | Manual test cases, round 1 |
 | `docs/agents/*.md` | Issue tracker (GitHub Issues), triage labels, domain-doc conventions |
 | `scripts/index.mjs` | The local search index CLI |
+| `scripts/check-docs.mjs` | Guardrails run by CI and locally: INDEX covers `worker/src`, pointer files stay pointers, ADR numbering, secret scan, code change ⇒ STATUS change |
+| `.github/workflows/ci.yml` | CI on every PR and push to `main`: check-docs, `index.html` syntax, index build, `vitest` |
+| `CODING_STANDARDS.md` | Judgement-call rules for reviewing a diff (ADRs, logic in Worker, truth levels, honest stubs) |
+| `docs/agent-kickoff.md` | Copy-paste first messages for starting, continuing or reviewing with any agent |
 
 ## Key concepts
 

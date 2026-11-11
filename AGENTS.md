@@ -71,18 +71,20 @@
 
 ## 4. ขั้นตอนก่อนรายงานผลงานสำเร็จ (Before Reporting Success)
 
-เมื่อทำการแก้ไขหรือพัฒนาฟีเจอร์ใหม่เสร็จสิ้น ให้ปฏิบัติตามขั้นตอนต่อไปนี้เสมอ:
-0. **รันเทสต์ backend:** `cd worker && npx vitest run` (ต้องผ่านทั้งหมด)
-1. **ตรวจสอบความถูกต้องของ Syntax:**  
-   `node -e "const h=require('fs').readFileSync('index.html','utf8');[...h.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)].forEach(m=>new Function(m[1]));console.log('OK')"`
+เมื่อทำการแก้ไขหรือพัฒนาฟีเจอร์ใหม่เสร็จสิ้น ให้ปฏิบัติตามขั้นตอนต่อไปนี้เสมอ (CI `.github/workflows/ci.yml` ตรวจข้อ 0-2 ซ้ำทุก PR ถ้าไม่ผ่าน merge ไม่ได้):
+0. **รันเทสต์ backend:** `cd worker && npm ci && npx vitest run` (ต้องผ่านทั้งหมด)
+1. **ตรวจ Syntax และกฎเอกสาร:**  
+   `node -e "const h=require('fs').readFileSync('index.html','utf8');[...h.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)].forEach(m=>new Function(m[1]));console.log('OK')"`  
+   `node scripts/check-docs.mjs --base origin/main` (INDEX ครบ, ไฟล์ชี้ทางยังเป็นไฟล์ชี้ทาง, ADR เรียงเลข, ไม่มี secret, แก้โค้ดแล้วต้องแก้ STATUS)
 2. **อัปเดต Index และ Handoff:**  
-   `node scripts/index.mjs refresh`  
-   - ถ้าเพิ่ม/ย้าย/ลบไฟล์หรือโมดูล ให้แก้ตาราง `INDEX.md` ด้วยมือ (สคริปต์ไม่เขียนทับไฟล์นี้แล้ว)  
+   - ถ้าเพิ่ม/ย้าย/ลบไฟล์หรือโมดูล ให้แก้ตาราง `INDEX.md` ด้วยมือ (สคริปต์ไม่เขียนทับไฟล์นี้)  
    - เขียน `docs/STATUS.md` ส่วน Now / In flight / Next ใหม่ และเพิ่ม 1 บรรทัดใน Log เพื่อให้ Agent ตัวถัดไปทำต่อได้ทันที
-3. **Commit และ Push ขึ้น GitHub:**  
-   `git add . && git commit -m "คำอธิบายงาน" && git push origin main`
+3. **ส่งงานผ่าน Pull Request เท่านั้น ห้าม push เข้า `main` ตรง:**  
+   ทำงานบน branch ของตัวเอง → `git push -u origin <branch>` → `gh pr create` → รอ CI เขียว → เจ้าของโปรเจกต์เป็นคน merge
 4. **ตรวจสอบการ Deploy:**  
-   ระบบจะ Deploy ขึ้น GitHub Pages โดยอัตโนมัติภายใน 30-45 วินาที
+   หลัง merge ระบบจะ Deploy เว็บขึ้น GitHub Pages อัตโนมัติภายใน 30-45 วินาที ส่วน Worker ต้อง `cd worker && npx wrangler deploy` เอง (ถามเจ้าของก่อน)
+
+รีวิวโค้ด (คนหรือ Agent) ให้ตรวจ diff ตาม `CODING_STANDARDS.md`
 
 ---
 

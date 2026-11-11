@@ -8,6 +8,7 @@ _Last updated: 2026-11-12_
 
 - **Shipped on `main`:** LINE-primary / web-fallback backend in `worker/` (auth by email + OTP, Gemini assistant, Paxa OCR with confirm step, cards + `runCardAction`, cron reminders with web-banner fallback). Web app reworked into a 2-column dashboard home and a 5-item menu (commit `71d1cdb`).
 - **Live:** web on GitHub Pages (auto-deploys from `main`); Worker `internmatch-api` on Cloudflare (deployed by hand with `wrangler deploy`, not by CI).
+- **Guardrails:** CI (`.github/workflows/ci.yml`) runs `scripts/check-docs.mjs`, the `index.html` syntax check, the index build and `vitest` on every PR. Work goes through PRs, not direct pushes to `main`. Branch protection on `main` (require CI) must be turned on by the owner in GitHub settings.
 - **Prototype limits:** only emails in the `ALLOWED_EMAILS` secret can log in.
 
 ## In flight
@@ -35,5 +36,6 @@ _Last updated: 2026-11-12_
 
 ## Log
 
+- 2026-11-12: Added CI, `scripts/check-docs.mjs`, `CODING_STANDARDS.md`, `docs/agent-kickoff.md`; AGENTS.md now requires PRs instead of pushing to `main`.
 - 2026-11-12: Added `CLAUDE.md`/`GEMINI.md` pointers to `AGENTS.md` and ADRs 0001-0003 so agents from any vendor share one set of instructions and know the deliberate decisions.
 - 2026-11-12: Index made hand-maintained (script no longer overwrites `INDEX.md`), now covers `worker/`, `.sql`, `.toml`, `.csv`. Added this file.
