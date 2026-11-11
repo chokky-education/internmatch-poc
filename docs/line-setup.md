@@ -72,3 +72,4 @@ npx wrangler deploy        # ได้ URL https://internmatch-api.<account>.wor
 - **Verify webhook ไม่ผ่าน:** เช็ก `LINE_CHANNEL_SECRET` ว่าตรงกับ channel เดียวกับ token
 - **เปลี่ยน/หมุน key:** รัน `wrangler secret put <ชื่อ>` ซ้ำ แล้ว `wrangler deploy` ไม่ต้อง commit อะไร
 - **ทดสอบในเครื่อง:** สร้าง `worker/.dev.vars` (git ignore แล้ว) ใส่ `ชื่อ=ค่า` บรรทัดละตัว แล้ว `npx wrangler dev`
+- **ข้ามล็อกอินตอนทดสอบในเครื่อง:** เพิ่ม `LOCAL_DEV_LOGIN=true` ใน `worker/.dev.vars` แล้วรัน `npx wrangler dev --port 8787 --var WEB_ORIGIN:http://localhost:8000` หน้า localhost จะใช้บัญชี `local-dev@example.test` อัตโนมัติ พร้อมเช็กลิสต์ตั้งต้น ข้อมูลที่แก้จะเก็บใน D1 ของเครื่อง บัญชีจริงที่มี session อยู่แล้วจะยังใช้บัญชีเดิม ลบค่านี้หรือเปลี่ยนเป็น `false` เพื่อกลับไปใช้ OTP โหมดนี้ทำงานเฉพาะ hostname `localhost`, `127.0.0.1` และ `[::1]` ไม่ต้องตั้งค่านี้บน production

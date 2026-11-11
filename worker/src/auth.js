@@ -58,8 +58,17 @@ export const sessionCookie = token => `im_session=${token}; HttpOnly; Secure; Sa
 
 export async function requireUser(req, env) {
   const m = /(?:^|;\s*)im_session=([a-f0-9]+)/.exec(req.headers.get('Cookie') || '');
-  if (!m) return null;
-  return await env.DB.prepare('SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.expires_at > ?').bind(m[1], new Date().toISOString()).first();
+  if (m) {
+    const user = await env.DB.prepare('SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.expires_at > ?').bind(m[1], new Date().toISOString()).first();
+    if (user) return user;
+  }
+  // Opt-in only in .dev.vars, and never valid on a deployed Worker hostname.
+  if (env.LOCAL_DEV_LOGIN !== 'true' || !['localhost', '127.0.0.1', '[::1]'].includes(new URL(req.url).hostname)) return null;
+  const id = 'local-dev-user';
+  const inserted = await env.DB.prepare('INSERT OR IGNORE INTO users (id,email,created_at) VALUES (?,?,?)')
+    .bind(id, 'local-dev@example.test', new Date().toISOString()).run();
+  if (inserted.meta.changes) await seedUser(env, id);
+  return env.DB.prepare('SELECT * FROM users WHERE id=?').bind(id).first();
 }
 export async function destroySession(req, env) {
   const m = /(?:^|;\s*)im_session=([a-f0-9]+)/.exec(req.headers.get('Cookie') || '');
