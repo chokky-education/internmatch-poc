@@ -1,0 +1,13 @@
+CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, line_user_id TEXT UNIQUE, profile_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL);
+CREATE TABLE sessions (token TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires_at TEXT NOT NULL);
+CREATE TABLE otps (email TEXT PRIMARY KEY, code_hash TEXT NOT NULL, expires_at TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, last_sent_at TEXT NOT NULL, purpose TEXT NOT NULL, line_user_id TEXT);
+CREATE TABLE applications (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, company TEXT NOT NULL, role TEXT NOT NULL, status TEXT NOT NULL, next_step TEXT, url TEXT, truth_level TEXT NOT NULL, history_json TEXT NOT NULL DEFAULT '[]', updated_at TEXT NOT NULL);
+CREATE TABLE tasks (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, title TEXT NOT NULL, detail TEXT, done INTEGER NOT NULL DEFAULT 0, truth_level TEXT NOT NULL, sort INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE documents (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, kind TEXT NOT NULL, title TEXT NOT NULL, status TEXT, note TEXT, fields_json TEXT NOT NULL DEFAULT '{}', truth_level TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE reminders (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, text TEXT NOT NULL, due_at TEXT NOT NULL, sent_at TEXT, delivery TEXT, seen_at TEXT);
+CREATE TABLE messages (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, channel TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE extractions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, doc_type TEXT NOT NULL, fields_json TEXT NOT NULL, status TEXT NOT NULL, channel TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE audit_log (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, entity TEXT NOT NULL, entity_id TEXT, change_json TEXT NOT NULL, channel TEXT NOT NULL, truth_level TEXT, at TEXT NOT NULL);
+CREATE TABLE line_events (webhook_event_id TEXT PRIMARY KEY, at TEXT NOT NULL);
+CREATE INDEX idx_messages_user ON messages(user_id, created_at);
+CREATE INDEX idx_reminders_due ON reminders(due_at, sent_at);

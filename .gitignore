@@ -1,3 +1,7 @@
 .local-index/
 .DS_Store
 node_modules/
+.superpowers/
+worker/node_modules/
+worker/.wrangler/
+worker/.dev.vars
