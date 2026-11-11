@@ -1,0 +1,77 @@
+# InternMatch: AI Agent Instructions & Operating Manual
+
+> **สำหรับ AI Agent ทุกตัวที่เข้ามารับช่วงต่อ (Continuation Guide)**  
+> โครงการนี้คือ **InternMatch (ผู้ช่วยพาคุณผ่านฤดูฝึกงาน)** แพลตฟอร์มช่วยนักศึกษาไทยบริหารจัดการการฝึกงานภาคบังคับและสหกิจศึกษา
+
+---
+
+## 1. ค้นหาบริบทก่อนเริ่มทำงาน (Find Context First)
+
+1. อ่าน `INDEX.md` เพื่อดูแผนผังไฟล์และสถาปัตยกรรมภาพรวม
+2. **ค้นหาด้วยคำสั่ง Index ก่อนอ่านไฟล์ดิบเสมอ:**
+   - ค้นหาตามเนื้อหา: `node scripts/index.mjs search "คำค้น" [--kind doc|spec|code]`
+   - ค้นหารายชื่อไฟล์: `node scripts/index.mjs files "ชื่อไฟล์" [--path src/]`
+   - เปิดดูเนื้อหาเฉพาะส่วน: `node scripts/index.mjs show <chunk-id> [--around "คำค้น"] [--context 3]`
+   - ผลลัพธ์ถูกจำกัดความยาวไม่เกิน 2,500 ตัวอักษร เพื่อประหยัด Token Budget
+3. ไฟล์หลักที่ต้องอ่านเพื่อเข้าใจงาน:
+   - สเปก UI/UX และระบบดีไซน์ทั้งหมด: `UI_UX_SPEC.md`
+   - ข้อกำหนดผลิตภัณฑ์และ Data Pipeline: `PRD.md`
+   - โค้ดต้นแบบระบบที่รันได้จริง: `index.html`
+   - ลิงก์เดโมออนไลน์: https://chokky-education.github.io/internmatch-poc/
+
+---
+
+## 2. กฎเหล็กของสถาปัตยกรรม (Architectural Invariants)
+
+### 2.1 ตำแหน่งผลิตภัณฑ์ (Positioning)
+- **ไม่ใช่ Job Board:** ห้ามเปลี่ยนแอปเป็นหน้ารวมประกาศงาน 200 รายการ InternMatch คือ "ผู้ช่วยโครงการฝึกงาน (Seasonal Project Manager)" ที่เน้น **"วันนี้ต้องทำอะไร"**, **"เอกสารคณะ"**, และ **"การเตือนวันสำคัญ"**
+
+### 2.2 ลำดับชั้นความน่าเชื่อถือของข้อมูล (Truth Hierarchy)
+ข้อมูลทุกจุดบน UI ต้องติดป้ายระดับความน่าเชื่อถือตาม PRD เสมอ ห้ามละเมิด:
+- 🟢 `✔ ยืนยันโดยระบบ (SYSTEM_VERIFIED)`: ออกโดยคณะ หรือสมัครผ่าน InternMatch (นักศึกษาแก้ไขเองไม่ได้)
+- 🔵 `✎ อัปเดตโดยคุณ (USER_REPORTED)`: ข้อมูลที่นักศึกษากรอกหรือย้ายการ์ดเอง (ต้องมี Audit Trail บันทึก)
+- 🟡 `🤖 อ่านโดย AI (AI_EXTRACTED)`: สกัดจากรูปภาพหรือเอกสารโดย AI (ต้องแสดงป้ายเตือนให้ตรวจก่อนยืนยันเสมอ)
+
+### 2.3 การทำงานร่วมของ AI Engine
+- **Paxa Labs OCR (`paxa-doc-extract-v1` / `paxa-ocr-lite-v1`):** ใช้สำหรับอ่านรูปภาพโพสต์งาน, คู่มือคณะ, Transcript และหนังสือตอบรับเป็นภาษาไทย
+- **Google Gemini (`gemini-3.8-flash`):** สมองของแชทบอท "พี่ฝึกงาน" จัดการ Function Calling (`get_overview`, `add_application`, `update_application_status`, `add_reminder`, `set_university_task`)
+- **ความปลอดภัยของ Key:** ห้าม Hardcode API Key ลงใน Git สาธารณะ ให้ดึงจาก `localStorage` หรือ URL param
+
+### 2.4 การไหลของข้อมูลแบบ Dual-Sync (LINE ↔ Web ↔ Admin)
+- นักศึกษาใช้งาน 2 ช่องทาง: **LINE OA** (เน้น Capture ส่งภาพ/พิมพ์ภาษาพูด) และ **Web** (เน้น Overview ดูบอร์ดและจัดการเอกสาร)
+- ข้อมูลที่กรอกต้องไหลเข้า **Admin Portal** ของคณะ (Cohort Dashboard & Approval Queue) และเมื่ออาจารย์กดอนุมัติ ต้องส่งผลติ๊กผ่านในหน้าเว็บของนักศึกษาและยิง LINE แจ้งเตือนแบบ Two-way ทันที
+
+---
+
+## 3. แผนที่หน้าจอทั้ง 8 หน้า (Screen Directory)
+
+| Screen ID | ชื่อหน้า | หน้าที่หลัก |
+|---|---|---|
+| `onboard` | ✨ เริ่มต้นใช้งาน | ตั้งค่ามหาวิทยาลัย/คณะ/ประเภทฝึกงาน/กำหนดการส่งใบตอบรับ |
+| `dash` | 🏠 วันนี้ต้องทำอะไร | หน้าหลัก: 6-phase journey, Countdown, การ์ด "วันนี้ต้องทำ", สลับดู Day-1 (Empty State) |
+| `uni` | 🎓 เอกสาร & ขั้นตอนคณะ | เช็กลิสต์ตามคู่มือคณะ, การแชร์ความคืบหน้ากับอาจารย์, ร่างหนังสือขอความอนุเคราะห์ |
+| `docs` | 📁 คลังเอกสาร | เอกสารของฉัน 5 ชนิด, ตาราง Matrix ความพร้อม (บริษัท × เอกสาร), Stepper เอกสารคณะ |
+| `ocr` | 📸 อ่านเอกสาร (AI) | Dropzone สกัดข้อมูล 4 ชนิดด้วย Paxa Labs OCR พร้อม Action บันทึกเข้าบอร์ดทันที |
+| `chat` | 💬 พี่ฝึกงาน (LINE) | จำลองหน้าจอ LINE OA (แชทส่วนตัว & แชทกลุ่มเพื่อน) พร้อม Sync Log |
+| `discover` | 🔎 ค้นหาฝึกงาน | ตัวค้นหาประกาศงานพร้อมลิงก์ต้นทางและปุ่ม "รายงานข้อมูลผิด" |
+| `saved` | ⭐ ที่บันทึกไว้ | รวมตำแหน่งงานที่นักศึกษากดบันทึกไว้ |
+| `tracker` | 📋 ติดตามการสมัคร | Kanban Board 5 สเตจ (Saved ➔ Applied ➔ Interview ➔ Offer ➔ Closed) |
+| `notif` | 🔔 แจ้งเตือน & LINE | ตั้งค่าการแจ้งเตือนและการเชื่อมบัญชี LINE OA |
+| `pipeline` | ⚡ Data Pipeline & Admin | ผังการไหลข้อมูล 4 Scenario และ Admin Portal ของอาจารย์/คณะ |
+
+*นอกจากนี้ยังมี Floating Action Button (`#aiFab`) สำหรับเปิด Drawer แชทบอท AI "พี่ฝึกงาน" ได้จากทุกหน้า*
+
+---
+
+## 4. ขั้นตอนก่อนรายงานผลงานสำเร็จ (Before Reporting Success)
+
+เมื่อทำการแก้ไขหรือพัฒนาฟีเจอร์ใหม่เสร็จสิ้น ให้ปฏิบัติตามขั้นตอนต่อไปนี้เสมอ:
+1. **ตรวจสอบความถูกต้องของ Syntax:**  
+   `node -e "const h=require('fs').readFileSync('index.html','utf8');[...h.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)].forEach(m=>new Function(m[1]));console.log('OK')"`
+2. **รีเฟรชระบบ Index:**  
+   `node scripts/index.mjs refresh`  
+   ตรวจสอบให้แน่ใจว่าไฟล์ที่ถูกเพิ่มหรือแก้ไขถูกอัปเดตลง Index
+3. **Commit และ Push ขึ้น GitHub:**  
+   `git add . && git commit -m "คำอธิบายงาน" && git push origin main`
+4. **ตรวจสอบการ Deploy:**  
+   ระบบจะ Deploy ขึ้น GitHub Pages โดยอัตโนมัติภายใน 30-45 วินาที
