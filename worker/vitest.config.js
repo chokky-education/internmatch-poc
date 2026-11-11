@@ -8,7 +8,7 @@ export default defineConfig(async () => {
     plugins: [
       cloudflareTest({
         wrangler: { configPath: './wrangler.toml' },
-        miniflare: { bindings: { TEST_MIGRATIONS: migrations } },
+        miniflare: { bindings: { TEST_MIGRATIONS: migrations, ALLOWED_EMAILS: 'Ton@Example.com,in@example.com', BREVO_API_KEY: 'test-key', BREVO_SENDER_EMAIL: 'sender@example.com' } },
       }),
     ],
     test: { setupFiles: ['./test/apply-migrations.js'] },
