@@ -19,7 +19,7 @@ _Last updated: 2026-11-12_
 - 📁 เอกสาร: faculty checklist is a generic 6-item seed (`worker/src/seed.js`), not tied to a real faculty.
 - 🔎 ค้นหาฝึกงาน and ⭐ ที่บันทึกไว้: job listings are sample data in `index.html`; "ฉันสมัครแล้ว" does write to the real board.
 - ⚙️ `onboard` (university / faculty / programme): preview page, choices are not saved.
-- No `GLOSSARY.md` or `docs/adr/` yet. `/domain-modeling` creates them when a term or decision gets settled.
+- No `GLOSSARY.md` yet. `/domain-modeling` creates it when the first term gets settled. ADRs 0001-0003 exist in `docs/adr/`.
 
 ## Next (suggested, not yet agreed with the owner)
 
@@ -35,4 +35,5 @@ _Last updated: 2026-11-12_
 
 ## Log
 
+- 2026-11-12: Added `CLAUDE.md`/`GEMINI.md` pointers to `AGENTS.md` and ADRs 0001-0003 so agents from any vendor share one set of instructions and know the deliberate decisions.
 - 2026-11-12: Index made hand-maintained (script no longer overwrites `INDEX.md`), now covers `worker/`, `.sql`, `.toml`, `.csv`. Added this file.

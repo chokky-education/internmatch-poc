@@ -58,7 +58,9 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 
 | Path | What it is |
 | --- | --- |
-| `AGENTS.md` | Rules and invariants for agents. Read first |
+| `AGENTS.md` | Rules and invariants for agents, one copy for every harness. Read first |
+| `CLAUDE.md`, `GEMINI.md` | Pointers to `AGENTS.md` for harnesses that look for their own file. Never add content here |
+| `docs/adr/` | Decisions already made on purpose (LINE-primary, no admin, not a job board). Read before changing architecture or scope |
 | `docs/STATUS.md` | Handoff: current state, in-flight work, next steps, gotchas |
 | `PRD.md` | Product requirements, truth hierarchy, data pipeline |
 | `UI_UX_SPEC.md` | Screen specs and design tokens |
