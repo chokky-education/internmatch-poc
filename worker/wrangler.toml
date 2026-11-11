@@ -1,0 +1,18 @@
+name = "internmatch-api"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+GEMINI_MODEL = "gemini-3.8-flash"
+PAXA_MODEL = "paxa-doc-extract-v1"
+WEB_ORIGIN = "https://chokky-education.github.io"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "internmatch"
+database_id = "0d13249e-0371-4bdf-9a90-433f8010bc18"
+migrations_dir = "migrations"
+
+[triggers]
+crons = ["*/15 * * * *"]

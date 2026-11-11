@@ -35,11 +35,16 @@
 ### 2.3 การทำงานร่วมของ AI Engine
 - **Paxa Labs OCR (`paxa-doc-extract-v1` / `paxa-ocr-lite-v1`):** ใช้สำหรับอ่านรูปภาพโพสต์งาน, คู่มือคณะ, Transcript และหนังสือตอบรับเป็นภาษาไทย
 - **Google Gemini (`gemini-3.8-flash`):** สมองของแชทบอท "พี่ฝึกงาน" จัดการ Function Calling (`get_overview`, `add_application`, `update_application_status`, `add_reminder`, `set_university_task`)
-- **ความปลอดภัยของ Key:** ห้าม Hardcode API Key ลงใน Git สาธารณะ ให้ดึงจาก `localStorage` หรือ URL param
+- **ความปลอดภัยของ Key:** ห้าม Hardcode API Key ลงใน Git สาธารณะ และห้ามอยู่ในโค้ดฝั่งเบราว์เซอร์ ทุก key เป็น Cloudflare Worker secret (`wrangler secret put`) รายชื่ออีเมลที่เข้าใช้ได้เก็บใน secret `ALLOWED_EMAILS`
 
-### 2.4 การไหลของข้อมูลแบบ Dual-Sync (LINE ↔ Web ↔ Admin)
-- นักศึกษาใช้งาน 2 ช่องทาง: **LINE OA** (เน้น Capture ส่งภาพ/พิมพ์ภาษาพูด) และ **Web** (เน้น Overview ดูบอร์ดและจัดการเอกสาร)
-- ข้อมูลที่กรอกต้องไหลเข้า **Admin Portal** ของคณะ (Cohort Dashboard & Approval Queue) และเมื่ออาจารย์กดอนุมัติ ต้องส่งผลติ๊กผ่านในหน้าเว็บของนักศึกษาและยิง LINE แจ้งเตือนแบบ Two-way ทันที
+### 2.4 สถาปัตยกรรม "LINE หลัก เว็บสำรอง" (Single Backend, Two Front Doors)
+- **LINE OA เป็นช่องทางหลัก** ทุกบทสนทนาเกิดที่นั่น **เว็บทำได้ทุกอย่างเท่ากับ LINE** (แชทพี่ฝึกงาน, ส่งรูปให้ OCR, บอร์ด, เช็กลิสต์, เตือน) เพื่อใช้ตอน LINE Messaging API ล่ม
+- ตรรกะทั้งหมดอยู่ใน `worker/` (Cloudflare Worker + D1): auth, store, Gemini assistant, Paxa OCR, LINE webhook, cron เตือน ห้ามมี logic ซ้ำในเบราว์เซอร์ LINE webhook (`src/line.js`) และ Web API (`src/web-api.js`) เรียกฟังก์ชันชุดเดียวกัน โดยส่ง `channel` = `line`|`web` ลง audit log
+- **ล็อกอินเว็บด้วยอีเมล + OTP ไม่พึ่ง LINE** ช่วง prototype ใช้ได้เฉพาะอีเมลใน `ALLOWED_EMAILS` การผูก LINE ทำโดยพิมพ์อีเมลและ OTP ในแชท
+- ข้อมูลที่ AI อ่านต้องกดยืนยัน (postback ใน LINE หรือปุ่มบนเว็บ) ก่อนบันทึกเสมอ ติดป้าย `AI_EXTRACTED`
+- **ไม่มีส่วนอาจารย์/Admin/Approval** ในผลิตภัณฑ์นี้
+- เตือน: Cron ทุก 15 นาที push ทาง LINE ถ้าส่งไม่สำเร็จจะแสดงเป็นแบนเนอร์บนเว็บ
+- วิธีตั้งค่าและ deploy: `docs/line-setup.md` · สเปก: `docs/superpowers/specs/2026-11-11-line-primary-web-fallback-design.md`
 
 ---
 
@@ -52,12 +57,11 @@
 | `uni` | 🎓 เอกสาร & ขั้นตอนคณะ | เช็กลิสต์ตามคู่มือคณะ, การแชร์ความคืบหน้ากับอาจารย์, ร่างหนังสือขอความอนุเคราะห์ |
 | `docs` | 📁 คลังเอกสาร | เอกสารของฉัน 5 ชนิด, ตาราง Matrix ความพร้อม (บริษัท × เอกสาร), Stepper เอกสารคณะ |
 | `ocr` | 📸 อ่านเอกสาร (AI) | Dropzone สกัดข้อมูล 4 ชนิดด้วย Paxa Labs OCR พร้อม Action บันทึกเข้าบอร์ดทันที |
-| `chat` | 💬 พี่ฝึกงาน (LINE) | จำลองหน้าจอ LINE OA (แชทส่วนตัว & แชทกลุ่มเพื่อน) พร้อม Sync Log |
+| `chat` | 💬 พี่ฝึกงาน (แชท) | แชทจริง แสดงบทสนทนาร่วมกับ LINE พร้อมป้ายช่องทางของแต่ละข้อความ |
 | `discover` | 🔎 ค้นหาฝึกงาน | ตัวค้นหาประกาศงานพร้อมลิงก์ต้นทางและปุ่ม "รายงานข้อมูลผิด" |
 | `saved` | ⭐ ที่บันทึกไว้ | รวมตำแหน่งงานที่นักศึกษากดบันทึกไว้ |
 | `tracker` | 📋 ติดตามการสมัคร | Kanban Board 5 สเตจ (Saved ➔ Applied ➔ Interview ➔ Offer ➔ Closed) |
 | `notif` | 🔔 แจ้งเตือน & LINE | ตั้งค่าการแจ้งเตือนและการเชื่อมบัญชี LINE OA |
-| `pipeline` | ⚡ Data Pipeline & Admin | ผังการไหลข้อมูล 4 Scenario และ Admin Portal ของอาจารย์/คณะ |
 
 *นอกจากนี้ยังมี Floating Action Button (`#aiFab`) สำหรับเปิด Drawer แชทบอท AI "พี่ฝึกงาน" ได้จากทุกหน้า*
 
@@ -66,6 +70,7 @@
 ## 4. ขั้นตอนก่อนรายงานผลงานสำเร็จ (Before Reporting Success)
 
 เมื่อทำการแก้ไขหรือพัฒนาฟีเจอร์ใหม่เสร็จสิ้น ให้ปฏิบัติตามขั้นตอนต่อไปนี้เสมอ:
+0. **รันเทสต์ backend:** `cd worker && npx vitest run` (ต้องผ่านทั้งหมด)
 1. **ตรวจสอบความถูกต้องของ Syntax:**  
    `node -e "const h=require('fs').readFileSync('index.html','utf8');[...h.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)].forEach(m=>new Function(m[1]));console.log('OK')"`
 2. **รีเฟรชระบบ Index:**  
