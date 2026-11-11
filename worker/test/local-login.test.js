@@ -2,7 +2,7 @@ import { env } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 import worker from '../src/index.js';
 
-const call = (url, bindings = {}, init = {}) => worker.fetch(new Request(url, init), { ...env, ...bindings }, {});
+const call = (url, bindings = {}, init = {}) => worker.fetch(new Request(url, init), { ...env, LOCAL_DEV_LOGIN: 'false', ...bindings }, {});
 beforeEach(async () => {
   await env.DB.exec('DELETE FROM tasks; DELETE FROM users; DELETE FROM sessions;');
 });
