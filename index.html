@@ -424,10 +424,11 @@ function renderCard(c){if(!c)return'';
  const btns=(c.actions||[]).filter(x=>ACT_RE.test(x.data||'')).map(x=>`<button class="btn sm${x.style==='primary'?'':' ghost'}" data-act="${x.data}" onclick="cardAct(this.dataset.act)">${esc(x.label)}</button>`).join('');
  return `<div style="align-self:flex-start;max-width:82%;background:#fff;color:var(--ink,#222);border:1px solid #e5e7ee;border-radius:14px;padding:11px 13px;margin-top:2px"><b style="font-size:14px">${esc(c.title)}</b>${c.subtitle?`<div style="font-size:12px;color:var(--mute)">${esc(c.subtitle)}</div>`:''}${TRUTH_LBL[c.truth]?`<div style="font-size:11px;color:var(--mute);margin-top:2px">${TRUTH_LBL[c.truth]}</div>`:''}${rows}${btns?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${btns}</div>`:''}</div>`;}
 async function cardAct(data){if(!ACT_RE.test(data||''))return;const r=await api('/api/actions',{method:'POST',body:JSON.stringify({data})});toast(r.ok?r.data.reply:errMsg(r));await loadState();}
+const MENU_CHIPS=[['menu:today','🏠 วันนี้ต้องทำอะไร'],['menu:apps','📋 สถานะการสมัคร'],['menu:checklist','🎓 เช็กลิสต์คณะ'],['menu:reminders','🔔 การเตือนของฉัน']];
 const QUICK=['เหลืออะไรที่ยังไม่ส่งบ้าง','สมัคร SCB ตำแหน่ง Data intern แล้ว','สรุปให้หน่อยว่าตอนนี้ต้องทำอะไรบ้าง'];
 function renderChat(){const el=$('#msgs');if(!el)return;const m=serverState?serverState.messages:[];
  el.innerHTML=m.length?m.map(x=>bub(esc(x.content).replace(/\n/g,'<br>'),x.role==='user',x.channel==='line'?'💬 LINE':'🌐 เว็บ')+(x.cards||[]).map(renderCard).join('')).join(''):'<p style="color:#fff;text-align:center">ยังไม่มีบทสนทนา ลองทักพี่ฝึกงานได้เลย</p>';
- $('#quick').innerHTML=QUICK.map(q=>`<span onclick="sendMsg(this.textContent)">${q}</span>`).join('');el.scrollTop=1e9;}
+ $('#quick').innerHTML=MENU_CHIPS.map(([d,l])=>`<span onclick="cardAct('${d}')">${l}</span>`).join('')+QUICK.map(q=>`<span onclick="sendMsg(this.textContent)">${q}</span>`).join('');el.scrollTop=1e9;}
 let chatBusy=false;
 async function sendMsg(t){t=(t||$('#chatIn').value).trim();if(!t||chatBusy)return;chatBusy=true;$('#chatIn').value='';
  $('#msgs').insertAdjacentHTML('beforeend',bub(esc(t),1,'🌐 เว็บ')+bub('<i>กำลังคิด…</i>',0));$('#msgs').scrollTop=1e9;

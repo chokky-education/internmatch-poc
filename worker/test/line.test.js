@@ -4,7 +4,7 @@ import { handleEvent, verifySignature } from '../src/line.js';
 import { seedDemo } from './fixtures.js';
 
 const LU = 'Uline1', USER = 'user-l';
-let rejectFlex = false, realFetch, replies, geminiCalls, brevo, geminiQueue, paxaBody;
+let menuLinks = [], rejectFlex = false, realFetch, replies, geminiCalls, brevo, geminiQueue, paxaBody;
 const text = t => ({ candidates: [{ content: { role: 'model', parts: [{ text: t }] } }] });
 const ev = (over, extra = {}) => ({ type: 'message', webhookEventId: crypto.randomUUID(), replyToken: 'rt-' + Math.random(), source: { userId: LU }, message: { type: 'text', id: 'm1', text: 'หวัดดี' }, ...over, ...extra });
 const lastReply = () => replies.at(-1).messages.map(m => m.text).join('\n');
@@ -20,12 +20,13 @@ async function linkUser() {
 beforeEach(async () => {
   await env.DB.exec('DELETE FROM users; DELETE FROM sessions; DELETE FROM otps; DELETE FROM applications; DELETE FROM tasks; DELETE FROM documents; DELETE FROM reminders; DELETE FROM messages; DELETE FROM extractions; DELETE FROM audit_log; DELETE FROM line_events;');
   env.GEMINI_API_KEY = 'g'; env.PAXA_API_KEY = 'p';
-  rejectFlex = false; replies = []; geminiCalls = 0; brevo = []; geminiQueue = [text('ตอบแล้ว')];
+  menuLinks = []; delete env.RICHMENU_MAIN; rejectFlex = false; replies = []; geminiCalls = 0; brevo = []; geminiQueue = [text('ตอบแล้ว')];
   paxaBody = { status: 'complete', fields: { company: 'ไทยดาต้า', role: 'Intern', deadline: '2026-11-30' } };
   realFetch = globalThis.fetch;
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (u, init) => {
     const s = String(u);
     if (s.includes('api.line.me/v2/bot/message/reply')) { const b = JSON.parse(init.body); replies.push(b); return new Response('{}', { status: rejectFlex && JSON.stringify(b).includes('"flex"') ? 400 : 200 }); }
+    if (s.includes('/v2/bot/user/') && s.includes('/richmenu/')) { menuLinks.push(s); return new Response('{}', { status: 200 }); }
     if (s.includes('api-data.line.me')) return new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
     if (s.includes('generativelanguage')) { geminiCalls++; return new Response(JSON.stringify(geminiQueue.shift() || text('ok')), { status: 200 }); }
     if (s.includes('paxalabs')) return new Response(JSON.stringify(paxaBody), { status: 200 });
@@ -77,6 +78,30 @@ describe('unlinked users', () => {
     const u = await env.DB.prepare('SELECT line_user_id FROM users WHERE email=?').bind('ton@example.com').first();
     expect(u.line_user_id).toBe(LU);
     expect(lastReply()).toContain('ผูกบัญชี');
+  });
+  it('after linking, the user is switched to the main rich menu when RICHMENU_MAIN is set', async () => {
+    env.RICHMENU_MAIN = 'richmenu-main123';
+    await handleEvent(env, ev({ message: { type: 'text', id: 'm', text: 'ton@example.com' } }));
+    const code = JSON.stringify(brevo[0]).match(/\b(\d{6})\b/)[1];
+    await handleEvent(env, ev({ message: { type: 'text', id: 'm', text: code } }));
+    expect(menuLinks).toEqual([`https://api.line.me/v2/bot/user/${LU}/richmenu/richmenu-main123`]);
+  });
+  it('no rich menu call when RICHMENU_MAIN is not set, and linking still works', async () => {
+    await handleEvent(env, ev({ message: { type: 'text', id: 'm', text: 'ton@example.com' } }));
+    const code = JSON.stringify(brevo[0]).match(/\b(\d{6})\b/)[1];
+    await handleEvent(env, ev({ message: { type: 'text', id: 'm', text: code } }));
+    expect(menuLinks).toEqual([]);
+    expect(lastReply()).toContain('ผูกบัญชี');
+  });
+  it('a menu postback from a linked user returns the fixed summary card without calling Gemini', async () => {
+    await linkUser();
+    await handleEvent(env, ev({ type: 'postback', message: undefined, postback: { data: 'menu:checklist' } }));
+    expect(geminiCalls).toBe(0);
+    expect(replies.at(-1).messages.map(m => m.type)).toEqual(['text', 'flex']);
+  });
+  it('a menu postback from an unlinked user asks for the email', async () => {
+    await handleEvent(env, ev({ type: 'postback', message: undefined, postback: { data: 'menu:today' } }));
+    expect(lastReply()).toContain('อีเมล');
   });
   it('a wrong code is rejected and does not link', async () => {
     await handleEvent(env, ev({ message: { type: 'text', id: 'm', text: 'ton@example.com' } }));

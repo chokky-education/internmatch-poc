@@ -37,6 +37,14 @@ export async function push(env, lineUserId, messages) {
   } catch { return false; }
 }
 
+async function linkMainMenu(env, lineUserId) {
+  if (!env.RICHMENU_MAIN) return;
+  try {
+    const r = await fetch(`https://api.line.me/v2/bot/user/${lineUserId}/richmenu/${env.RICHMENU_MAIN}`, { method: 'POST', headers: { Authorization: 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN } });
+    if (!r.ok) console.error('rich menu link failed', r.status);
+  } catch (e) { console.error('rich menu link error', e.message); }
+}
+
 const ASK_EMAIL = 'สวัสดีครับ พี่ฝึกงานเองนะ 👋\nก่อนเริ่ม ขอผูกบัญชีหน่อยนะ พิมพ์ "อีเมล" ที่ทีมลงทะเบียนไว้มาได้เลย';
 const OTP_ERR = { invalid: 'รหัสไม่ถูกต้อง ลองใหม่อีกครั้งนะ', expired: 'รหัสหมดอายุแล้ว พิมพ์อีเมลมาใหม่เพื่อขอรหัสใหม่นะ', locked: 'ใส่รหัสผิดหลายครั้งแล้ว พิมพ์อีเมลมาใหม่เพื่อขอรหัสใหม่นะ' };
 
@@ -53,6 +61,7 @@ async function handleUnlinked(env, e, lineUserId) {
     const pend = await env.DB.prepare('SELECT email FROM otps WHERE line_user_id=?').bind(lineUserId).first();
     if (!pend) return reply(env, e.replyToken, [msg(ASK_EMAIL)]);
     const r = await verifyOtp(env, pend.email, t);
+    if (r.ok) await linkMainMenu(env, lineUserId);
     if (r.ok) return reply(env, e.replyToken, [msg('ผูกบัญชีเรียบร้อย ✅ ต่อไปบอกพี่ได้เลยว่าสมัครที่ไหน หรือส่งรูปโพสต์งานมาให้พี่อ่านก็ได้นะ')]);
     return reply(env, e.replyToken, [msg(OTP_ERR[r.error] || OTP_ERR.invalid)]);
   }
