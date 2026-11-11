@@ -49,9 +49,9 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
 .phone{width:300px;background:#8cabd9;border-radius:24px;padding:16px;margin-top:10px}.bubble{background:#fff;border-radius:14px;padding:12px;font-size:13px}
 .toggle{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
 .sw{width:40px;height:22px;border-radius:99px;background:var(--pri);position:relative;cursor:pointer}.sw:after{content:'';position:absolute;right:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff}.sw.off{background:#ccd}.sw.off:after{right:auto;left:3px}
-#login{position:fixed;inset:0;background:rgba(246,247,251,.97);display:none;align-items:center;justify-content:center;z-index:50}
-#login.show{display:flex}
-#login .box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;width:min(380px,92vw);box-shadow:0 18px 50px rgba(20,22,50,.15)}
+#login,#boot{position:fixed;inset:0;background:rgba(246,247,251,.97);display:none;align-items:center;justify-content:center;z-index:50}
+#login.show,#boot.show{display:flex}
+#login .box,#boot .box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;width:min(380px,92vw);box-shadow:0 18px 50px rgba(20,22,50,.15)}
 #bar .barin{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--pri2);color:var(--pri);padding:8px 14px;border-radius:10px;margin-bottom:10px;font-size:13px}
 #bar .barrem{background:var(--warnbg);color:var(--warn);padding:8px 14px;border-radius:10px;margin-bottom:8px;font-size:13px}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;font-size:13px;z-index:60}
@@ -65,6 +65,11 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
   <button class="btn" style="width:100%;margin-top:10px" onclick="loginReq()">ส่งรหัสเข้าอีเมล</button>
   <div id="loginStep2" style="display:none;margin-top:14px"><input id="loginCode" inputmode="numeric" maxlength="6" placeholder="รหัส 6 หลัก" style="width:100%" onkeydown="if(event.key==='Enter')loginVerify()"><button class="btn" style="width:100%;margin-top:10px" onclick="loginVerify()">เข้าสู่ระบบ</button></div>
   <p class="sub" id="loginMsg" style="margin:12px 0 0"></p>
+</div></div>
+<div id="boot" class="show"><div class="box">
+  <div class="logo" style="margin-bottom:12px">Intern<b>Match</b></div>
+  <p class="sub" id="bootMsg" style="margin:0">กำลังโหลดข้อมูลของคุณ…</p>
+  <button class="btn" id="bootRetry" style="display:none;width:100%;margin-top:12px" onclick="boot()">ลองใหม่</button>
 </div></div>
 <div class="app">
 <aside>
@@ -296,18 +301,23 @@ function applyState(s){serverState=s;
  uni.length=0;s.university_checklist.forEach(t=>uni.push({id:t.id,t:t.task,d:t.detail||'',done:t.done}));
  myDocs.length=0;extraDocs=[];s.my_documents.forEach(d=>{if(d.kind==='my_doc')myDocs.push({id:d.id,k:d.fields.k,i:ICONS[d.fields.k]||'📄',t:d.name,v:d.fields.version||'—',s:d.status,n:d.note||''});else extraDocs.push(d);});
  reminders.length=0;s.reminders.forEach(r=>reminders.push(r));}
-async function loadState(){const r=await api('/api/state');if(!r.ok)return false;$('#login').classList.remove('show');applyState(r.data);render();renderChat();renderBanner();return true;}
+async function loadState(){const r=await api('/api/state');if(!r.ok)return r.status||0;$('#login').classList.remove('show');applyState(r.data);render();renderChat();renderBanner();return true;}
 function renderBanner(){const b=$('#bar');if(!serverState||!b)return;const u=serverState.user,un=serverState.unseen_reminders||[];
  b.innerHTML=`<div class="barin"><span>🌐 LINE ใช้ไม่ได้? ทำทุกอย่างที่นี่ได้เหมือนกัน</span><span style="flex:1"></span><small>${esc(u.email)} · ${u.line_linked?'💚 ผูก LINE แล้ว':'ยังไม่ผูก LINE'}</small><a onclick="logout()" style="cursor:pointer;text-decoration:underline">ออกจากระบบ</a></div>`+un.map(r=>`<div class="barrem">⏰ ${esc(r.text)} <a onclick="seenRem('${r.id}')" style="cursor:pointer;text-decoration:underline">รับทราบ</a> · <a onclick="cardAct('rem_snooze:${r.id}')" style="cursor:pointer;text-decoration:underline">เลื่อน 1 ชม.</a></div>`).join('');}
 async function seenRem(id){await api('/api/reminders/'+id+'/seen',{method:'POST'});await loadState();}
-function showLogin(){$('#login').classList.add('show');}
+function showLogin(){$('#boot').classList.remove('show');$('#login').classList.add('show');}
+async function boot(){$('#bootMsg').textContent='กำลังโหลดข้อมูลของคุณ…';$('#bootRetry').style.display='none';$('#boot').classList.add('show');
+ const s=await loadState();
+ if(s===true){$('#boot').classList.remove('show');return;}
+ if(s===401){showLogin();return;}
+ $('#bootMsg').textContent='เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ข้อมูลของคุณยังอยู่ครบ ตรวจอินเทอร์เน็ตแล้วกดลองใหม่';$('#bootRetry').style.display='block';}
 async function loginReq(){const email=$('#loginEmail').value.trim();if(!email)return;$('#loginMsg').textContent='กำลังส่งรหัส…';
  const r=await api('/api/auth/request',{method:'POST',body:JSON.stringify({email})});
  if(r.ok){$('#loginStep2').style.display='block';$('#loginMsg').textContent='ส่งรหัส 6 หลักไปที่อีเมลแล้ว (ถ้าไม่เห็น ดูในโฟลเดอร์ Spam)';}
- else $('#loginMsg').textContent=r.data.error==='not_allowed'?'อีเมลนี้ยังไม่เปิดให้ใช้ในช่วงทดลอง':r.data.error==='too_soon'?'เพิ่งส่งรหัสไป รอ 1 นาทีแล้วลองใหม่':'ส่งอีเมลไม่สำเร็จ ลองใหม่อีกครั้ง';}
+ else $('#loginMsg').textContent=r.data.error==='network'?'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่':r.data.error==='not_allowed'?'อีเมลนี้ยังไม่เปิดให้ใช้ในช่วงทดลอง':r.data.error==='too_soon'?'เพิ่งส่งรหัสไป รอ 1 นาทีแล้วลองใหม่':'ส่งอีเมลไม่สำเร็จ ลองใหม่อีกครั้ง';}
 async function loginVerify(){const email=$('#loginEmail').value.trim(),code=$('#loginCode').value.trim();
  const r=await api('/api/auth/verify',{method:'POST',body:JSON.stringify({email,code})});
- if(r.ok){await loadState();}else $('#loginMsg').textContent={invalid:'รหัสไม่ถูกต้อง',expired:'รหัสหมดอายุ ขอรหัสใหม่',locked:'ใส่ผิดหลายครั้ง ขอรหัสใหม่'}[r.data.error]||'เข้าสู่ระบบไม่สำเร็จ';}
+ if(r.ok){await loadState();}else $('#loginMsg').textContent={network:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่',invalid:'รหัสไม่ถูกต้อง',expired:'รหัสหมดอายุ ขอรหัสใหม่',locked:'ใส่ผิดหลายครั้ง ขอรหัสใหม่'}[r.data.error]||'เข้าสู่ระบบไม่สำเร็จ';}
 async function logout(){await api('/api/auth/logout',{method:'POST'});location.reload();}
 const $=s=>document.querySelector(s);
 const today=new Date('2026-11-10');
@@ -435,7 +445,7 @@ async function sendMsg(t){t=(t||$('#chatIn').value).trim();if(!t||chatBusy)retur
  const r=await api('/api/chat',{method:'POST',body:JSON.stringify({text:t})});chatBusy=false;
  const th=$('#thinking');
  if(!r.ok){if(th)th.remove();$('#chatIn').value=t;toast(errMsg(r));return;}
- if(r.data.ok===false){if(th)th.innerHTML=bub(esc(r.data.reply),0);$('#chatIn').value=t;$('#msgs').scrollTop=1e9;return;}
+ if(r.data.ok===false){if(th){th.innerHTML=bub(esc(r.data.reply),0);th.removeAttribute('id');}$('#chatIn').value=t;$('#msgs').scrollTop=1e9;return;}
  await loadState();}
 const myDocs=[];let extraDocs=[];const ICONS={resume:'📄',tr:'🎓',port:'🗂️',cover:'✉️',id:'🪪'};
 const need={};
@@ -533,6 +543,6 @@ async function aiSend(text){if(aiBusy)return;text=(text||$('#aiIn').value).trim(
 if(location.hash==='#ai')$('#aiPanel').classList.add('show');
 $('#aiSugg').innerHTML=SUGG.map(s=>`<span onclick="aiSend(this.textContent)">${s}</span>`).join('');
 aiWelcome();
-loadState().then(ok=>{if(!ok)showLogin();});
+boot();
 </script>
 </body></html>
