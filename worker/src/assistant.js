@@ -2,7 +2,7 @@ import { getOverview, addApplication, updateApplicationStatus, setTask, addRemin
 import { systemPrompt } from './prompt.js';
 
 const STATUS = ['Saved', 'Applied', 'Interview', 'Offer', 'Closed'];
-import { STAT_TH } from './cards.js';
+import { STAT_TH, applicationCard, reminderSetCard } from './cards.js';
 export const FALLBACK_REPLY = 'ขอโทษนะ ตอนนี้พี่ตอบไม่ได้ ลองใหม่อีกครั้งนะ';
 const MAX_TURNS = 5, HISTORY = 20;
 
@@ -43,16 +43,24 @@ async function gemini(env, contents) {
   return c;
 }
 
-async function saveMessage(env, userId, channel, role, content) {
-  await env.DB.prepare('INSERT INTO messages (id,user_id,channel,role,content,created_at) VALUES (?,?,?,?,?,?)')
-    .bind(crypto.randomUUID(), userId, channel, role, content, new Date().toISOString()).run();
+export async function saveMessage(env, userId, channel, role, content, cards = null) {
+  await env.DB.prepare('INSERT INTO messages (id,user_id,channel,role,content,created_at,cards_json) VALUES (?,?,?,?,?,?,?)')
+    .bind(crypto.randomUUID(), userId, channel, role, content, new Date().toISOString(), cards && cards.length ? JSON.stringify(cards) : null).run();
+}
+
+function cardFor(name, out, args) {
+  if (!out?.ok) return null;
+  if (name === 'add_application') return applicationCard({ ...out, truth_level: args.from_document ? 'AI_EXTRACTED' : 'USER_REPORTED' }, { undo: true });
+  if (name === 'update_application_status') return applicationCard({ ...out, truth_level: 'USER_REPORTED' });
+  if (name === 'add_reminder') return reminderSetCard(out);
+  return null;
 }
 
 export async function runAssistant(env, userId, channel, text) {
   try {
     const past = (await env.DB.prepare('SELECT role, content FROM messages WHERE user_id=? ORDER BY created_at DESC, rowid DESC LIMIT ?').bind(userId, HISTORY).all()).results.reverse();
     const contents = [...past.map(m => ({ role: m.role, parts: [{ text: m.content }] })), { role: 'user', parts: [{ text }] }];
-    const actions = [];
+    const actions = [], cards = [];
     for (let i = 0; i < MAX_TURNS; i++) {
       const c = await gemini(env, contents);
       contents.push(c);
@@ -60,8 +68,8 @@ export async function runAssistant(env, userId, channel, text) {
       if (!calls.length) {
         const reply = (c.parts || []).filter(p => p.text && !p.thought).map(p => p.text).join('').trim() || FALLBACK_REPLY;
         await saveMessage(env, userId, channel, 'user', text);
-        await saveMessage(env, userId, channel, 'model', reply);
-        return { reply, actions };
+        await saveMessage(env, userId, channel, 'model', reply, cards);
+        return { reply, actions, cards };
       }
       const resp = [];
       for (const { functionCall: f } of calls) {
@@ -69,13 +77,14 @@ export async function runAssistant(env, userId, channel, text) {
         try { out = toolImpl[f.name] ? await toolImpl[f.name](env, userId, f.args || {}, channel) : { ok: false, error: 'unknown_tool' }; }
         catch (e) { out = { ok: false, error: e.message }; }
         if (f.name !== 'get_overview') actions.push(f.name);
+        const card = cardFor(f.name, out, f.args || {}); if (card) cards.push(card);
         resp.push({ functionResponse: { name: f.name, response: out, ...(f.id ? { id: f.id } : {}) } });
       }
       contents.push({ role: 'user', parts: resp });
     }
-    return { reply: FALLBACK_REPLY, actions };
+    return { reply: FALLBACK_REPLY, actions, cards: [] };
   } catch (e) {
     console.error('assistant error', e.message);
-    return { reply: FALLBACK_REPLY, actions: [] };
+    return { reply: FALLBACK_REPLY, actions: [], cards: [] };
   }
 }

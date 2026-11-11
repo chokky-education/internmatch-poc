@@ -50,6 +50,27 @@ describe('delete_reminder tool', () => {
   });
 });
 
+describe('cards from tools', () => {
+  it('add_application returns one application card with undo and saves it in cards_json', async () => {
+    queue = [fc('add_application', { company: 'บริษัท Z', role: 'Data Intern', status: 'Applied' }), text('บันทึกแล้ว')];
+    const r = await runAssistant(env, U, 'line', 'สมัครบริษัท Z แล้ว');
+    expect(r.cards.length).toBe(1);
+    expect(r.cards[0].actions.map(a => a.data.split(':')[0])).toEqual(['app_status', 'app_undo']);
+    const row = await env.DB.prepare("SELECT cards_json FROM messages WHERE user_id=? AND role='model'").bind(U).first();
+    expect(JSON.parse(row.cards_json)[0].title).toBe('บริษัท Z');
+  });
+  it('a failed tool (duplicate) produces no card', async () => {
+    queue = [fc('add_application', { company: 'บริษัท B', status: 'Applied' }), text('มีอยู่แล้ว')];
+    const r = await runAssistant(env, U, 'line', 'สมัครบริษัท B แล้ว');
+    expect(r.cards).toEqual([]);
+  });
+  it('add_reminder returns a reminder card with a delete button', async () => {
+    queue = [fc('add_reminder', { text: 'ส่งเอกสาร', datetime: '2026-11-19T20:00' }), text('ตั้งแล้ว')];
+    const r = await runAssistant(env, U, 'web', 'เตือนส่งเอกสาร');
+    expect(r.cards[0].actions[0].data.startsWith('rem_delete:')).toBe(true);
+  });
+});
+
 describe('runAssistant', () => {
   it('executes add_application as USER_REPORTED, returns the reply and persists both messages with the channel', async () => {
     queue = [fc('add_application', { company: 'บริษัท Z', role: 'Data Intern', status: 'Applied' }), text('บันทึกให้แล้วครับ')];

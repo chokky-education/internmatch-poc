@@ -89,6 +89,15 @@ describe('web api', () => {
     expect(JSON.parse(a.change_json).op).toBe('delete');
     expect((await api('/api/reminders/nope', { method: 'DELETE' })).status).toBe(404);
   });
+  it('GET /api/state messages include cards saved from the other channel', async () => {
+    const { saveMessage } = await import('../src/assistant.js');
+    await saveMessage(env, U, 'line', 'model', 'บันทึกแล้ว', [{ kind: 'application', title: 'SCB', rows: [], actions: [] }]);
+    await saveMessage(env, U, 'line', 'user', 'ธรรมดา');
+    const m = (await (await api('/api/state')).json()).messages;
+    expect(m[0].cards[0].title).toBe('SCB');
+    expect(m[1].cards).toEqual([]);
+    expect(m[0].cards_json).toBeUndefined();
+  });
   it('POST /api/reminders stores a Bangkok-time reminder', async () => {
     const r = await post('/api/reminders', { text: 'สัมภาษณ์', datetime: '2026-11-19T20:00' });
     expect((await r.json()).due_at).toBe('2026-11-19T13:00:00.000Z');

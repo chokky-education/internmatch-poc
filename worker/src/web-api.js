@@ -10,13 +10,13 @@ const fail = (J, error) => J({ ok: false, error }, ERR[error] || 502);
 export async function state(env, user) {
   const [o, msgs, pend] = await Promise.all([
     getOverview(env, user.id),
-    env.DB.prepare('SELECT channel, role, content, created_at FROM messages WHERE user_id=? ORDER BY created_at DESC, rowid DESC LIMIT 50').bind(user.id).all(),
+    env.DB.prepare('SELECT channel, role, content, created_at, cards_json FROM messages WHERE user_id=? ORDER BY created_at DESC, rowid DESC LIMIT 50').bind(user.id).all(),
     env.DB.prepare("SELECT id, doc_type, fields_json, channel, created_at FROM extractions WHERE user_id=? AND status='pending' ORDER BY created_at").bind(user.id).all(),
   ]);
   const now = Date.now();
   return {
     ...o,
-    messages: msgs.results.reverse(),
+    messages: msgs.results.reverse().map(({ cards_json, ...m }) => ({ ...m, cards: cards_json ? JSON.parse(cards_json) : [] })),
     pending_extractions: pend.results.map(e => ({ id: e.id, doc_type: e.doc_type, fields: JSON.parse(e.fields_json), channel: e.channel })),
     unseen_reminders: o.reminders.filter(r => !r.seen_at && Date.parse(r.due_at) <= now && (!r.delivery || r.delivery === 'failed')),
     user: { email: user.email, line_linked: !!user.line_user_id },
