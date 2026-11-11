@@ -20,10 +20,12 @@ export async function verifySignature(body, signature, secret) {
   return diff === 0;
 }
 
-export async function replyWithCards(env, replyToken, text, cards = []) {
+// quoteToken: LINE shows the bot's text as a reply quoting the user's message.
+const quoted = (text, quoteToken) => (quoteToken ? { ...msg(text), quoteToken } : msg(text));
+export async function replyWithCards(env, replyToken, text, cards = [], quoteToken) {
   const flex = cards.slice(0, 4).map(toFlex);
-  const ok = await reply(env, replyToken, [msg(text), ...flex]);
-  if (!ok && flex.length) return reply(env, replyToken, [msg(text)]);
+  const ok = await reply(env, replyToken, [quoted(text, quoteToken), ...flex]);
+  if (!ok && flex.length) return reply(env, replyToken, [quoted(text, quoteToken)]);
   return ok;
 }
 
@@ -31,6 +33,14 @@ const authHeaders = env => ({ Authorization: 'Bearer ' + env.LINE_CHANNEL_ACCESS
 export async function reply(env, replyToken, messages) {
   const r = await fetch('https://api.line.me/v2/bot/message/reply', { method: 'POST', headers: authHeaders(env), body: JSON.stringify({ replyToken, messages }) });
   return r.ok;
+}
+// Three-dot "typing" animation in the 1:1 chat until our reply arrives (or the timeout passes).
+// Best effort: failure must never block the reply.
+export async function startLoading(env, chatId, seconds = 20) {
+  try {
+    const r = await fetch('https://api.line.me/v2/bot/chat/loading/start', { method: 'POST', headers: authHeaders(env), body: JSON.stringify({ chatId, loadingSeconds: seconds }) });
+    return r.ok;
+  } catch { return false; }
 }
 export async function push(env, lineUserId, messages) {
   try {
@@ -110,10 +120,11 @@ export async function handleEvent(env, e) {
     if (!user) return await handleUnlinked(env, e, lineUserId);
     if (e.type === 'follow') return await reply(env, e.replyToken, [msg('ยินดีต้อนรับกลับมานะ 👋 ถามหรือสั่งงานพี่ได้เลย')]);
     if (e.type === 'postback') return await handlePostback(env, e, user);
+    if (e.type === 'message' && e.source?.type === 'user') await startLoading(env, lineUserId, e.message?.type === 'image' ? 30 : 20);
     if (e.message?.type === 'image') return await readLineImage(env, e.replyToken, user, e.message.id);
     if (e.message?.type === 'text') {
       const r = await runAssistant(env, user.id, 'line', e.message.text);
-      return await replyWithCards(env, e.replyToken, r.reply, r.cards);
+      return await replyWithCards(env, e.replyToken, r.reply, r.cards, e.message.quoteToken);
     }
     return await reply(env, e.replyToken, [msg('ตอนนี้พี่อ่านได้เฉพาะข้อความและรูปนะ')]);
   } catch (err) {
