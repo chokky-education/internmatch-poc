@@ -7,7 +7,7 @@
 
 ## 1. ค้นหาบริบทก่อนเริ่มทำงาน (Find Context First)
 
-1. อ่าน `INDEX.md` เพื่อดูแผนผังไฟล์และสถาปัตยกรรมภาพรวม
+1. อ่าน `docs/STATUS.md` ก่อน: งานอยู่ตรงไหน, อะไรค้างอยู่, ทำอะไรต่อ แล้วอ่าน `INDEX.md` เพื่อดูแผนผังไฟล์และสถาปัตยกรรมภาพรวม
 2. **ค้นหาด้วยคำสั่ง Index ก่อนอ่านไฟล์ดิบเสมอ:**
    - ค้นหาตามเนื้อหา: `node scripts/index.mjs search "คำค้น" [--kind doc|spec|code]`
    - ค้นหารายชื่อไฟล์: `node scripts/index.mjs files "ชื่อไฟล์" [--path src/]`
@@ -72,9 +72,10 @@
 0. **รันเทสต์ backend:** `cd worker && npx vitest run` (ต้องผ่านทั้งหมด)
 1. **ตรวจสอบความถูกต้องของ Syntax:**  
    `node -e "const h=require('fs').readFileSync('index.html','utf8');[...h.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)].forEach(m=>new Function(m[1]));console.log('OK')"`
-2. **รีเฟรชระบบ Index:**  
+2. **อัปเดต Index และ Handoff:**  
    `node scripts/index.mjs refresh`  
-   ตรวจสอบให้แน่ใจว่าไฟล์ที่ถูกเพิ่มหรือแก้ไขถูกอัปเดตลง Index
+   - ถ้าเพิ่ม/ย้าย/ลบไฟล์หรือโมดูล ให้แก้ตาราง `INDEX.md` ด้วยมือ (สคริปต์ไม่เขียนทับไฟล์นี้แล้ว)  
+   - เขียน `docs/STATUS.md` ส่วน Now / In flight / Next ใหม่ และเพิ่ม 1 บรรทัดใน Log เพื่อให้ Agent ตัวถัดไปทำต่อได้ทันที
 3. **Commit และ Push ขึ้น GitHub:**  
    `git add . && git commit -m "คำอธิบายงาน" && git push origin main`
 4. **ตรวจสอบการ Deploy:**  
