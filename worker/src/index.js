@@ -1,5 +1,6 @@
 import { json, corsHeaders, readJson } from './http.js';
 import { handleApi } from './web-api.js';
+import { sendDueReminders } from './reminders.js';
 import { verifySignature, handleEvent } from './line.js';
 import { requestOtp, verifyOtp, createSession, sessionCookie, requireUser, destroySession } from './auth.js';
 
@@ -41,5 +42,5 @@ export default {
     }
     return J({ error: 'not_found' }, 404);
   },
-  async scheduled(evt, env, ctx) {},
+  async scheduled(evt, env, ctx) { ctx.waitUntil(sendDueReminders(env, new Date())); },
 };
