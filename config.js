@@ -1,2 +1,2 @@
 // Public config only. No secrets here. Set to your deployed Worker URL.
-window.IM_API = 'http://127.0.0.1:8787';
+window.IM_API = 'https://internmatch-api.entrace-space.workers.dev';

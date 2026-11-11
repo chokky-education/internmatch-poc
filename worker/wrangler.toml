@@ -11,7 +11,7 @@ WEB_ORIGIN = "https://chokky-education.github.io"
 [[d1_databases]]
 binding = "DB"
 database_name = "internmatch"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "0d13249e-0371-4bdf-9a90-433f8010bc18"
 migrations_dir = "migrations"
 
 [triggers]
