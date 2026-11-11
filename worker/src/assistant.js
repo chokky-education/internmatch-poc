@@ -2,7 +2,7 @@ import { getOverview, addApplication, updateApplicationStatus, setTask, addRemin
 import { systemPrompt } from './prompt.js';
 
 const STATUS = ['Saved', 'Applied', 'Interview', 'Offer', 'Closed'];
-const STAT_TH = { Saved: 'บันทึกไว้', Applied: 'สมัครแล้ว', Interview: 'สัมภาษณ์', Offer: 'ได้รับข้อเสนอ', Closed: 'ปิด/ไม่ผ่าน' };
+import { STAT_TH } from './cards.js';
 export const FALLBACK_REPLY = 'ขอโทษนะ ตอนนี้พี่ตอบไม่ได้ ลองใหม่อีกครั้งนะ';
 const MAX_TURNS = 5, HISTORY = 20;
 
