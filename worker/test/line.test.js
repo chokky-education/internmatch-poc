@@ -4,7 +4,7 @@ import { handleEvent, verifySignature } from '../src/line.js';
 import { seedDemo } from './fixtures.js';
 
 const LU = 'Uline1', USER = 'user-l';
-let realFetch, replies, geminiCalls, brevo, geminiQueue, paxaBody;
+let rejectFlex = false, realFetch, replies, geminiCalls, brevo, geminiQueue, paxaBody;
 const text = t => ({ candidates: [{ content: { role: 'model', parts: [{ text: t }] } }] });
 const ev = (over, extra = {}) => ({ type: 'message', webhookEventId: crypto.randomUUID(), replyToken: 'rt-' + Math.random(), source: { userId: LU }, message: { type: 'text', id: 'm1', text: 'หวัดดี' }, ...over, ...extra });
 const lastReply = () => replies.at(-1).messages.map(m => m.text).join('\n');
@@ -20,12 +20,12 @@ async function linkUser() {
 beforeEach(async () => {
   await env.DB.exec('DELETE FROM users; DELETE FROM sessions; DELETE FROM otps; DELETE FROM applications; DELETE FROM tasks; DELETE FROM documents; DELETE FROM reminders; DELETE FROM messages; DELETE FROM extractions; DELETE FROM audit_log; DELETE FROM line_events;');
   env.GEMINI_API_KEY = 'g'; env.PAXA_API_KEY = 'p';
-  replies = []; geminiCalls = 0; brevo = []; geminiQueue = [text('ตอบแล้ว')];
+  rejectFlex = false; replies = []; geminiCalls = 0; brevo = []; geminiQueue = [text('ตอบแล้ว')];
   paxaBody = { status: 'complete', fields: { company: 'ไทยดาต้า', role: 'Intern', deadline: '2026-11-30' } };
   realFetch = globalThis.fetch;
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (u, init) => {
     const s = String(u);
-    if (s.includes('api.line.me/v2/bot/message/reply')) { replies.push(JSON.parse(init.body)); return new Response('{}', { status: 200 }); }
+    if (s.includes('api.line.me/v2/bot/message/reply')) { const b = JSON.parse(init.body); replies.push(b); return new Response('{}', { status: rejectFlex && JSON.stringify(b).includes('"flex"') ? 400 : 200 }); }
     if (s.includes('api-data.line.me')) return new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
     if (s.includes('generativelanguage')) { geminiCalls++; return new Response(JSON.stringify(geminiQueue.shift() || text('ok')), { status: 200 }); }
     if (s.includes('paxalabs')) return new Response(JSON.stringify(paxaBody), { status: 200 });
@@ -91,18 +91,44 @@ describe('linked users', () => {
     await handleEvent(env, ev({ message: { type: 'text', id: 'm', text: 'สรุปให้หน่อย' } }));
     expect(lastReply()).toBe('ตอบแล้ว');
   });
-  it('an image is read by OCR and the reply has the AI warning and confirm/discard quick replies', async () => {
+  it('an image is read by OCR and replies with a flex card holding the AI badge and confirm/discard buttons', async () => {
     await linkUser();
     await handleEvent(env, ev({ message: { type: 'image', id: 'img1' } }));
-    expect(lastReply()).toContain('🤖 อ่านโดย AI');
-    const items = replies.at(-1).messages.at(-1).quickReply.items.map(i => i.action.data);
-    expect(items.some(d => d.startsWith('confirm:'))).toBe(true);
-    expect(items.some(d => d.startsWith('discard:'))).toBe(true);
+    const flex = replies.at(-1).messages.find(m => m.type === 'flex');
+    expect(JSON.stringify(flex)).toContain('🤖 อ่านโดย AI');
+    const data = flex.contents.footer.contents.map(b => b.action.data);
+    expect(data.map(d => d.split(':')[0])).toEqual(['ext_confirm', 'ext_discard']);
+    expect(replies.at(-1).messages.some(m => m.quickReply)).toBe(false);
+  });
+  it('a text that makes the bot save an application replies with text plus a flex card with undo', async () => {
+    await linkUser();
+    geminiQueue = [{ candidates: [{ content: { role: 'model', parts: [{ functionCall: { name: 'add_application', args: { company: 'Agoda', status: 'Applied' } } }] } }] }, text('บันทึกแล้ว')];
+    await handleEvent(env, ev({ message: { type: 'text', id: 'm', text: 'สมัคร Agoda แล้ว' } }));
+    const msgs = replies.at(-1).messages;
+    expect(msgs[0]).toMatchObject({ type: 'text', text: 'บันทึกแล้ว' });
+    expect(msgs[1].type).toBe('flex');
+    expect(msgs[1].contents.footer.contents.map(b => b.action.data.split(':')[0])).toEqual(['app_status', 'app_undo']);
+  });
+  it('postback app_status updates the DB and replies with text and a new flex card', async () => {
+    await linkUser();
+    const { addApplication } = await import('../src/store.js');
+    const a = await addApplication(env, USER, { company: 'SCB', role: 'DI', status: 'Applied', truth_level: 'USER_REPORTED' }, 'line');
+    await handleEvent(env, ev({ type: 'postback', message: undefined, postback: { data: `app_status:${a.id}:Interview` } }));
+    expect((await env.DB.prepare('SELECT status FROM applications WHERE id=?').bind(a.id).first()).status).toBe('Interview');
+    expect(replies.at(-1).messages.map(m => m.type)).toEqual(['text', 'flex']);
+  });
+  it('when LINE rejects the flex message the reply is retried as text only', async () => {
+    await linkUser();
+    rejectFlex = true;
+    geminiQueue = [{ candidates: [{ content: { role: 'model', parts: [{ functionCall: { name: 'add_application', args: { company: 'Agoda', status: 'Applied' } } }] } }] }, text('บันทึกแล้ว')];
+    await handleEvent(env, ev({ message: { type: 'text', id: 'm', text: 'สมัคร Agoda แล้ว' } }));
+    expect(replies.length).toBe(2);
+    expect(replies.at(-1).messages).toEqual([{ type: 'text', text: 'บันทึกแล้ว' }]);
   });
   it('postback confirm creates the application with channel line', async () => {
     await linkUser();
     await handleEvent(env, ev({ message: { type: 'image', id: 'img1' } }));
-    const confirm = replies.at(-1).messages.at(-1).quickReply.items.map(i => i.action.data).find(d => d.startsWith('confirm:'));
+    const confirm = replies.at(-1).messages.find(m => m.type === 'flex').contents.footer.contents.map(b => b.action.data).find(d => d.startsWith('ext_confirm:'));
     await handleEvent(env, ev({ type: 'postback', message: undefined, postback: { data: confirm } }));
     const a = await env.DB.prepare("SELECT * FROM applications WHERE user_id=? AND company='ไทยดาต้า'").bind(USER).first();
     expect(a.truth_level).toBe('AI_EXTRACTED');

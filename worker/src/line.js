@@ -1,6 +1,9 @@
 import { requestOtp, verifyOtp } from './auth.js';
 import { runAssistant } from './assistant.js';
-import { extractDocument, confirmExtraction, discardExtraction, formatExtraction } from './ocr.js';
+import { extractDocument } from './ocr.js';
+import { runCardAction } from './actions.js';
+import { extractionCard } from './cards.js';
+import { toFlex } from './flex.js';
 
 const MAX_TEXT = 4900;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -13,6 +16,13 @@ export async function verifySignature(body, signature, secret) {
   if (expected.length !== signature.length) return false;
   let diff = 0; for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
   return diff === 0;
+}
+
+export async function replyWithCards(env, replyToken, text, cards = []) {
+  const flex = cards.slice(0, 4).map(toFlex);
+  const ok = await reply(env, replyToken, [msg(text), ...flex]);
+  if (!ok && flex.length) return reply(env, replyToken, [msg(text)]);
+  return ok;
 }
 
 const authHeaders = env => ({ Authorization: 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN, 'Content-Type': 'application/json' });
@@ -54,21 +64,12 @@ async function handleImage(env, e, user) {
   if (!r.ok) return reply(env, e.replyToken, [msg('โหลดรูปไม่สำเร็จ ลองส่งใหม่อีกครั้งนะ')]);
   const out = await extractDocument(env, user.id, 'line', { bytes: await r.arrayBuffer(), mime: r.headers.get('Content-Type') || 'image/jpeg' });
   if (!out.ok) return reply(env, e.replyToken, [msg('อ่านรูปไม่สำเร็จ ลองส่งใหม่ หรือพิมพ์ข้อมูลมาให้พี่ได้เลย')]);
-  const id = out.extraction.id;
-  return reply(env, e.replyToken, [{ ...msg(formatExtraction(out.extraction)), quickReply: { items: [
-    { type: 'action', action: { type: 'postback', label: '✅ ยืนยันบันทึก', data: `confirm:${id}`, displayText: 'ยืนยันบันทึก' } },
-    { type: 'action', action: { type: 'postback', label: '✖ ไม่ใช่', data: `discard:${id}`, displayText: 'ไม่ใช่' } },
-  ] } }]);
+  return replyWithCards(env, e.replyToken, '📸 อ่านเอกสารแล้ว ตรวจข้อมูลในการ์ดก่อนยืนยันนะ', [extractionCard(out.extraction)]);
 }
 
 async function handlePostback(env, e, user) {
-  const [op, id] = String(e.postback?.data || '').split(':');
-  if (op === 'confirm') {
-    const r = await confirmExtraction(env, user.id, id, 'line');
-    const t = r.ok ? 'บันทึกแล้ว ✅ ดูบนบอร์ดได้เลย (ป้าย 🤖 AI อ่าน)' : r.error === 'already_confirmed' ? 'อันนี้บันทึกไปแล้วนะ' : r.error === 'duplicate' ? 'มีบริษัทนี้อยู่ในบอร์ดแล้วนะ' : 'บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะ';
-    return reply(env, e.replyToken, [msg(t)]);
-  }
-  if (op === 'discard') { await discardExtraction(env, user.id, id); return reply(env, e.replyToken, [msg('โอเค ไม่บันทึกนะ')]); }
+  const r = await runCardAction(env, user.id, 'line', String(e.postback?.data || ''));
+  return replyWithCards(env, e.replyToken, r.reply, r.cards);
 }
 
 export async function handleEvent(env, e) {
@@ -87,7 +88,7 @@ export async function handleEvent(env, e) {
     if (e.message?.type === 'image') return await handleImage(env, e, user);
     if (e.message?.type === 'text') {
       const r = await runAssistant(env, user.id, 'line', e.message.text);
-      return await reply(env, e.replyToken, [msg(r.reply)]);
+      return await replyWithCards(env, e.replyToken, r.reply, r.cards);
     }
     return await reply(env, e.replyToken, [msg('ตอนนี้พี่อ่านได้เฉพาะข้อความและรูปนะ')]);
   } catch (err) {
