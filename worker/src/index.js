@@ -1,5 +1,6 @@
 import { json, corsHeaders, readJson } from './http.js';
 import { handleApi } from './web-api.js';
+import { verifySignature, handleEvent } from './line.js';
 import { requestOtp, verifyOtp, createSession, sessionCookie, requireUser, destroySession } from './auth.js';
 
 export default {
@@ -25,6 +26,13 @@ export default {
     if (p === '/api/me') {
       const u = await requireUser(req, env);
       return u ? J({ email: u.email, line_linked: !!u.line_user_id }) : J({ error: 'unauthorized' }, 401);
+    }
+    if (p === '/line/webhook' && req.method === 'POST') {
+      const body = await req.text();
+      if (!(await verifySignature(body, req.headers.get('x-line-signature'), env.LINE_CHANNEL_SECRET))) return J({ error: 'bad_signature' }, 401);
+      let events = []; try { events = JSON.parse(body).events || []; } catch {}
+      ctx.waitUntil(Promise.all(events.map(e => handleEvent(env, e))));
+      return J({ ok: true });
     }
     if (p.startsWith('/api/')) {
       const u = await requireUser(req, env);
