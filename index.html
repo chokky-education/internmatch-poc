@@ -408,6 +408,8 @@ async function confirmExt(id){const r=await api('/api/extractions/'+id+'/confirm
 async function discardExt(id){const r=await api('/api/extractions/'+id+'/discard',{method:'POST'});if(!r.ok)toast(r.data&&r.data.error==='already_confirmed'?'อันนี้บันทึกลงบอร์ดไปแล้ว ย้ายไป “ปิด/ไม่ผ่าน” บนบอร์ดได้':errMsg(r));if(lastExt&&lastExt.id===id){lastExt=null;$('#ocrOut').innerHTML='<p class="sub" style="margin:0">ผลลัพธ์จะแสดงที่นี่</p>';}await loadState();}
 function renderOcrPending(){const p=serverState?serverState.pending_extractions:[],el=$('#ocrPending');if(!el)return;el.style.display=p.length?'block':'none';
  el.innerHTML=p.length?'<h3 style="margin-top:0">🤖 รอคุณยืนยัน</h3>'+p.map(x=>`<div class="it" style="display:block"><b>${esc(x.fields.company||x.fields.program||x.fields.student_name||x.doc_type)}</b> <small style="color:var(--mute)">· จาก ${x.channel==='line'?'LINE':'เว็บ'}</small><div class="row" style="margin-top:6px"><button class="btn sm" onclick="confirmExt('${x.id}')">ยืนยัน</button><button class="btn sm ghost" onclick="discardExt('${x.id}')">ไม่ใช่</button></div></div>`).join(''):'';}
+const TYPING='<span class="typing" role="status" aria-label="พี่ฝึกงานกำลังพิมพ์"><i></i><i></i><i></i></span>';
+const rq=q=>q?`<span class="rq"><b>ตอบกลับคุณ</b>${esc(q).slice(0,120)}</span>`:'';
 const bub=(t,me,who)=>`<div style="align-self:${me?'flex-end':'flex-start'};max-width:82%">${who?`<small style="color:#fff">${who}</small>`:''}<div style="background:${me?'#9be15d':'#fff'};border-radius:16px;padding:9px 12px;font-size:13px;line-height:1.5">${t}</div></div>`;
 const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
 const ACT_RE=/^[a-z_]+:[0-9A-Za-z-]+(:[A-Za-z]+)?$/;
@@ -420,15 +422,15 @@ async function cardAct(data){if(!ACT_RE.test(data||''))return;const r=await api(
 const MENU_CHIPS=[['menu:today','🏠 วันนี้ต้องทำอะไร'],['menu:apps','📋 สถานะการสมัคร'],['menu:checklist','🎓 เช็กลิสต์คณะ'],['menu:reminders','🔔 การเตือนของฉัน']];
 const QUICK=['เหลืออะไรที่ยังไม่ส่งบ้าง','สมัคร SCB ตำแหน่ง Data intern แล้ว','สรุปให้หน่อยว่าตอนนี้ต้องทำอะไรบ้าง'];
 function renderChat(){const el=$('#msgs');if(!el)return;const m=serverState?serverState.messages:[];
- el.innerHTML=m.length?m.map(x=>bub(esc(x.content).replace(/\n/g,'<br>'),x.role==='user',x.channel==='line'?'💬 LINE':'🌐 เว็บ')+(x.cards||[]).map(renderCard).join('')).join(''):'<p style="color:#fff;text-align:center">ยังไม่มีบทสนทนา ลองทักพี่ฝึกงานได้เลย</p>';
+ el.innerHTML=m.length?m.map((x,i)=>bub((x.role!=='user'&&m[i-1]&&m[i-1].role==='user'?rq(m[i-1].content):'')+esc(x.content).replace(/\n/g,'<br>'),x.role==='user',x.channel==='line'?'💬 LINE':'🌐 เว็บ')+(x.cards||[]).map(renderCard).join('')).join(''):'<p style="color:#fff;text-align:center">ยังไม่มีบทสนทนา ลองทักพี่ฝึกงานได้เลย</p>';
  $('#quick').innerHTML=MENU_CHIPS.map(([d,l])=>`<span onclick="cardAct('${d}')">${l}</span>`).join('')+QUICK.map(q=>`<span onclick="sendMsg(this.textContent)">${q}</span>`).join('');el.scrollTop=1e9;}
 let chatBusy=false;
 async function sendMsg(t){t=(t||$('#chatIn').value).trim();if(!t||chatBusy)return;chatBusy=true;$('#chatIn').value='';
- $('#msgs').insertAdjacentHTML('beforeend',bub(esc(t),1,'🌐 เว็บ')+'<div id="thinking" style="display:contents">'+bub('<i>กำลังคิด…</i>',0)+'</div>');$('#msgs').scrollTop=1e9;
+ $('#msgs').insertAdjacentHTML('beforeend',bub(esc(t),1,'🌐 เว็บ')+'<div id="thinking" style="display:contents">'+bub(TYPING,0)+'</div>');$('#msgs').scrollTop=1e9;
  const r=await api('/api/chat',{method:'POST',body:JSON.stringify({text:t})});chatBusy=false;
  const th=$('#thinking');
  if(!r.ok){if(th)th.remove();$('#chatIn').value=t;toast(errMsg(r));return;}
- if(r.data.ok===false){if(th){th.innerHTML=bub(esc(r.data.reply),0);th.removeAttribute('id');}$('#chatIn').value=t;$('#msgs').scrollTop=1e9;return;}
+ if(r.data.ok===false){if(th){th.innerHTML=bub(rq(t)+esc(r.data.reply),0);th.removeAttribute('id');}$('#chatIn').value=t;$('#msgs').scrollTop=1e9;return;}
  await loadState();}
 const myDocs=[];let extraDocs=[];const ICONS={resume:'📄',tr:'🎓',port:'🗂️',cover:'✉️',id:'🪪'};
 const need={};
@@ -476,6 +478,10 @@ render();
 .am.t{align-self:center;background:var(--okbg);color:var(--ok);font-size:12px;padding:4px 10px;border-radius:99px}
 .am.e{align-self:center;background:#fde8e8;color:var(--bad);font-size:12px}
 .am ul{margin:4px 0;padding-left:18px}.am p{margin:4px 0}
+.typing{display:inline-flex;gap:5px;align-items:center;padding:4px 2px}.typing i{width:8px;height:8px;border-radius:50%;background:#4f7cff;animation:tdot 1.2s infinite ease-in-out}.typing i:nth-child(2){background:#6f5cff;animation-delay:.15s}.typing i:nth-child(3){background:#22c55e;animation-delay:.3s}
+@keyframes tdot{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-5px);opacity:1}}
+@media (prefers-reduced-motion:reduce){.typing i{animation:none;opacity:.8}}
+.rq{display:block;border-left:3px solid var(--pri,#4f7cff);background:rgba(0,0,0,.05);border-radius:6px;padding:4px 8px;margin:0 0 6px;font-size:12px;color:#666;max-height:3.2em;overflow:hidden;text-overflow:ellipsis}.rq b{display:block;font-size:11px;color:#333}
 #aiSugg{display:flex;gap:6px;overflow-x:auto;padding:8px 10px;border-top:1px solid var(--line)}
 #aiSugg span{white-space:nowrap;font-size:12px;padding:5px 10px;border:1px solid var(--line);border-radius:99px;cursor:pointer;background:#fff}
 #aiBar{display:flex;gap:6px;padding:10px;border-top:1px solid var(--line);align-items:flex-end}
@@ -506,11 +512,11 @@ function aiToggle(){$('#aiPanel').classList.toggle('show');if($('#aiPanel').clas
 function aiWelcome(){aiAdd('b',aiMd('สวัสดี 👋 พี่ฝึกงานเอง\n\nถามเรื่องฝึกงานหรือสั่งงานได้เลย เช่น\n- "บริษัท B เรียกสัมภาษณ์ 20 พ.ย."\n- "เหลืออะไรที่ยังไม่ส่งบ้าง"\n- "ช่วยเขียนอีเมลตามผลบริษัท F"\n\nบทสนทนานี้ตรงกับที่คุยใน LINE ทุกอย่าง'));}
 const TOOL_LABEL={add_application:'📋 เพิ่มใบสมัคร',update_application_status:'🔄 อัปเดตสถานะ',add_reminder:'⏰ ตั้งเตือน',set_university_task:'🎓 อัปเดตเช็กลิสต์คณะ'};
 async function aiSend(text){if(aiBusy)return;text=(text||$('#aiIn').value).trim();if(!text)return;aiBusy=true;$('#aiGo').disabled=true;$('#aiIn').value='';
- aiAdd('u',aiMd(text));const typing=aiAdd('b','<i style="color:var(--mute)">กำลังคิด…</i>');
+ aiAdd('u',aiMd(text));const typing=aiAdd('b',TYPING);
  try{const r=await api('/api/chat',{method:'POST',body:JSON.stringify({text})});typing.remove();
   if(!r.ok){aiAdd('e','❌ '+errMsg(r));$('#aiIn').value=text;}
   else if(r.data.ok===false){aiAdd('e','❌ '+esc(r.data.reply));$('#aiIn').value=text;}
-  else{(r.data.actions||[]).forEach(a=>aiAdd('t',TOOL_LABEL[a]||a));aiAdd('b',aiMd(r.data.reply||'(ไม่มีคำตอบ)')+(r.data.cards||[]).map(renderCard).join(''));await loadState();}}
+  else{(r.data.actions||[]).forEach(a=>aiAdd('t',TOOL_LABEL[a]||a));aiAdd('b',rq(text)+aiMd(r.data.reply||'(ไม่มีคำตอบ)')+(r.data.cards||[]).map(renderCard).join(''));await loadState();}}
  catch(e){typing.remove();aiAdd('e','❌ '+e.message);}
  finally{aiBusy=false;$('#aiGo').disabled=false;$('#aiIn').focus();}}
 if(location.hash==='#ai')$('#aiPanel').classList.add('show');
