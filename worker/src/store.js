@@ -54,8 +54,8 @@ export async function addApplication(env, userId, a, channel) {
   return { ok: true, id };
 }
 
-export async function updateApplicationStatus(env, userId, { company, status, next_step }, channel) {
-  const x = await findApp(env, userId, company);
+export async function updateApplicationStatus(env, userId, { company, status, next_step, id }, channel) {
+  const x = id ? await env.DB.prepare('SELECT * FROM applications WHERE id=? AND user_id=?').bind(id, userId).first() : await findApp(env, userId, company);
   if (!x) return { ok: false, error: 'not_found' };
   if (x.truth_level === 'SYSTEM_VERIFIED') return { ok: false, error: 'system_verified' };
   const hist = JSON.parse(x.history_json); hist.push([thDate(), `อัปเดตผ่าน ${channel === 'line' ? 'LINE' : 'เว็บ'} → ${status}`]);
@@ -72,6 +72,19 @@ export async function setTask(env, userId, { task_keyword, done }, channel) {
   await env.DB.prepare('UPDATE tasks SET done=? WHERE id=?').bind(done ? 1 : 0, t.id).run();
   await audit(env, userId, 'task', t.id, { op: 'done', done: !!done }, channel, 'USER_REPORTED');
   return { ok: true, task: t.title, done: !!done };
+}
+
+export async function setTaskById(env, userId, id, done, channel) {
+  const t = await env.DB.prepare('SELECT * FROM tasks WHERE id=? AND user_id=?').bind(id, userId).first();
+  if (!t) return { ok: false, error: 'not_found' };
+  await env.DB.prepare('UPDATE tasks SET done=? WHERE id=?').bind(done ? 1 : 0, id).run();
+  await audit(env, userId, 'task', id, { op: 'done', done: !!done }, channel, 'USER_REPORTED');
+  return { ok: true };
+}
+
+export async function markReminderSeen(env, userId, id) {
+  const r = await env.DB.prepare('UPDATE reminders SET seen_at=? WHERE id=? AND user_id=?').bind(nowIso(), id, userId).run();
+  return { ok: r.meta.changes > 0 };
 }
 
 export async function addReminder(env, userId, { text, datetime }, channel) {

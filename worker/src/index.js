@@ -1,4 +1,5 @@
 import { json, corsHeaders, readJson } from './http.js';
+import { handleApi } from './web-api.js';
 import { requestOtp, verifyOtp, createSession, sessionCookie, requireUser, destroySession } from './auth.js';
 
 export default {
@@ -24,6 +25,11 @@ export default {
     if (p === '/api/me') {
       const u = await requireUser(req, env);
       return u ? J({ email: u.email, line_linked: !!u.line_user_id }) : J({ error: 'unauthorized' }, 401);
+    }
+    if (p.startsWith('/api/')) {
+      const u = await requireUser(req, env);
+      if (!u) return J({ error: 'unauthorized' }, 401);
+      return handleApi(req, env, u, url);
     }
     return J({ error: 'not_found' }, 404);
   },
