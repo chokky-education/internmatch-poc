@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:test';
 import { seedDemo } from './fixtures.js';
-import { seedUser } from '../src/store.js';
+import { seedUser, deleteApplication, snoozeReminder } from '../src/store.js';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { getOverview, addApplication, updateApplicationStatus, setTask, addReminder, addDocument } from '../src/store.js';
 
@@ -37,6 +37,36 @@ describe('new real user', () => {
     const r = await addApplication(env, U, { company: 'Dynamic', status: 'Applied', truth_level: 'USER_REPORTED' }, 'line');
     expect(r.ok).toBe(true);
     expect((await getOverview(env, U)).applications.find(a => a.company === 'Dynamic').role).toBe('ไม่ระบุ');
+  });
+});
+
+describe('card support in store', () => {
+  it('deleteApplication removes a user-reported card and audits; refuses SYSTEM_VERIFIED; not_found for another user', async () => {
+    const a = await addApplication(env, U, { company: 'Del Co', role: 'X', status: 'Saved', truth_level: 'USER_REPORTED' }, 'line');
+    expect(await deleteApplication(env, 'someone-else', a.id, 'web')).toEqual({ ok: false, error: 'not_found' });
+    expect(await deleteApplication(env, U, a.id, 'line')).toEqual({ ok: true, company: 'Del Co' });
+    expect((await getOverview(env, U)).applications.find(x => x.id === a.id)).toBeUndefined();
+    const row = (await audit()).filter(r => r.entity === 'application').pop();
+    expect(row.channel).toBe('line'); expect(JSON.parse(row.change_json).op).toBe('delete');
+    const sv = (await getOverview(env, U)).applications.find(x => x.verified_by_system);
+    expect(await deleteApplication(env, U, sv.id, 'web')).toEqual({ ok: false, error: 'system_verified' });
+  });
+  it('snoozeReminder moves due_at 60 minutes from now and clears sent/delivery/seen so cron sends it again', async () => {
+    const r = await addReminder(env, U, { text: 'ส่งเอกสาร', datetime: '2026-11-19T20:00' }, 'line');
+    await env.DB.prepare("UPDATE reminders SET sent_at='x', delivery='line', seen_at='y' WHERE id=?").bind(r.id).run();
+    const now = new Date('2026-11-19T13:30:00Z');
+    const s = await snoozeReminder(env, U, r.id, 60, 'line', now);
+    expect(s).toMatchObject({ ok: true, id: r.id, text: 'ส่งเอกสาร', due_at: '2026-11-19T14:30:00.000Z' });
+    const row = await env.DB.prepare('SELECT * FROM reminders WHERE id=?').bind(r.id).first();
+    expect([row.sent_at, row.delivery, row.seen_at]).toEqual([null, null, null]);
+    expect(await snoozeReminder(env, U, 'nope', 60, 'line', now)).toEqual({ ok: false, error: 'not_found' });
+  });
+  it('add/update/addReminder results include id, company, role, status, text', async () => {
+    const a = await addApplication(env, U, { company: 'Echo', status: 'Applied', truth_level: 'USER_REPORTED' }, 'web');
+    expect(a).toMatchObject({ ok: true, company: 'Echo', role: 'ไม่ระบุ', status: 'Applied' }); expect(a.id).toBeTruthy();
+    const u = await updateApplicationStatus(env, U, { id: a.id, status: 'Interview' }, 'web');
+    expect(u).toMatchObject({ ok: true, id: a.id, company: 'Echo', role: 'ไม่ระบุ', status: 'Interview' });
+    expect((await addReminder(env, U, { text: 'เตือน', datetime: '2026-11-19T20:00' }, 'web')).text).toBe('เตือน');
   });
 });
 

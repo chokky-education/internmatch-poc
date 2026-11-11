@@ -45,7 +45,7 @@ export async function addApplication(env, userId, a, channel) {
   await env.DB.prepare('INSERT INTO applications (id,user_id,company,role,status,next_step,url,truth_level,history_json,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
     .bind(id, userId, a.company, a.role || 'ไม่ระบุ', a.status, a.next_step || '—', a.url || null, a.truth_level, JSON.stringify(hist), nowIso()).run();
   await audit(env, userId, 'application', id, { op: 'add', company: a.company, status: a.status }, channel, a.truth_level);
-  return { ok: true, id };
+  return { ok: true, id, company: a.company, role: a.role || 'ไม่ระบุ', status: a.status };
 }
 
 export async function updateApplicationStatus(env, userId, { company, status, next_step, id }, channel) {
@@ -56,7 +56,7 @@ export async function updateApplicationStatus(env, userId, { company, status, ne
   await env.DB.prepare('UPDATE applications SET status=?, next_step=?, history_json=?, truth_level=?, updated_at=? WHERE id=?')
     .bind(status, next_step || x.next_step, JSON.stringify(hist), 'USER_REPORTED', nowIso(), x.id).run();
   await audit(env, userId, 'application', x.id, { op: 'status', from: x.status, to: status }, channel, 'USER_REPORTED');
-  return { ok: true, company: x.company, status };
+  return { ok: true, id: x.id, company: x.company, role: x.role, status };
 }
 
 export async function setTask(env, userId, { task_keyword, done }, channel) {
@@ -88,7 +88,25 @@ export async function addReminder(env, userId, { text, datetime }, channel) {
   const id = uuid(), due = d.toISOString();
   await env.DB.prepare('INSERT INTO reminders (id,user_id,text,due_at) VALUES (?,?,?,?)').bind(id, userId, text, due).run();
   await audit(env, userId, 'reminder', id, { op: 'add', text, due_at: due }, channel, 'USER_REPORTED');
-  return { ok: true, id, due_at: due };
+  return { ok: true, id, text, due_at: due };
+}
+
+export async function deleteApplication(env, userId, id, channel) {
+  const x = await env.DB.prepare('SELECT * FROM applications WHERE id=? AND user_id=?').bind(id, userId).first();
+  if (!x) return { ok: false, error: 'not_found' };
+  if (x.truth_level === 'SYSTEM_VERIFIED') return { ok: false, error: 'system_verified' };
+  await env.DB.prepare('DELETE FROM applications WHERE id=? AND user_id=?').bind(id, userId).run();
+  await audit(env, userId, 'application', id, { op: 'delete', company: x.company, status: x.status }, channel, 'USER_REPORTED');
+  return { ok: true, company: x.company };
+}
+
+export async function snoozeReminder(env, userId, id, minutes, channel, now = new Date()) {
+  const r = await env.DB.prepare('SELECT * FROM reminders WHERE id=? AND user_id=?').bind(id, userId).first();
+  if (!r) return { ok: false, error: 'not_found' };
+  const due = new Date(now.getTime() + minutes * 60000).toISOString();
+  await env.DB.prepare('UPDATE reminders SET due_at=?, sent_at=NULL, delivery=NULL, seen_at=NULL WHERE id=?').bind(due, id).run();
+  await audit(env, userId, 'reminder', id, { op: 'snooze', due_at: due }, channel, 'USER_REPORTED');
+  return { ok: true, id, text: r.text, due_at: due };
 }
 
 export async function deleteReminder(env, userId, { id, text_keyword }, channel) {
