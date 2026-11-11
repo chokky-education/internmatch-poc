@@ -55,6 +55,12 @@ npx wrangler deploy        # ได้ URL https://internmatch-api.<account>.wor
 3. LINE Official Account Manager → ปิด **Auto-reply** และ **Greeting message**
 4. แจก QR ของ OA ให้ทีม
 
+## ขั้นที่ 4.5: Rich Menu (ทำแล้ว 11 พ.ย. 2569)
+- เมนูหลัก 6 ช่อง (คนที่ผูกบัญชีแล้ว) และเมนูเริ่มต้น 2 ช่อง (ผูกบัญชี / เปิดเว็บ) สำหรับคนใหม่ ระบบสลับเป็นเมนูหลักให้เองหลังยืนยัน OTP
+- ปุ่ม 🏠 📋 🎓 🔔 ตอบด้วยการ์ดสรุปแบบตายตัว ไม่ผ่าน Gemini ผลเหมือนกันทุกครั้ง หน้าแชทบนเว็บมีปุ่มเดียวกัน
+- แก้รูป: แก้ `worker/richmenu/*.html` แล้วถ่ายภาพใหม่ด้วย Chrome headless (`--window-size=2500,1686` หรือ `2500,843`)
+- สร้างเมนูใหม่: `cd worker && LINE_TOKEN=<access token> node scripts/richmenu.mjs <line_user_id ที่ผูกแล้ว...>` แล้วนำ `RICHMENU_MAIN` ที่ได้ไปใส่ใน `wrangler.toml` และ `npx wrangler deploy`
+
 ## ขั้นที่ 5: ทดสอบรับของ
 - เพิ่มเพื่อน OA → พิมพ์อีเมลทีม → ใส่รหัส OTP → พิมพ์ "สมัคร SCB ตำแหน่ง Data intern แล้ว" → การ์ดขึ้นบนเว็บ
 - **จำลอง LINE ล่ม:** ปิด Use webhook → ล็อกอินเว็บด้วยอีเมล → ทำทุกอย่างบนเว็บ → เปิด webhook กลับ → LINE เห็นข้อมูลเดียวกัน
