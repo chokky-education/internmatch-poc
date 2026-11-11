@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>InternMatch – POC</title>
+<script src="config.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#f6f7fb;--card:#fff;--ink:#1b1f3b;--mute:#6b7090;--line:#e6e8f0;--pri:#4f46e5;--pri2:#eef0ff;--ok:#0f9d6b;--okbg:#e6f7f0;--warn:#c27c0e;--warnbg:#fff4e0;--bad:#d93f3f;--line-green:#06c755}
@@ -48,9 +49,23 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
 .phone{width:300px;background:#8cabd9;border-radius:24px;padding:16px;margin-top:10px}.bubble{background:#fff;border-radius:14px;padding:12px;font-size:13px}
 .toggle{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
 .sw{width:40px;height:22px;border-radius:99px;background:var(--pri);position:relative;cursor:pointer}.sw:after{content:'';position:absolute;right:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff}.sw.off{background:#ccd}.sw.off:after{right:auto;left:3px}
+#login{position:fixed;inset:0;background:rgba(246,247,251,.97);display:none;align-items:center;justify-content:center;z-index:50}
+#login.show{display:flex}
+#login .box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;width:min(380px,92vw);box-shadow:0 18px 50px rgba(20,22,50,.15)}
+#bar .barin{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--pri2);color:var(--pri);padding:8px 14px;border-radius:10px;margin-bottom:10px;font-size:13px}
+#bar .barrem{background:var(--warnbg);color:var(--warn);padding:8px 14px;border-radius:10px;margin-bottom:8px;font-size:13px}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;font-size:13px;z-index:60}
 </style>
 </head>
 <body>
+<div id="login"><div class="box">
+  <div class="logo" style="margin-bottom:12px">Intern<b>Match</b></div>
+  <p class="sub" style="margin:0 0 12px">เข้าสู่ระบบด้วยอีเมลที่ลงทะเบียนไว้ (ใช้ได้แม้ LINE ล่ม)</p>
+  <input id="loginEmail" type="email" placeholder="อีเมล" style="width:100%" onkeydown="if(event.key==='Enter')loginReq()">
+  <button class="btn" style="width:100%;margin-top:10px" onclick="loginReq()">ส่งรหัสเข้าอีเมล</button>
+  <div id="loginStep2" style="display:none;margin-top:14px"><input id="loginCode" inputmode="numeric" maxlength="6" placeholder="รหัส 6 หลัก" style="width:100%" onkeydown="if(event.key==='Enter')loginVerify()"><button class="btn" style="width:100%;margin-top:10px" onclick="loginVerify()">เข้าสู่ระบบ</button></div>
+  <p class="sub" id="loginMsg" style="margin:12px 0 0"></p>
+</div></div>
 <div class="app">
 <aside>
   <div class="logo">Intern<b>Match</b><div style="font-size:11px;font-weight:500;color:var(--mute)">ผู้ช่วยพาคุณผ่านฤดูฝึกงาน</div></div>
@@ -60,15 +75,15 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
     <a data-s="uni">🎓 เอกสาร & ขั้นตอนคณะ</a>
     <a data-s="docs">📁 คลังเอกสาร <span class="badge" style="background:var(--bad)" id="docAlert">2</span></a>
     <a data-s="ocr">📸 อ่านเอกสาร (AI) <span class="badge" style="background:var(--ok)">ใหม่</span></a>
-    <a data-s="chat">💬 พี่ฝึกงาน (LINE) <span class="badge" style="background:var(--line-green)">concept</span></a>
+    <a data-s="chat">💬 พี่ฝึกงาน (แชท)</a>
     <a data-s="discover">🔎 ค้นหาฝึกงาน</a>
     <a data-s="saved">⭐ ที่บันทึกไว้ <span class="badge" id="savedCount">0</span></a>
     <a data-s="tracker">📋 ติดตามการสมัคร</a>
     <a data-s="notif">🔔 แจ้งเตือน & LINE</a>
-    <a data-s="pipeline">⚡ Data Pipeline & Admin <span class="badge" style="background:#6366f1">ผังข้อมูล</span></a>
   </nav>
 </aside>
 <main>
+<div id="bar"></div>
 
 <!-- ONBOARDING -->
 <section class="screen" id="onboard"><div class="onb card">
@@ -146,11 +161,8 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
 
 <!-- OCR -->
 <section class="screen" id="ocr">
-  <h1>อ่านเอกสารด้วย AI</h1><p class="sub">อัปโหลดภาพหรือ PDF แล้วระบบดึงข้อมูลให้ · ขับเคลื่อนโดย Paxa Labs Document Extraction</p>
-  <div class="card" style="margin-bottom:14px">
-    <div class="row"><b>🔑 Paxa API key</b><input id="pxKey" type="password" placeholder="pxa_..." style="flex:1;min-width:240px"><button class="btn ghost sm" onclick="saveKey()">บันทึกในเบราว์เซอร์นี้</button><button class="btn ghost sm" onclick="localStorage.removeItem('pxKey');$('#pxKey').value=''">ลบ</button></div>
-    <small style="color:var(--mute)">คีย์เก็บใน localStorage ของเครื่องคุณเท่านั้น ไม่ได้อยู่ในโค้ดเว็บ · ไฟล์ถูกส่งตรงไป api.paxalabs.com · ใช้ 13 เครดิตต่อหน้า</small>
-  </div>
+  <h1>อ่านเอกสารด้วย AI</h1><p class="sub">อัปโหลดภาพหรือ PDF แล้วระบบดึงข้อมูลให้ · ผลที่ AI อ่านต้องกดยืนยันก่อนบันทึกทุกครั้ง</p>
+  <div class="card" id="ocrPending" style="display:none;margin-bottom:14px"></div>
   <div class="row" style="align-items:flex-start">
     <div class="card" style="flex:1;min-width:320px">
       <label style="margin-top:0">ประเภทเอกสาร</label>
@@ -169,30 +181,23 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
 
 <!-- CHAT -->
 <section class="screen" id="chat">
-  <h1>💬 พี่ฝึกงาน: ผู้ช่วยใน LINE</h1>
-  <p class="sub">บอกไว้ครั้งเดียว ไม่ลืม · พิมพ์ภาษาพูด ส่งรูป ส่งไฟล์ แล้วข้อมูลเข้าเว็บเอง (ต้นแบบแนวคิด อ้างอิงรูปแบบจาก abdul.chat)</p>
+  <h1>💬 พี่ฝึกงาน</h1>
+  <p class="sub">บทสนทนาเดียวกับที่คุยใน LINE OA: ข้อความจาก LINE และเว็บอยู่ที่นี่ทั้งหมด · ถ้า LINE ใช้ไม่ได้ คุยต่อที่นี่ได้เลย</p>
   <div class="row" style="align-items:flex-start;gap:24px">
     <div>
-      <div class="row" style="gap:6px;margin-bottom:8px"><button class="btn sm" id="tabMe" onclick="chatTab('me')">แชทส่วนตัว</button><button class="btn sm ghost" id="tabGroup" onclick="chatTab('group')">กลุ่ม "ฝึกงาน DS ปี 3"</button></div>
       <div style="width:340px;background:#8cabd9;border-radius:26px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.15)">
-        <div style="color:#fff;font-weight:600;padding:4px 8px 10px" id="chatTitle">← พี่ฝึกงาน · InternMatch</div>
+        <div style="color:#fff;font-weight:600;padding:4px 8px 10px">พี่ฝึกงาน · InternMatch</div>
         <div id="msgs" style="height:470px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:4px"></div>
         <div style="display:flex;gap:6px;margin-top:8px;background:#fff;border-radius:99px;padding:4px">
-          <button class="save" style="border:0" title="ส่งรูป" onclick="sendMsg('[📷 รูปโพสต์งาน บริษัท H]')">📷</button>
+          <button class="save" style="border:0" title="ส่งรูป/เอกสารให้ AI อ่าน" onclick="go('ocr')">📷</button>
           <input id="chatIn" placeholder="พิมพ์ข้อความ…" style="flex:1;border:0;padding:8px" onkeydown="if(event.key==='Enter')sendMsg()">
           <button class="btn sm line" onclick="sendMsg()">ส่ง</button></div>
       </div>
       <div class="pick" style="margin-top:10px;max-width:340px" id="quick"></div>
     </div>
     <div style="flex:1;min-width:300px">
-      <div class="card" style="margin-bottom:14px"><h3 style="margin-top:0">🔄 สิ่งที่เข้าเว็บจากแชท</h3><div class="list" id="syncLog"><p class="sub" style="margin:0">ลองพิมพ์ในแชท หรือแตะข้อความตัวอย่าง</p></div></div>
-      <div class="card"><h3 style="margin-top:0">ทำไมต้องรวมสองแบบ</h3>
-        <table style="width:100%;border-collapse:collapse;font-size:13px">
-          <tr style="color:var(--mute);text-align:left"><th style="padding:6px">LINE (แบบอับดุล)</th><th>เว็บ InternMatch</th></tr>
-          <tr style="border-top:1px solid var(--line)"><td style="padding:6px">จดเร็ว ส่งรูป/ลิงก์ทันทีที่เจอ</td><td>ดูภาพรวม บอร์ด ตารางเอกสาร</td></tr>
-          <tr style="border-top:1px solid var(--line)"><td style="padding:6px">เตือนตรงเวลา ถามตอบภาษาพูด</td><td>แก้ไขละเอียด ตั้งค่า เช็กลิสต์คณะ</td></tr>
-          <tr style="border-top:1px solid var(--line)"><td style="padding:6px">ใช้ในกลุ่มเพื่อน/อาจารย์ได้</td><td>อัปโหลดเอกสาร PDF ขนาดใหญ่</td></tr>
-        </table></div>
+      <div class="card"><h3 style="margin-top:0">LINE กับเว็บใช้ข้อมูลชุดเดียวกัน</h3>
+        <p class="sub" style="margin:0">ทุกอย่างที่ทำใน LINE (บันทึกงาน อัปเดตสถานะ ตั้งเตือน ส่งรูปให้ AI อ่าน) ทำบนเว็บได้เหมือนกัน และข้อมูลตรงกันเสมอ ป้ายที่มุมข้อความบอกว่าพิมพ์มาจากช่องทางไหน</p></div>
     </div>
   </div>
 </section>
@@ -226,8 +231,11 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
   <div class="row" style="align-items:flex-start">
   <div class="card" style="flex:1;min-width:320px">
     <h3 style="margin-top:0">เชื่อมต่อ LINE</h3>
-    <ol style="color:var(--mute);padding-left:18px;line-height:1.9"><li>เพิ่มเพื่อน LINE OA @internmatch</li><li>เชื่อมบัญชี InternMatch</li><li>ยินยอมรับการแจ้งเตือน</li></ol>
-    <button class="btn line" id="lineBtn" onclick="linkLine()">เชื่อมต่อ LINE</button>
+    <ol style="color:var(--mute);padding-left:18px;line-height:1.9"><li>เพิ่มเพื่อน LINE OA ของโปรเจกต์ (สแกน QR จากทีม)</li><li>พิมพ์อีเมลที่ลงทะเบียนไว้ แล้วใส่รหัส 6 หลักที่ส่งไปทางอีเมล</li></ol>
+    <div id="lineBtn"></div>
+    <h3>ตั้งเตือนของฉัน</h3>
+    <div class="row"><input id="remText" placeholder="เช่น ส่งใบตอบรับให้คณะ" style="flex:1;min-width:160px"><input type="datetime-local" id="remAt"><button class="btn sm" onclick="addRem()">ตั้งเตือน</button></div>
+    <div class="list" id="remList" style="margin-top:8px"></div>
     <h3>เตือนเมื่อ</h3>
     <div class="toggle">วันปิดรับสมัครของงานที่บันทึก (ล่วงหน้า 3 วัน)<div class="sw" onclick="this.classList.toggle('off')"></div></div>
     <div class="toggle">นัดสัมภาษณ์ (ล่วงหน้า 1 วัน)<div class="sw" onclick="this.classList.toggle('off')"></div></div>
@@ -240,106 +248,6 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
 </section>
 
 <!-- PIPELINE & ADMIN -->
-<section class="screen" id="pipeline">
-  <div class="row" style="justify-content:space-between">
-    <div>
-      <h1>⚡ Data Pipeline & ระบบ Admin คณะ</h1>
-      <p class="sub">ผังการไหลของข้อมูล (End-to-End Data Lineage) เมื่อ User กรอกผ่าน LINE หรือ Website และวิธีเชื่อมต่อไปยัง Admin คณะ</p>
-    </div>
-    <div class="row">
-      <span class="chip ok">✔ Dual-Sync (LINE ↔ Web)</span>
-      <span class="chip pri">🤖 Paxa + Gemini AI</span>
-      <span class="chip warn">🔒 PDPA Compliant</span>
-    </div>
-  </div>
-
-  <!-- SCENARIO SELECTOR -->
-  <div class="card" style="margin-bottom:18px">
-    <label style="margin-top:0"><b>เลือกสถานการณ์จำลอง (Simulate Data Flow Scenario):</b></label>
-    <div class="pick" id="scenPick">
-      <span class="on" data-scen="0">📱 1. นศ. ส่งภาพโพสต์งานทาง LINE</span>
-      <span data-scen="1">💬 2. นศ. พิมพ์อัปเดตสถานะใน LINE</span>
-      <span data-scen="2">💻 3. นศ. อัปโหลด Transcript บน Website</span>
-      <span data-scen="3">👩‍🏫 4. อาจารย์/แอดมิน อนุมัติเอกสารใน Admin Portal</span>
-    </div>
-  </div>
-
-  <!-- PIPELINE STAGES VISUALIZER -->
-  <div class="card" style="margin-bottom:18px;background:#1a1d2e;color:#fff" id="pipeBox">
-    <div class="row" style="justify-content:space-between;border-bottom:1px solid #2d334d;padding-bottom:10px;margin-bottom:14px">
-      <b style="font-size:15px;color:#a5b4fc" id="pipeTitle">📱 การไหลของข้อมูล: นักศึกษาส่งภาพโพสต์งานผ่าน LINE OA</b>
-      <span class="chip" style="background:#2d334d;color:#cbd5e1" id="pipeLatency">⚡ Average Latency: ~1.8s</span>
-    </div>
-
-    <!-- STAGES DIAGRAM -->
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px" id="pipeStages"></div>
-
-    <!-- STAGE DETAIL & PAYLOAD -->
-    <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin-top:16px;padding-top:14px;border-top:1px solid #2d334d">
-      <div>
-        <h4 style="margin:0 0 6px;color:#818cf8">📋 ขั้นตอนการประมวลผล (Processing Walkthrough)</h4>
-        <div id="pipeSteps" style="font-size:13px;line-height:1.7;color:#e2e8f0"></div>
-      </div>
-      <div>
-        <h4 style="margin:0 0 6px;color:#818cf8">📦 Data Event Payload (JSON Schema)</h4>
-        <pre id="pipeJson" style="background:#0f111c;border:1px solid #2d334d;border-radius:10px;padding:12px;font-size:11.5px;color:#a5f3fc;overflow:auto;max-height:220px;margin:0"></pre>
-      </div>
-    </div>
-  </div>
-
-  <!-- ADMIN PORTAL POC -->
-  <h2 style="margin:26px 0 6px">👩‍🏫 Admin Portal: มุมมองอาจารย์ / เจ้าหน้าที่คณะ</h2>
-  <p class="sub">อาจารย์เห็นความคืบหน้าของนักศึกษาทั้งรุ่น กรองกลุ่มเสี่ยง และอนุมัติเอกสารทางการแบบ Real-time</p>
-
-  <div class="stats" style="margin-bottom:16px">
-    <div class="card stat"><b style="color:var(--pri)">60</b><span>นักศึกษาทั้งหมด</span></div>
-    <div class="card stat"><b style="color:var(--ok)">38</b><span>ได้ที่ฝึกงานแล้ว (63%)</span></div>
-    <div class="card stat"><b style="color:var(--warn)">14</b><span>รอผลสัมภาษณ์ (23%)</span></div>
-    <div class="card stat"><b style="color:var(--bad)" id="riskCount">8</b><span>⚠️ เสี่ยงตกเทอม (14%)</span></div>
-  </div>
-
-  <div class="row" style="align-items:flex-start">
-    <!-- APPROVAL QUEUE -->
-    <div class="card" style="flex:1.4;min-width:340px">
-      <div class="row" style="justify-content:space-between;margin-bottom:10px">
-        <h3 style="margin:0">📥 คำขอรออาจารย์อนุมัติ (Pending Approvals)</h3>
-        <span class="chip warn" id="pendingBadge">รออนุมัติ 1 รายการ</span>
-      </div>
-      <div class="list" id="adminQueue">
-        <div class="it" id="qMeen">
-          <div style="font-size:26px">📄</div>
-          <div style="flex:1">
-            <b>มีน (สาขาวิทยาการข้อมูล) · รหัส 6601xxxx</b>
-            <div style="font-size:12.5px;color:var(--mute)">ขอหนังสือขอความอนุเคราะห์: <b>บริษัท A (FinTech)</b> · ยื่นเมื่อ 8 พ.ย.</div>
-            <div style="margin-top:4px"><span class="chip ok">✔ หน่วยกิตครบ</span> <span class="chip pri">GPAX 3.42</span> <span class="chip">ฝึกงานภาคบังคับ 240 ชม.</span></div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:6px">
-            <button class="btn sm" onclick="adminApprove('A')">✔ อนุมัติ & ออกหนังสือ</button>
-            <button class="btn sm ghost" onclick="alert('ส่งข้อความสอบถามนักศึกษา')">💬 ถาม นศ.</button>
-          </div>
-        </div>
-      </div>
-      <div id="adminActionLog" style="margin-top:12px;display:none;background:var(--okbg);color:var(--ok);padding:10px 14px;border-radius:10px;font-size:13px"></div>
-    </div>
-
-    <!-- COHORT RISK RADAR -->
-    <div class="card" style="flex:1;min-width:280px">
-      <h3 style="margin-top:0">🚨 นักศึกษากลุ่มเสี่ยง (Action Required)</h3>
-      <p class="sub" style="margin:0 0 10px">ยังไม่มีใบสมัครหรือไม่ได้อัปเดตเกิน 21 วัน (เหลือ 82 วันก่อนเส้นตาย)</p>
-      <div class="list">
-        <div class="it">
-          <div style="flex:1"><b>ต้น (รหัส 66010045)</b><br><small style="color:var(--mute)">สมัคร 0 ที่ · Transcript ยังไม่อัปโหลด</small></div>
-          <button class="btn sm ghost" onclick="alert('ยิง LINE เตือนต้นแล้ว')">🔔 เตือนใน LINE</button>
-        </div>
-        <div class="it">
-          <div style="flex:1"><b>ภัทร (รหัส 66010112)</b><br><small style="color:var(--mute)">ยื่น 1 ที่ (บริษัท F) · ไม่อัปเดต 24 วัน</small></div>
-          <button class="btn sm ghost" onclick="alert('ยิง LINE เตือนภัทรแล้ว')">🔔 เตือนใน LINE</button>
-        </div>
-      </div>
-      <button class="btn line sm" style="width:100%;margin-top:12px" onclick="alert('ระบบส่ง LINE Broadcast เตือน นศ. กลุ่มเสี่ยงทั้ง 8 คนแล้ว')">📢 บรอดแคสต์เตือนเฉพาะกลุ่มเสี่ยง (8 คน)</button>
-    </div>
-  </div>
-</section>
 </main>
 </div>
 
@@ -371,13 +279,36 @@ const jobs=[
 const saved=new Set([3]);
 const STAGES=['Saved','Applied','Interview','Offer','Closed'];
 const TH={Saved:'บันทึกไว้',Applied:'สมัครแล้ว',Interview:'สัมภาษณ์',Offer:'ได้รับข้อเสนอ',Closed:'ปิด/ไม่ผ่าน'};
-let apps=[
- {co:'บริษัท A',role:'Data Analyst Intern',st:'Interview',verified:true,ev:[['1 พ.ย.','สมัครผ่าน InternMatch'],['8 พ.ย.','บริษัทเปลี่ยนเป็นสัมภาษณ์']],next:'สัมภาษณ์ 11 พ.ย. 10:00'},
- {co:'บริษัท B',role:'BI Intern',st:'Applied',verified:false,url:'careers.company-b.com',ev:[['3 พ.ย.','บันทึกเอง: สมัครบนเว็บบริษัท']],next:'รอผลพิจารณา',upd:7},
- {co:'บริษัท F',role:'Data Engineer Intern',st:'Applied',verified:false,url:'jobs.f.co',ev:[['20 ต.ค.','บันทึกเอง']],next:'ยังไม่อัปเดต',upd:21},
- {co:'บริษัท C',role:'Data Science Intern',st:'Saved',verified:false,ev:[],next:'ปิดรับ 5 ธ.ค.'},
- {co:'บริษัท G',role:'Analyst Intern',st:'Closed',verified:true,ev:[['15 ต.ค.','ไม่ผ่านการคัดเลือก']],next:'—'},
-];
+let apps=[];const reminders=[];let serverState=null;
+const API=window.IM_API||'';
+async function api(path,opts={}){
+ const h={...(opts.body&&!(opts.body instanceof FormData)?{'Content-Type':'application/json'}:{}),...(opts.headers||{})};
+ let r,d={};try{r=await fetch(API+path,{credentials:'include',...opts,headers:h});}catch(e){return{ok:false,status:0,data:{error:'network'}};}
+ try{d=await r.json();}catch(e){}
+ if(r.status===401&&!path.startsWith('/api/auth/'))showLogin();
+ return{ok:r.ok,status:r.status,data:d};}
+const ERRTH={duplicate:'มีบริษัทนี้อยู่แล้ว',system_verified:'ใบสมัครนี้ระบบยืนยัน แก้เองไม่ได้',too_large:'ไฟล์ใหญ่เกิน 10MB',extract_failed:'อ่านเอกสารไม่สำเร็จ ลองใหม่อีกครั้ง',network:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้',already_confirmed:'บันทึกไปแล้ว',unauthorized:'กรุณาเข้าสู่ระบบ'};
+const errMsg=r=>ERRTH[r.data&&r.data.error]||(r.data&&r.data.error)||('เกิดข้อผิดพลาด ('+r.status+')');
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3200);}
+const daysSince=iso=>Math.max(0,Math.round((Date.now()-Date.parse(iso))/864e5));
+function applyState(s){serverState=s;
+ apps.length=0;s.applications.forEach(a=>apps.push({id:a.id,co:a.company,role:a.role,st:a.status,verified:a.verified_by_system,truth:a.truth_level,url:a.url,ev:a.history,next:a.next_step||'—',upd:daysSince(a.updated_at)}));
+ uni.length=0;s.university_checklist.forEach(t=>uni.push({id:t.id,t:t.task,d:t.detail||'',done:t.done}));
+ myDocs.length=0;extraDocs=[];s.my_documents.forEach(d=>{if(d.kind==='my_doc')myDocs.push({id:d.id,k:d.fields.k,i:ICONS[d.fields.k]||'📄',t:d.name,v:d.fields.version||'—',s:d.status,n:d.note||''});else extraDocs.push(d);});
+ reminders.length=0;s.reminders.forEach(r=>reminders.push(r));}
+async function loadState(){const r=await api('/api/state');if(!r.ok)return false;$('#login').classList.remove('show');applyState(r.data);render();renderChat();renderBanner();return true;}
+function renderBanner(){const b=$('#bar');if(!serverState||!b)return;const u=serverState.user,un=serverState.unseen_reminders||[];
+ b.innerHTML=`<div class="barin"><span>🌐 LINE ใช้ไม่ได้? ทำทุกอย่างที่นี่ได้เหมือนกัน</span><span style="flex:1"></span><small>${esc(u.email)} · ${u.line_linked?'💚 ผูก LINE แล้ว':'ยังไม่ผูก LINE'}</small><a onclick="logout()" style="cursor:pointer;text-decoration:underline">ออกจากระบบ</a></div>`+un.map(r=>`<div class="barrem">⏰ ${esc(r.text)} <a onclick="seenRem('${r.id}')" style="cursor:pointer;text-decoration:underline">รับทราบ</a></div>`).join('');}
+async function seenRem(id){await api('/api/reminders/'+id+'/seen',{method:'POST'});await loadState();}
+function showLogin(){$('#login').classList.add('show');}
+async function loginReq(){const email=$('#loginEmail').value.trim();if(!email)return;$('#loginMsg').textContent='กำลังส่งรหัส…';
+ const r=await api('/api/auth/request',{method:'POST',body:JSON.stringify({email})});
+ if(r.ok){$('#loginStep2').style.display='block';$('#loginMsg').textContent='ส่งรหัส 6 หลักไปที่อีเมลแล้ว (ถ้าไม่เห็น ดูในโฟลเดอร์ Spam)';}
+ else $('#loginMsg').textContent=r.data.error==='not_allowed'?'อีเมลนี้ยังไม่เปิดให้ใช้ในช่วงทดลอง':r.data.error==='too_soon'?'เพิ่งส่งรหัสไป รอ 1 นาทีแล้วลองใหม่':'ส่งอีเมลไม่สำเร็จ ลองใหม่อีกครั้ง';}
+async function loginVerify(){const email=$('#loginEmail').value.trim(),code=$('#loginCode').value.trim();
+ const r=await api('/api/auth/verify',{method:'POST',body:JSON.stringify({email,code})});
+ if(r.ok){await loadState();}else $('#loginMsg').textContent={invalid:'รหัสไม่ถูกต้อง',expired:'รหัสหมดอายุ ขอรหัสใหม่',locked:'ใส่ผิดหลายครั้ง ขอรหัสใหม่'}[r.data.error]||'เข้าสู่ระบบไม่สำเร็จ';}
+async function logout(){await api('/api/auth/logout',{method:'POST'});location.reload();}
 const $=s=>document.querySelector(s);
 const today=new Date('2026-11-10');
 const days=d=>Math.round((new Date(d)-today)/864e5);
@@ -417,139 +348,84 @@ function detail(id){const j=jobs.find(x=>x.id===id);
  ${j.via==='im'?`<button class="btn" onclick="apply(${j.id},true)">สมัครผ่าน InternMatch</button>`:
  `<button class="btn ghost">เปิดเว็บต้นทาง ↗</button><button class="btn" onclick="apply(${j.id},false)">✔ ฉันสมัครแล้ว</button>`}</div>`;
  $('#mDetail').classList.add('show');}
+async function mutate(fn,okMsg){const r=await fn();if(!r.ok)toast(errMsg(r));else if(okMsg)toast(okMsg);await loadState();return r;}
 function apply(id,v){const j=jobs.find(x=>x.id===id);saved.delete(id);
- apps.unshift({co:j.co.split(' (')[0],role:j.role,st:'Applied',verified:v,url:v?null:j.src,ev:[['10 พ.ย.',v?'สมัครผ่าน InternMatch':'บันทึกเอง: สมัครบนเว็บภายนอก']],next:'รอผลพิจารณา',upd:0});
- close_('mDetail');go('tracker');}
+ mutate(()=>api('/api/applications',{method:'POST',body:JSON.stringify({company:j.co.split(' (')[0],role:j.role,status:'Applied',url:j.src,next_step:'รอผลพิจารณา'})}),'บันทึกใบสมัครแล้ว');close_('mDetail');go('tracker');}
 function openAdd(){$('#mAdd').classList.add('show')}
-function addExt(){apps.unshift({co:$('#aCo').value||'บริษัทใหม่',role:$('#aRole').value||'Intern',st:$('#aStatus').value,verified:false,url:$('#aUrl').value,ev:[['10 พ.ย.','บันทึกเอง']],next:'รอผลพิจารณา',upd:0});close_('mAdd');go('tracker');}
-function move(i,d){const k=STAGES.indexOf(apps[i].st)+d;if(k<0||k>=STAGES.length)return;apps[i].st=STAGES[k];apps[i].ev.push(['10 พ.ย.','อัปเดตเอง → '+TH[STAGES[k]]]);apps[i].upd=0;render();}
+async function addExt(){await mutate(()=>api('/api/applications',{method:'POST',body:JSON.stringify({company:$('#aCo').value||'บริษัทใหม่',role:$('#aRole').value||'Intern',status:$('#aStatus').value,url:$('#aUrl').value})}));close_('mAdd');go('tracker');}
+async function setStatus(i,st){const a=apps[i];await mutate(()=>api('/api/applications/'+a.id,{method:'PATCH',body:JSON.stringify({status:st})}));}
+async function move(i,d){const a=apps[i],k=STAGES.indexOf(a.st)+d;if(k<0||k>=STAGES.length)return;await setStatus(i,STAGES[k]);}
+async function toggleTask(i,done){await mutate(()=>api('/api/tasks/'+uni[i].id,{method:'PATCH',body:JSON.stringify({done})}));}
+function truthChip(a){return a.truth==='SYSTEM_VERIFIED'?'<span class="chip ok">✔ ยืนยันโดยระบบ</span>':a.truth==='AI_EXTRACTED'?'<span class="chip warn">🤖 อ่านโดย AI</span>':'<span class="chip">✎ อัปเดตโดยคุณ</span>';}
 function appDetail(i){const a=apps[i];
- $('#detailBody').innerHTML=`<div class="row" style="justify-content:space-between">${a.verified?'<span class="chip ok">✔ ยืนยันโดยระบบ</span>':'<span class="chip">✎ อัปเดตโดยคุณ</span>'}<a style="cursor:pointer" onclick="close_('mDetail')">✕</a></div>
- <h2 style="margin:8px 0 2px">${a.role}</h2><div style="color:var(--mute)">${a.co}${a.url?' · 🔗 '+a.url:''}</div>
+ $('#detailBody').innerHTML=`<div class="row" style="justify-content:space-between">${truthChip(a)}<a style="cursor:pointer" onclick="close_('mDetail')">✕</a></div>
+ <h2 style="margin:8px 0 2px">${esc(a.role)}</h2><div style="color:var(--mute)">${esc(a.co)}${a.url?' · 🔗 '+esc(a.url):''}</div>
  <label>สถานะ</label>${a.verified?`<b>${TH[a.st]}</b> <small style="color:var(--mute)">(อัปเดตจากบริษัท)</small>`:
- `<select onchange="apps[${i}].st=this.value;apps[${i}].ev.push(['10 พ.ย.','อัปเดตเอง → '+TH[this.value]]);render();appDetail(${i})">${STAGES.map(s=>`<option value="${s}" ${s===a.st?'selected':''}>${TH[s]}</option>`).join('')}</select>`}
- <label>ขั้นตอนถัดไป</label><div>${a.next}</div>
- <label>ประวัติ</label><div class="timeline">${a.ev.map(e=>`<div><small style="color:var(--mute)">${e[0]}</small><br>${e[1]}</div>`).join('')||'<small>—</small>'}</div>
- <div class="row" style="justify-content:flex-end"><button class="btn ghost">＋ เพิ่มนัด/โน้ต</button></div>`;
+ `<select onchange="setStatus(${i},this.value).then(()=>appDetail(${i}))">${STAGES.map(s=>`<option value="${s}" ${s===a.st?'selected':''}>${TH[s]}</option>`).join('')}</select>`}
+ <label>ขั้นตอนถัดไป</label><div>${esc(a.next)}</div>
+ <label>ประวัติ</label><div class="timeline">${a.ev.map(e=>`<div><small style="color:var(--mute)">${esc(e[0])}</small><br>${esc(e[1])}</div>`).join('')||'<small>—</small>'}</div>`;
  $('#mDetail').classList.add('show');}
 function renderKanban(){$('#kanban').innerHTML=STAGES.map(s=>{const l=apps.map((a,i)=>[a,i]).filter(([a])=>a.st===s);
  return `<div class="col"><h4>${TH[s]}<span>${l.length}</span></h4>${l.map(([a,i])=>`<div class="app-card" onclick="appDetail(${i})">
- <b>${a.role}</b><small>${a.co}</small><div class="meta" style="margin:6px 0 4px">${a.verified?'<span class="chip ok">✔ ระบบ</span>':'<span class="chip">✎ เอง</span>'}${a.upd>14?'<span class="chip warn">ไม่อัปเดต '+a.upd+' วัน</span>':''}</div>
+ <b>${a.role}</b><small>${a.co}</small><div class="meta" style="margin:6px 0 4px">${a.truth==='SYSTEM_VERIFIED'?'<span class="chip ok">✔ ระบบ</span>':a.truth==='AI_EXTRACTED'?'<span class="chip warn">🤖 AI อ่าน</span>':'<span class="chip">✎ เอง</span>'}${a.upd>14?'<span class="chip warn">ไม่อัปเดต '+a.upd+' วัน</span>':''}</div>
  <small>➜ ${a.next}</small>${a.verified?'':`<div class="row" style="margin-top:6px;gap:4px" onclick="event.stopPropagation()"><button class="btn ghost sm" onclick="move(${i},-1)">←</button><button class="btn ghost sm" onclick="move(${i},1)">→</button></div>`}</div>`).join('')}</div>`}).join('');}
 function renderDash(){const c=s=>apps.filter(a=>a.st===s).length;
  $('#stats').innerHTML=[['⭐ บันทึกไว้',saved.size],['📨 สมัครแล้ว',c('Applied')],['🗣️ สัมภาษณ์',c('Interview')],['🎉 ข้อเสนอ',c('Offer')]].map(([t,n])=>`<div class="card stat"><b>${n}</b><span>${t}</span></div>`).join('');
- const up=[{d:'2026-11-11',t:'สัมภาษณ์ – บริษัท A',s:'Data Analyst Intern · 10:00',k:'pri',l:'สัมภาษณ์'}]
-  .concat(jobs.filter(j=>saved.has(j.id)&&days(j.close)>=0).map(j=>({d:j.close,t:'ปิดรับ – '+j.co,s:j.role,k:'warn',l:'ยังไม่สมัคร'})))
-  .concat([{d:'2026-11-15',t:'ปิดรับ – บริษัท D',s:'Marketing Data Intern',k:'',l:'แนะนำ'}]).sort((a,b)=>days(a.d)-days(b.d));
+ const up=reminders.filter(r=>Date.parse(r.due_at)>Date.now()-864e5).map(r=>({d:r.due_at,t:r.text,s:'เตือน',k:'pri',l:'เตือน'}))
+  .concat(jobs.filter(j=>saved.has(j.id)&&days(j.close)>=0).map(j=>({d:j.close,t:'ปิดรับ – '+j.co,s:j.role,k:'warn',l:'ยังไม่สมัคร'}))).sort((a,b)=>days(a.d)-days(b.d));
  $('#upcoming').innerHTML=up.map(u=>{const dt=new Date(u.d);return `<div class="it"><div class="date">${dt.getDate()}<small>${dt.toLocaleDateString('th-TH',{month:'short'})}</small></div><div style="flex:1"><b>${u.t}</b><br><small style="color:var(--mute)">${u.s}</small></div><span class="chip ${u.k}">${u.l}</span></div>`}).join('');
  $('#stale').innerHTML=apps.map((a,i)=>[a,i]).filter(([a])=>!a.verified&&a.upd>14).map(([a,i])=>`<div class="it"><div style="flex:1"><b>${a.co}</b><br><small style="color:var(--mute)">${a.role} · ${a.upd} วัน</small></div><button class="btn sm" onclick="appDetail(${i})">อัปเดต</button></div>`).join('')||'<p class="sub">ทุกอย่างเป็นปัจจุบัน 🎉</p>';}
-function linkLine(){const b=$('#lineBtn');b.textContent='✔ เชื่อมต่อแล้ว · @internmatch';b.classList.remove('line');b.classList.add('ghost');}
-const S=(t,d,x={})=>({type:t,...(d?{description:d}:{}),...x});
-const arr=(d,n=10)=>({type:'array',max_items:n,items:{type:'string'},description:d});
-const DOCTYPES={
- job:{l:'📢 โพสต์ประกาศงาน',f:{company:S('string','ชื่อบริษัท',{required:true}),role:S('string','ชื่อตำแหน่งฝึกงาน',{required:true}),location:S('string','สถานที่ทำงาน'),
-  work_mode:S('enum','รูปแบบการทำงาน',{values:['Onsite','Hybrid','Remote']}),period:S('string','ช่วงเวลาฝึกงาน'),allowance:S('string','เบี้ยเลี้ยง/ค่าตอบแทน'),
-  deadline:S('date','วันปิดรับสมัคร'),skills:arr('ทักษะ/คุณสมบัติที่ต้องการ'),documents:arr('เอกสารที่ต้องใช้สมัคร'),email:S('email'),phone:S('phone'),apply_url:S('string','ลิงก์สมัคร')}},
- handbook:{l:'🎓 คู่มือ/ประกาศคณะ',f:{program:S('string','ชื่อหลักสูตรหรือรายวิชาฝึกงาน'),min_hours:S('integer','จำนวนชั่วโมงฝึกงานขั้นต่ำ'),
-  milestones:{type:'array',max_items:15,description:'กำหนดการ/วันสำคัญทั้งหมดในเอกสาร',items:{type:'object',fields:{task:S('string','สิ่งที่ต้องทำ'),date:S('date','วันที่กำหนด')}}},
-  required_forms:arr('แบบฟอร์มหรือเอกสารที่ต้องส่ง',15),contact:S('string','ผู้ประสานงาน/เจ้าหน้าที่')}},
- transcript:{l:'📄 Transcript',f:{student_name:S('string','ชื่อนักศึกษา',{required:true}),student_id:S('id','รหัสนักศึกษา'),university:S('string'),major:S('string','สาขาวิชา'),
-  gpax:S('number','เกรดเฉลี่ยสะสม'),issue_date:S('date','วันที่ออกเอกสาร')}},
- acceptance:{l:'✉️ หนังสือตอบรับ',f:{company:S('string','บริษัทที่ตอบรับ',{required:true}),student_name:S('string','ชื่อนักศึกษาที่ได้รับการตอบรับ'),start_date:S('date','วันเริ่มฝึกงาน'),
-  end_date:S('date','วันสิ้นสุดฝึกงาน'),position:S('string','ตำแหน่ง'),signer:S('string','ผู้ลงนาม'),issue_date:S('date','วันที่ของหนังสือ')}},
-};
-let curType='job',curFile=null,lastRes=null;
+function renderNotif(){if(!serverState)return;const lb=$('#lineBtn');if(lb)lb.innerHTML=serverState.user.line_linked?'<span class="chip ok">💚 ผูกบัญชี LINE แล้ว</span>':'<span class="chip warn">ยังไม่ได้ผูก LINE: ทักพี่ฝึกงานใน LINE แล้วทำตามที่บอท</span>';
+ const rl=$('#remList');if(rl)rl.innerHTML=serverState.reminders.length?serverState.reminders.map(r=>`<div class="it"><div style="flex:1"><b>${esc(r.text)}</b><br><small style="color:var(--mute)">${new Date(r.due_at).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Bangkok'})} · ${r.sent_at?(r.delivery==='line'?'ส่งทาง LINE แล้ว':'ส่ง LINE ไม่สำเร็จ'):'รอเตือน'}</small></div></div>`).join(''):'<p class="sub">ยังไม่มีการเตือน</p>';}
+async function addRem(){const t=$('#remText').value.trim(),d=$('#remAt').value;if(!t||!d)return toast('ใส่ข้อความและเวลาก่อน');const r=await api('/api/reminders',{method:'POST',body:JSON.stringify({text:t,datetime:d})});toast(r.ok?'ตั้งเตือนแล้ว ⏰':errMsg(r));if(r.ok){$('#remText').value='';await loadState();}}
+const DOCTYPES={job:{l:'📢 โพสต์ประกาศงาน',k:'job_post'},handbook:{l:'🎓 คู่มือ/ประกาศคณะ',k:'handbook'},transcript:{l:'📄 Transcript',k:'transcript'},acceptance:{l:'✉️ หนังสือตอบรับ',k:'acceptance'}};
+let curType='job',curFile=null,lastExt=null;
 $('#docType').innerHTML=Object.entries(DOCTYPES).map(([k,v])=>`<span data-k="${k}" class="${k==='job'?'on':''}">${v.l}</span>`).join('');
 $('#docType').onclick=e=>{const k=e.target.dataset.k;if(!k)return;curType=k;[...$('#docType').children].forEach(c=>c.classList.toggle('on',c.dataset.k===k));};
-const urlP=new URLSearchParams(location.search);
-const keyParam=urlP.get('key')||(location.hash.startsWith('#key=')?location.hash.slice(5):null);
-if(keyParam){localStorage.setItem('pxKey',keyParam);try{history.replaceState(null,'',location.pathname+(location.hash&&!location.hash.startsWith('#key=')?location.hash:''))}catch(e){}}
-$('#pxKey').value=localStorage.getItem('pxKey')||'';
-function saveKey(){localStorage.setItem('pxKey',$('#pxKey').value.trim());alert('บันทึกคีย์ในเบราว์เซอร์นี้แล้ว');}
 if(location.hash&&document.getElementById(location.hash.slice(1)))go(location.hash.slice(1));
-else if(keyParam)go('ocr');
 const drop=$('#drop');drop.ondragover=e=>{e.preventDefault();drop.style.borderColor='var(--pri)'};drop.ondragleave=()=>drop.style.borderColor='';
 drop.ondrop=e=>{e.preventDefault();drop.style.borderColor='';pick(e.dataTransfer.files[0])};
 function pick(f){if(!f)return;if(f.size>10485760){alert('ไฟล์ใหญ่เกิน 10MB');return}curFile=f;$('#fname').textContent=f.name+' · '+Math.round(f.size/1024)+' KB';
  const p=$('#prev');if(f.type.startsWith('image/')){p.src=URL.createObjectURL(f);p.style.display='block'}else p.style.display='none';}
-const b64=f=>new Promise((r,j)=>{const fr=new FileReader();fr.onload=()=>r(fr.result.split(',')[1]);fr.onerror=j;fr.readAsDataURL(f)});
 const LBL={company:'บริษัท',role:'ตำแหน่ง',location:'สถานที่',work_mode:'รูปแบบ',period:'ช่วงฝึกงาน',allowance:'เบี้ยเลี้ยง',deadline:'ปิดรับสมัคร',skills:'ทักษะ',documents:'เอกสารที่ต้องใช้',email:'อีเมล',phone:'โทร',apply_url:'ลิงก์สมัคร',
  program:'หลักสูตร/วิชา',min_hours:'ชั่วโมงขั้นต่ำ',milestones:'กำหนดการ',required_forms:'แบบฟอร์มที่ต้องส่ง',contact:'ผู้ประสานงาน',student_name:'ชื่อนักศึกษา',student_id:'รหัสนักศึกษา',university:'มหาวิทยาลัย',major:'สาขา',gpax:'GPAX',issue_date:'วันที่ออกเอกสาร',
  start_date:'วันเริ่ม',end_date:'วันสิ้นสุด',position:'ตำแหน่ง',signer:'ผู้ลงนาม'};
 const thd=v=>/^\d{4}-\d{2}-\d{2}$/.test(v)?new Date(v).toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'}):v;
 function show(v){if(v===null||v===undefined)return '<span class="chip bad">อ่านไม่พบ</span>';
- if(Array.isArray(v))return v.length?v.map(x=>typeof x==='object'?`<div>• ${thd(x.date)||'—'}: ${x.task||''}</div>`:`<span class="chip pri">${x}</span> `).join(''):'<span class="chip">ไม่มี</span>';return thd(String(v));}
-async function runOcr(){const key=$('#pxKey').value.trim();
- if(!key)return alert('ใส่ Paxa API key ก่อน');if(!curFile)return alert('เลือกไฟล์ก่อน');if(!$('#consent').checked)return alert('กรุณายินยอมการส่งไฟล์ก่อน');
+ if(Array.isArray(v))return v.length?v.map(x=>typeof x==='object'?`<div>• ${esc(thd(x.date))||'—'}: ${esc(x.task||'')}</div>`:`<span class="chip pri">${esc(x)}</span> `).join(''):'<span class="chip">ไม่มี</span>';return esc(thd(String(v)));}
+async function runOcr(){
+ if(!curFile)return alert('เลือกไฟล์ก่อน');if(!$('#consent').checked)return alert('กรุณายินยอมการส่งไฟล์ก่อน');
  const btn=$('#runBtn');btn.disabled=true;btn.textContent='⏳ กำลังอ่าน… (อาจใช้เวลาสักครู่)';$('#ocrOut').innerHTML='<p class="sub">กำลังประมวลผล…</p>';
- try{const r=await fetch('https://api.paxalabs.com/v1/extract',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},
-   body:JSON.stringify({document:await b64(curFile),model:'paxa-doc-extract-v1',schema:{fields:DOCTYPES[curType].f},include_pages:true})});
-  const d=await r.json();if(!r.ok||d.title)throw new Error(`${d.status||r.status} ${d.title||''} ${d.reason||d.detail||''}`);lastRes=d;renderOut(d);}
- catch(e){$('#ocrOut').innerHTML=`<div class="note" style="background:#fde8e8;color:var(--bad)">❌ อ่านไม่สำเร็จ: ${e.message}</div>`;}
+ try{const fd=new FormData();fd.append('file',curFile);fd.append('docType',DOCTYPES[curType].k);
+  const r=await api('/api/ocr',{method:'POST',body:fd});if(!r.ok)throw new Error(errMsg(r));lastExt=r.data.extraction;renderOut(lastExt);await loadState();}
+ catch(e){$('#ocrOut').innerHTML=`<div class="note" style="background:#fde8e8;color:var(--bad)">❌ อ่านไม่สำเร็จ: ${esc(e.message)}</div>`;}
  finally{btn.disabled=false;btn.textContent='✨ อ่านเอกสาร';}}
-function renderOut(d){const f=d.fields,un=Object.fromEntries((d.unverified||[]).map(u=>[u.path,u.reason]));
+function renderOut(x){const f=x.fields;
  const okN=Object.values(f).filter(v=>v!==null&&!(Array.isArray(v)&&!v.length)).length;
- let act='';
- if(curType==='job')act=`<button class="btn" onclick="saveJob()">＋ บันทึกเข้าการติดตามการสมัคร</button>`;
- if(curType==='handbook')act=`<button class="btn" onclick="saveHandbook()">＋ เพิ่มกำหนดการเข้าเช็กลิสต์คณะ</button>`;
- if(curType==='transcript'&&f.issue_date){const m=Math.round((new Date()-new Date(f.issue_date))/2.63e9);act=`<div class="note" style="${m>3?'':'background:var(--okbg);color:var(--ok)'}">${m>3?'⚠ ออกมาแล้ว '+m+' เดือน: บางบริษัทต้องการฉบับไม่เกิน 3 เดือน':'✔ ออกเมื่อ '+m+' เดือนก่อน ใช้ได้'}</div>`}
- if(curType==='acceptance')act=`<div class="note">${f.signer?'✔ พบชื่อผู้ลงนาม: '+f.signer:'⚠ ไม่พบชื่อผู้ลงนาม: ตรวจลายเซ็นก่อนส่งคณะ'}</div>`;
- $('#ocrOut').innerHTML=`<div class="row" style="justify-content:space-between"><h3 style="margin:0">ผลการอ่าน</h3><span class="chip ${d.status==='complete'?'ok':'warn'}">${d.status==='complete'?'✔ ครบ':'⚠ ไม่ครบ'} · อ่านได้ ${okN}/${Object.keys(f).length} ช่อง · ${d.usage?.credits} เครดิต</span></div>
- <p class="sub" style="margin:6px 0 10px"><span class="chip">🤖 อ่านโดย AI: ตรวจก่อนบันทึก</span></p>
- <table style="width:100%;border-collapse:collapse">${Object.entries(f).map(([k,v])=>`<tr style="border-top:1px solid var(--line)"><td style="padding:8px 6px;color:var(--mute);width:34%;vertical-align:top">${LBL[k]||k}</td><td style="padding:8px 6px">${show(v)}${un[k]?` <small style="color:var(--warn)">(${un[k]})</small>`:''}</td></tr>`).join('')}</table>
- ${d.status!=='complete'?'<div class="note">ข้อมูลสำคัญหลายช่องอ่านไม่พบ: อาจเลือกประเภทเอกสารผิด</div>':''}
- <div style="margin-top:14px">${act}</div>
- ${d.pages?`<details style="margin-top:12px"><summary style="cursor:pointer;color:var(--mute)">ดูข้อความที่อ่านได้ทั้งหมด</summary><pre style="white-space:pre-wrap;font-size:12px;background:#fafbfe;padding:10px;border-radius:8px">${d.pages.map(p=>p.markdown).join('\n\n').replace(/</g,'&lt;')}</pre></details>`:''}`;}
-function saveJob(){const f=lastRes.fields;apps.unshift({co:f.company||'ไม่ทราบบริษัท',role:f.role||'Intern',st:'Saved',verified:false,ev:[['10 พ.ย.','บันทึกจากเอกสาร (อ่านโดย AI)']],next:f.deadline?'ปิดรับ '+thd(f.deadline):'—',upd:0});
- if(f.documents?.length)need[f.company||'ใหม่']=Object.fromEntries(myDocs.map(d=>[d.k,f.documents.some(x=>x.toLowerCase().includes(d.t.toLowerCase().split(' ')[0].slice(0,6))||(d.k==='id'&&/บัตร/.test(x)))?'bad':'-']));
- go('tracker');}
-function saveHandbook(){(lastRes.fields.milestones||[]).forEach(m=>uni.push({t:m.task||'กำหนดการ',d:m.date?thd(m.date)+' · จากคู่มือ (AI)':'จากคู่มือ (AI)',done:false}));go('uni');}
-let chatMode='me';
+ let note='';
+ if(x.doc_type==='transcript'&&f.issue_date){const m=Math.round((new Date()-new Date(f.issue_date))/2.63e9);note=`<div class="note" style="${m>3?'':'background:var(--okbg);color:var(--ok)'}">${m>3?'⚠ ออกมาแล้ว '+m+' เดือน: บางบริษัทต้องการฉบับไม่เกิน 3 เดือน':'✔ ออกเมื่อ '+m+' เดือนก่อน ใช้ได้'}</div>`}
+ if(x.doc_type==='acceptance')note=`<div class="note">${f.signer?'✔ พบชื่อผู้ลงนาม: '+esc(f.signer):'⚠ ไม่พบชื่อผู้ลงนาม: ตรวจลายเซ็นก่อนส่งคณะ'}</div>`;
+ $('#ocrOut').innerHTML=`<div class="row" style="justify-content:space-between"><h3 style="margin:0">ผลการอ่าน</h3><span class="chip warn">อ่านได้ ${okN}/${Object.keys(f).length} ช่อง</span></div>
+ <p class="sub" style="margin:6px 0 10px"><span class="chip warn">🤖 อ่านโดย AI: ตรวจก่อนบันทึก</span></p>
+ <table style="width:100%;border-collapse:collapse">${Object.entries(f).map(([k,v])=>`<tr style="border-top:1px solid var(--line)"><td style="padding:8px 6px;color:var(--mute);width:34%;vertical-align:top">${LBL[k]||k}</td><td style="padding:8px 6px">${show(v)}</td></tr>`).join('')}</table>
+ ${note}<div class="row" style="margin-top:14px"><button class="btn" onclick="confirmExt('${x.id}')">✔ ยืนยันและบันทึก</button><button class="btn ghost" onclick="discardExt('${x.id}')">ไม่ใช่</button></div>`;}
+async function confirmExt(id){const r=await api('/api/extractions/'+id+'/confirm',{method:'POST'});toast(r.ok?'บันทึกแล้ว ✔ (ป้าย 🤖 AI อ่าน)':errMsg(r));await loadState();
+ if(r.ok&&lastExt&&lastExt.id===id){const t=lastExt.doc_type;lastExt=null;$('#ocrOut').innerHTML='<p class="sub" style="margin:0">ผลลัพธ์จะแสดงที่นี่</p>';go(t==='job_post'?'tracker':'docs');}}
+async function discardExt(id){await api('/api/extractions/'+id+'/discard',{method:'POST'});if(lastExt&&lastExt.id===id){lastExt=null;$('#ocrOut').innerHTML='<p class="sub" style="margin:0">ผลลัพธ์จะแสดงที่นี่</p>';}await loadState();}
+function renderOcrPending(){const p=serverState?serverState.pending_extractions:[],el=$('#ocrPending');if(!el)return;el.style.display=p.length?'block':'none';
+ el.innerHTML=p.length?'<h3 style="margin-top:0">🤖 รอคุณยืนยัน</h3>'+p.map(x=>`<div class="it" style="display:block"><b>${esc(x.fields.company||x.fields.program||x.fields.student_name||x.doc_type)}</b> <small style="color:var(--mute)">· จาก ${x.channel==='line'?'LINE':'เว็บ'}</small><div class="row" style="margin-top:6px"><button class="btn sm" onclick="confirmExt('${x.id}')">ยืนยัน</button><button class="btn sm ghost" onclick="discardExt('${x.id}')">ไม่ใช่</button></div></div>`).join(''):'';}
 const bub=(t,me,who)=>`<div style="align-self:${me?'flex-end':'flex-start'};max-width:82%">${who?`<small style="color:#fff">${who}</small>`:''}<div style="background:${me?'#9be15d':'#fff'};border-radius:16px;padding:9px 12px;font-size:13px;line-height:1.5">${t}</div></div>`;
-const card=(h,rows,btn)=>`<b>${h}</b><div style="margin:6px 0;font-size:12px;color:#555">${rows.join('<br>')}</div>${btn?`<div style="border-top:1px solid #eee;padding-top:6px;color:var(--pri);font-weight:600">${btn}</div>`:''}`;
-const SEED={me:[
- [1,'[📷 รูปโพสต์งานจาก Facebook]'],
- [0,card('✅ บันทึกแล้ว: Data Analyst Intern',['🏢 บริษัท ไทยดาต้า โซลูชันส์','📅 ปิดรับ 30 พ.ย. (อีก 20 วัน)','📄 ต้องใช้: Resume, Transcript, บัตรนศ.','⚠ ยังขาด: สำเนาบัตรนักศึกษา'],'ดูในเว็บ →')],
- [1,'พรุ่งนี้สัมภาษณ์บริษัท A สิบโมงนะ'],
- [0,'รับทราบครับ 👍 ย้ายบริษัท A ไปช่อง <b>สัมภาษณ์</b> แล้ว<br>⏰ จะเตือนคืนนี้ 20:00 และพรุ่งนี้ 08:30<br>💡 รุ่นพี่บอกว่าบริษัท A ชอบถามเรื่อง SQL window function']],
- group:[
- [0,'สวัสดีครับทุกคน 👋 ผมพี่ฝึกงาน เรียก "พี่ฝึกงาน" ได้เลย','',''],
- [1,'พี่ฝึกงาน หนังสือขอความอนุเคราะห์ต้องยื่นถึงวันไหน','ต้น'],
- [0,'📌 คณะวิทย์ฯ ให้ยื่นภายใน <b>15 ธ.ค.</b> ครับ เจ้าหน้าที่ใช้เวลาออก ~5 วันทำการ<br>เตือนทั้งกลุ่ม 3 วันก่อนไหมครับ?<br><span style="color:var(--pri)">[เตือนทั้งกลุ่ม] [เฉพาะฉัน]</span>'],
- [1,'เตือนทั้งกลุ่มเลย','มีน'],
- [0,'✅ ตั้งเตือนกลุ่มแล้ว 12 ธ.ค. 09:00<br>👥 สถานะกลุ่ม: ได้ที่ฝึกงานแล้ว 4/12 คน 🎉']]};
-const QUICK={me:['เหลืออะไรที่ยังไม่ส่งบ้าง','บริษัท B ตอบกลับแล้ว ให้ไปสัมภาษณ์ 20 พ.ย.','transcript ของฉันหมดอายุยัง','[📷 รูปโพสต์งาน บริษัท H]'],
- group:['พี่ฝึกงาน ใครได้ที่ฝึกงานแล้วบ้าง','พี่ฝึกงาน บริษัท A จ่ายเบี้ยเลี้ยงเท่าไหร่']};
-function chatTab(m){chatMode=m;$('#tabMe').className='btn sm'+(m==='me'?'':' ghost');$('#tabGroup').className='btn sm'+(m==='group'?'':' ghost');
- $('#chatTitle').textContent=m==='me'?'← พี่ฝึกงาน · InternMatch':'← ฝึกงาน DS ปี 3 (12)';
- $('#msgs').innerHTML=SEED[m].map(x=>bub(x[1],x[0],x[2])).join('');
- $('#quick').innerHTML=QUICK[m].map(q=>`<span onclick="sendMsg(this.textContent)">${q}</span>`).join('');$('#msgs').scrollTop=1e9;}
-function logSync(i,t){const l=$('#syncLog');if(l.querySelector('.sub'))l.innerHTML='';l.insertAdjacentHTML('afterbegin',`<div class="it"><span style="font-size:20px">${i}</span><div style="flex:1">${t}<br><small style="color:var(--mute)">เมื่อสักครู่ · จาก LINE</small></div></div>`);}
-function reply(t){
- if(/รูป|📷/.test(t)){apps.unshift({co:'บริษัท H',role:'Data Analyst Intern',st:'Saved',verified:false,ev:[['10 พ.ย.','บันทึกจาก LINE (AI อ่านรูป)']],next:'ปิดรับ 5 ธ.ค.',upd:0});logSync('📋','เพิ่ม <b>บริษัท H</b> ในช่อง "บันทึกไว้"');
-  return card('✅ บันทึกแล้ว: Data Analyst Intern',['🏢 บริษัท H','📅 ปิดรับ 5 ธ.ค.','🤖 อ่านจากรูปด้วย AI: แตะเพื่อตรวจ'],'แก้ไข | ดูในเว็บ →');}
- if(/ยังไม่ส่ง|เหลืออะไร/.test(t))return card('📋 ยังค้างอยู่ 3 เรื่อง',['1. บริษัท B: ขาดสำเนาบัตรนักศึกษา','2. ขออาจารย์อนุมัติบริษัท A','3. บริษัท F: ไม่อัปเดตมา 21 วัน'],'ส่งบัตรนศ.ตรงนี้ได้เลย 📎');
- if(/บริษัท B.*สัมภาษณ์/.test(t)){const a=apps.find(x=>x.co==='บริษัท B');if(a){a.st='Interview';a.next='สัมภาษณ์ 20 พ.ย.';a.ev.push(['10 พ.ย.','อัปเดตผ่าน LINE → สัมภาษณ์'])}
-  logSync('🗣️','ย้าย <b>บริษัท B</b> → สัมภาษณ์ · นัด 20 พ.ย.');return 'ยินดีด้วยครับ 🎉 ย้ายบริษัท B ไป <b>สัมภาษณ์</b> แล้ว<br>⏰ เตือน 19 พ.ย. 20:00<br><small>✎ บันทึกว่าคุณเป็นคนอัปเดต</small>';}
- if(/transcript/i.test(t))return '📄 Transcript ของคุณออกเมื่อ ภาค 1/2569<br>⚠ บริษัท B ต้องการฉบับไม่เกิน 3 เดือน: <b>ควรขอใหม่ก่อน 1 ธ.ค.</b><br>ให้เตือนไหมครับ? <span style="color:var(--pri)">[เตือน]</span>';
- if(/ใครได้/.test(t))return '👥 ได้ที่ฝึกงานแล้ว 4/12 คน: มีน ✔ ปอ ✔ เจ ✔ บีม ✔<br><small>แสดงเฉพาะคนที่เปิดแชร์สถานะ</small>';
- if(/เบี้ยเลี้ยง/.test(t))return '💰 บริษัท A: 15,000/เดือน (จากประกาศ)<br>รุ่นพี่ 6 คนบอกว่าได้จริงตามนั้น';
- const m=t.match(/(\d{1,2})\s*(พ\.ย\.|ธ\.ค\.)|พรุ่งนี้|มะรืน/);
- if(/เตือน|นัด/.test(t)||m){logSync('⏰','ตั้งเตือน: '+t);return '⏰ ตั้งเตือนให้แล้วครับ: “'+t+'”';}
- return 'รับทราบครับ 📝 จดไว้ในโน้ตแล้ว ถามหาได้ทีหลัง เช่น “เมื่อกี้จดอะไรไว้เรื่องบริษัท A”';}
-function sendMsg(t){t=t||$('#chatIn').value.trim();if(!t)return;$('#chatIn').value='';
- $('#msgs').insertAdjacentHTML('beforeend',bub(t,1,chatMode==='group'?'คุณ':''));$('#msgs').scrollTop=1e9;
- setTimeout(()=>{$('#msgs').insertAdjacentHTML('beforeend',bub(reply(t),0));$('#msgs').scrollTop=1e9;},600);}
-chatTab('me');
-const myDocs=[
- {k:'resume',i:'📄',t:'Resume',v:'v3 · Data (TH/EN)',s:'ok',n:'อัปเดต 5 พ.ย. · มี 2 เวอร์ชัน'},
- {k:'tr',i:'🎓',t:'Transcript',v:'ภาค 1/2569',s:'warn',n:'ใกล้หมดอายุ: บริษัท B ต้องการฉบับไม่เกิน 3 เดือน'},
- {k:'port',i:'🗂️',t:'Portfolio',v:'ลิงก์ Notion',s:'ok',n:'ตรวจลิงก์ได้ 10 พ.ย.'},
- {k:'cover',i:'✉️',t:'Cover Letter',v:'Template',s:'warn',n:'ยังไม่ได้ปรับให้ตรงกับบริษัท C'},
- {k:'id',i:'🪪',t:'สำเนาบัตรนักศึกษา',v:'—',s:'bad',n:'ยังไม่ได้อัปโหลด'},
-];
-const need={'บริษัท A':{resume:'ok',tr:'ok',port:'ok',cover:'-',id:'-'},'บริษัท B':{resume:'ok',tr:'warn',port:'-',cover:'ok',id:'bad'},
- 'บริษัท C':{resume:'ok',tr:'-',port:'ok',cover:'warn',id:'-'},'บริษัท F':{resume:'ok',tr:'ok',port:'-',cover:'-',id:'-'}};
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const QUICK=['เหลืออะไรที่ยังไม่ส่งบ้าง','บริษัท B ตอบกลับแล้ว ให้ไปสัมภาษณ์ 20 พ.ย.','สรุปให้หน่อยว่าตอนนี้ต้องทำอะไรบ้าง'];
+function renderChat(){const el=$('#msgs');if(!el)return;const m=serverState?serverState.messages:[];
+ el.innerHTML=m.length?m.map(x=>bub(esc(x.content).replace(/\n/g,'<br>'),x.role==='user',x.channel==='line'?'💬 LINE':'🌐 เว็บ')).join(''):'<p style="color:#fff;text-align:center">ยังไม่มีบทสนทนา ลองทักพี่ฝึกงานได้เลย</p>';
+ $('#quick').innerHTML=QUICK.map(q=>`<span onclick="sendMsg(this.textContent)">${q}</span>`).join('');el.scrollTop=1e9;}
+let chatBusy=false;
+async function sendMsg(t){t=(t||$('#chatIn').value).trim();if(!t||chatBusy)return;chatBusy=true;$('#chatIn').value='';
+ $('#msgs').insertAdjacentHTML('beforeend',bub(esc(t),1,'🌐 เว็บ')+bub('<i>กำลังคิด…</i>',0));$('#msgs').scrollTop=1e9;
+ const r=await api('/api/chat',{method:'POST',body:JSON.stringify({text:t})});chatBusy=false;if(!r.ok)toast(errMsg(r));await loadState();}
+const myDocs=[];let extraDocs=[];const ICONS={resume:'📄',tr:'🎓',port:'🗂️',cover:'✉️',id:'🪪'};
+const need={};
 const uniDocs=[
  {t:'หนังสือขอความอนุเคราะห์ – บริษัท A',st:2,upd:'อัปเดตโดยคุณ 8 พ.ย.',steps:['ยื่นคำขอ','เจ้าหน้าที่ตรวจ','รอคณบดีลงนาม','ได้รับเอกสาร','ส่งบริษัท'],eta:'คาดว่าได้ ~14 พ.ย. (รุ่นพี่ 23 คน รอเฉลี่ย 5 วันทำการ)'},
  {t:'ใบตอบรับฝึกงาน – บริษัท A',st:0,upd:'ยังไม่อัปเดต',steps:['รอบริษัท','ได้รับแล้ว','ส่งคณะ'],eta:'บริษัท A ออกใบตอบรับเฉลี่ย 7 วัน (จากรุ่นพี่ 6 คน) · กำหนดส่งคณะ 31 ม.ค.'},
@@ -559,145 +435,34 @@ function renderDocs(){
  $('#myDocs').innerHTML=myDocs.map(d=>`<div class="card"><div class="row" style="justify-content:space-between"><span style="font-size:22px">${d.i}</span>${ic[d.s]}</div>
  <h3 style="margin:6px 0 2px">${d.t}</h3><small style="color:var(--mute)">${d.v}</small><p style="font-size:13px;margin:8px 0 10px">${d.n}</p>
  <div class="row"><button class="btn sm ghost">${d.s==='bad'?'อัปโหลด':'แทนที่'}</button>${d.s==='ok'?'<button class="btn sm ghost">ดู</button>':''}</div></div>`).join('');
+ $('#myDocs').insertAdjacentHTML('beforeend',extraDocs.map(d=>`<div class="card"><div class="row" style="justify-content:space-between"><span style="font-size:22px">🤖</span><span class="chip warn">อ่านโดย AI</span></div><h3 style="margin:6px 0 2px">${esc(d.name)}</h3><small style="color:var(--mute)">${esc(Object.entries(d.fields).filter(([,v])=>v!==null&&typeof v!=='object').slice(0,3).map(([k,v])=>(LBL[k]||k)+': '+v).join(' · '))}</small></div>`).join(''));
  $('#matrix').innerHTML=`<tr style="text-align:left;color:var(--mute)"><th style="padding:8px">ใบสมัคร</th>${myDocs.map(d=>`<th>${d.t}</th>`).join('')}<th>ความพร้อม</th></tr>`+
  Object.entries(need).map(([co,r])=>{const req=Object.values(r).filter(v=>v!=='-'),ok=req.filter(v=>v==='ok').length;
   return `<tr style="border-top:1px solid var(--line)"><td style="padding:10px 8px"><b>${co}</b></td>${myDocs.map(d=>`<td>${ic[r[d.k]]}</td>`).join('')}
   <td>${ok===req.length?'<span class="chip ok">พร้อมส่ง</span>':`<span class="chip warn">ขาด ${req.length-ok} รายการ</span>`}</td></tr>`}).join('');
+ if(!Object.keys(need).length)$('#matrix').innerHTML='<tr><td style="padding:12px;color:var(--mute)">ตารางความพร้อมเอกสารรายบริษัทจะแสดงเมื่อระบบรู้ว่าแต่ละบริษัทขอเอกสารอะไร (ยังไม่เปิดใช้ในรอบนี้)</td></tr>';
  $('#uniDocs').innerHTML=uniDocs.map((u,k)=>`<div class="it" style="display:block"><div class="row" style="justify-content:space-between"><b>${u.t}</b><span class="chip">✎ ${u.upd}</span></div>
  <div style="display:flex;gap:4px;margin:10px 0 6px">${u.steps.map((s,i)=>`<div style="flex:1;cursor:pointer" title="กดเพื่อตั้งเป็นขั้นปัจจุบัน" onclick="uniDocs[${k}].st=${i};uniDocs[${k}].upd='อัปเดตโดยคุณ 10 พ.ย.';render()"><div style="height:6px;border-radius:6px;background:${i<u.st?'var(--ok)':i===u.st?'var(--warn)':'var(--line)'}"></div><small style="color:${i===u.st?'var(--warn)':'var(--mute)'}">${s}</small></div>`).join('')}</div>
  <small style="color:var(--mute)">⏱ ${u.eta}</small> <button class="btn sm ghost" style="float:right">แจ้งเตือนทาง LINE เมื่อพร้อม</button></div>`).join('');}
-const uni=[
- {t:'ลงทะเบียนรายวิชาฝึกงาน',d:'ภายใน 15 พ.ย.',done:true},
- {t:'อาจารย์ที่ปรึกษาอนุมัติบริษัทเป้าหมาย',d:'ก่อนส่งหนังสือขอความอนุเคราะห์',done:false,act:'ขออนุมัติ'},
- {t:'ยื่นขอหนังสือขอความอนุเคราะห์จากคณะ',d:'ใช้เวลาออกเอกสาร 5 วันทำการ',done:false,act:'สร้างร่าง'},
- {t:'ได้รับใบตอบรับจากบริษัท',d:'ส่งคณะภายใน 31 ม.ค.',done:false},
- {t:'ส่งแบบฟอร์มยืนยันสถานที่ฝึกงาน (ฝง.01)',d:'ภายใน 15 ก.พ.',done:false},
- {t:'ปฐมนิเทศก่อนฝึกงาน',d:'1 มี.ค. ห้อง 301',done:false},
-];
+const uni=[];
 const PH=['ค้นหา','สมัคร','สัมภาษณ์','ได้ใบตอบรับ','เอกสารคณะ','เริ่มฝึกงาน'];
 function renderUni(){const n=uni.filter(u=>u.done).length;$('#uniPct').textContent=`${n}/${uni.length} เสร็จ`;
- $('#uniList').innerHTML=uni.map((u,i)=>`<div class="it"><input type="checkbox" ${u.done?'checked':''} onchange="uni[${i}].done=this.checked;render()" style="width:18px;height:18px">
+ $('#uniList').innerHTML=uni.map((u,i)=>`<div class="it"><input type="checkbox" ${u.done?'checked':''} onchange="toggleTask(${i},this.checked)" style="width:18px;height:18px">
  <div style="flex:1;${u.done?'text-decoration:line-through;color:var(--mute)':''}"><b>${u.t}</b><br><small style="color:var(--mute)">${u.d}</small></div>${u.act&&!u.done?`<button class="btn sm ghost">${u.act}</button>`:''}</div>`).join('');
  $('#letterCo').innerHTML=apps.filter(a=>a.st!=='Closed'&&a.st!=='Saved').map(a=>`<option>${a.co} – ${a.role}</option>`).join('');
  const cur=2;$('#phaseTxt').textContent='ตอนนี้: '+PH[cur];
  $('#journey').innerHTML=PH.map((p,i)=>`<div style="flex:1;text-align:center"><div style="height:6px;border-radius:6px;background:${i<cur?'var(--ok)':i===cur?'var(--pri)':'var(--line)'}"></div><small style="color:${i===cur?'var(--pri)':'var(--mute)'};font-weight:${i===cur?600:400}">${p}</small></div>`).join('');
- const todo=[['🗣️','เตรียมสัมภาษณ์บริษัท A พรุ่งนี้ 10:00','ดูคำถามที่รุ่นพี่เจอ',"go('tracker')"],
-  ['📝','ขออาจารย์อนุมัติบริษัท A ก่อนยื่นหนังสือขอความอนุเคราะห์','ขั้นตอนคณะ',"go('uni')"],
-  ['📁','บริษัท B: ขาดสำเนาบัตรนักศึกษา + Transcript ใกล้หมดอายุ','เอกสาร',"go('docs')"],
-  ['🔄','บริษัท F ไม่มีความเคลื่อนไหว 21 วัน: ตามผลหรือปิดใบสมัคร','อัปเดตเอง',"appDetail(2)"],
-  ['⏳','บริษัท D ปิดรับใน 5 วัน: ตรงกับสายที่คุณสนใจ','แนะนำ',"detail(4)"]];
+ const todo=[];
+ (serverState?serverState.unseen_reminders:[]).forEach(r=>todo.push(['⏰',esc(r.text),'เตือนที่ยังไม่ได้อ่าน',`seenRem('${r.id}')`]));
+ apps.map((a,i)=>[a,i]).filter(([a])=>!a.verified&&a.upd>14&&a.st!=='Closed'&&a.st!=='Saved').forEach(([a,i])=>todo.push(['🔄',esc(a.co)+' ไม่มีความเคลื่อนไหว '+a.upd+' วัน: ตามผลหรือปิดใบสมัคร','อัปเดตเอง',`appDetail(${i})`]));
+ uni.filter(u=>!u.done).slice(0,2).forEach(u=>todo.push(['📝',esc(u.t),esc(u.d),"go('uni')"]));
+ myDocs.filter(d=>d.s!=='ok').slice(0,2).forEach(d=>todo.push(['📁',esc(d.t+': '+d.n),'เอกสาร',"go('docs')"]));
  $('#todo').innerHTML=todo.map(t=>`<div class="it"><span style="font-size:20px">${t[0]}</span><div style="flex:1"><b>${t[1]}</b><br><small style="color:var(--mute)">${t[2]}</small></div><button class="btn sm" onclick="${t[3]}">ทำเลย</button></div>`).join('');}
-const PIPELINES=[
- {title:'📱 1. นักศึกษาส่งภาพโพสต์งานผ่าน LINE OA',latency:'⚡ Average Latency: ~1.8s (รวม Paxa OCR)',
-  stages:[
-   {name:'1. Ingestion',icon:'📱',desc:'LINE Messaging API Webhook รับ Image payload'},
-   {name:'2. Queue & Auth',icon:'🛡️',desc:'Verify signature, โยน job เข้า BullMQ (Redis)'},
-   {name:'3. AI Parsing',icon:'🤖',desc:'Paxa OCR สกัดฟิลด์ภาษาไทย (paxa-doc-extract-v1)'},
-   {name:'4. Truth Tagging',icon:'🏷️',desc:'แปะป้าย AI_EXTRACTED รอผู้ใช้ตรวจก่อน'},
-   {name:'5. Database & S3',icon:'🗄️',desc:'บันทึก PostgreSQL applications + เก็บภาพใน S3'},
-   {name:'6. Dual-Sync',icon:'🔄',desc:'ส่ง LINE Flex Msg ยืนยัน + WebSocket ดันเข้าบอร์ดเว็บ'}
-  ],
-  steps:[
-   '1. <b>LINE Webhook:</b> นศ. แคปหน้าจอโพสต์จาก Facebook/LINE กลุ่ม แล้วแชร์เข้า @internmatch',
-   '2. <b>Buffer & Auth:</b> ระบบตรวจ User ID เทียบกับตารางผูกบัญชี (Account Linking) แล้วโยนงานเข้า BullMQ Queue',
-   '3. <b>AI OCR Worker:</b> Worker ดึงงาน ส่งภาพเข้า Paxa Labs OCR ได้ฟิลด์: บริษัท, ตำแหน่ง, วันปิดรับ, เอกสารที่ต้องใช้',
-   '4. <b>Truth Tagging:</b> ข้อมูลถูกติดป้าย <code>AI_EXTRACTED</code> (สถานะชั่วคราวเพื่อให้ User ตรวจสอบ ไม่สวมรอยเป็นข้อมูลจริง)',
-   '5. <b>Persistence:</b> บันทึกลง PostgreSQL พร้อมประวัติ Event Log และเพิ่มข้อกำหนดเอกสารลง Matrix',
-   '6. <b>Bidirectional Sync:</b> บอทตอบกลับใน LINE ทันที พร้อมยิง WebSocket อัปเดตบอร์ด Kanban บนคอมของนักศึกษา และอัปเดตสถิติคณะ'
-  ],
-  payload:{event_id:"evt_9a8f21c0",channel:"LINE_OA",user_id:"usr_meen_6601",event_type:"JOB_POST_IMAGE_UPLOADED",source_of_truth:"AI_EXTRACTED",extracted_data:{company:"บริษัท ไทยดาต้า โซลูชันส์ จำกัด",role:"Data Analyst Intern",work_mode:"Hybrid",deadline:"2026-11-30",required_documents:["Resume","Transcript","สำเนาบัตรนักศึกษา"]},audit:{client_ip:"line-webhook-gw",latency_ms:1820}}},
-
- {title:'💬 2. นักศึกษาพิมพ์อัปเดตสถานะใน LINE ("บริษัท B เรียกสัมภาษณ์ 20 พ.ย.")',latency:'⚡ Average Latency: ~650ms',
-  stages:[
-   {name:'1. Ingestion',icon:'💬',desc:'LINE Webhook รับ Text Message ภาษาพูด'},
-   {name:'2. Gateway',icon:'🛡️',desc:'Token Bucket Rate-limit + Load Context'},
-   {name:'3. Gemini NLP',icon:'🧠',desc:'Gemini 3.8 Flash สกัด Intent -> เรียก tool update_application_status'},
-   {name:'4. Truth Tagging',icon:'🏷️',desc:'แปะป้าย USER_REPORTED (นศ. เป็นผู้แจ้ง)'},
-   {name:'5. DB & Scheduler',icon:'🗄️',desc:'Update PostgreSQL status=Interview, ตั้ง BullMQ Schedule เตือน 19 พ.ย.'},
-   {name:'6. Live Sync',icon:'🔄',desc:'ตอบ LINE ข้อความยืนยัน + Kanban บนเว็บย้ายการ์ด + Admin Cohort อัปเดต'}
-  ],
-  steps:[
-   '1. <b>Text Input:</b> นศ. พิมพ์ข้อความภาษาพูดอย่างเป็นธรรมชาติใน LINE ไม่ต้องเข้าเว็บ',
-   '2. <b>Intent Recognition:</b> Gemini Function Calling จับคู่ชื่อ "บริษัท B" และสถานะ "Interview" พร้อมวันนัด 20 พ.ย.',
-   '3. <b>Business Rule Check:</b> ตรวจสอบว่าไม่ใช่ใบสมัครประเภท <code>SYSTEM_VERIFIED</code> (ห้าม นศ. เมคสถานะงานที่สมัครตรงกับระบบ)',
-   '4. <b>Audit Trail:</b> บันทึก Event Log ว่าอัปเดตผ่าน LINE เมื่อเวลาใด',
-   '5. <b>Reminder Scheduling:</b> คำนวณวันล่วงหน้า 1 วัน (19 พ.ย. 20:00) ยัดเข้า BullMQ Cron เพื่อทักเตือน',
-   '6. <b>Live Sync:</b> หาก นศ. เปิดเว็บอยู่ การ์ดจะเด้งไปช่องสัมภาษณ์ทันที และแดชบอร์ดอาจารย์เห็นว่า นศ. มีนัดสัมภาษณ์เพิ่ม 1 คน'
-  ],
-  payload:{event_id:"evt_7b120c4e",channel:"LINE_OA",user_id:"usr_meen_6601",event_type:"STATUS_UPDATE",target_company:"บริษัท B",new_status:"Interview",interview_at:"2026-11-20T10:00:00+07:00",source_of_truth:"USER_REPORTED",reminder_scheduled:"2026-11-19T20:00:00+07:00"}},
-
- {title:'💻 3. นักศึกษาอัปโหลด Transcript บน Website',latency:'⚡ Average Latency: ~1.2s',
-  stages:[
-   {name:'1. Direct Upload',icon:'💻',desc:'Web Client ส่งไฟล์ผ่าน HTTPS (Next.js API)'},
-   {name:'2. Auth & Check',icon:'🛡️',desc:'JWT Session Check + Magic Bytes validation'},
-   {name:'3. S3 Storage',icon:'🔒',desc:'Upload to Encrypted Private S3 Bucket (AES-256)'},
-   {name:'4. Paxa AI Check',icon:'🤖',desc:'Paxa OCR ตรวจ Issue Date, ตรวจเกรด GPAX'},
-   {name:'5. Matrix Update',icon:'🗄️',desc:'Update documents table, ปรับ Matrix ความพร้อมเป็น "พร้อม"'},
-   {name:'6. Alert Sync',icon:'🔄',desc:'เว็บขึ้นเครื่องหมาย ✔ + แจ้งเตือนเข้า LINE นศ. ยืนยัน'}
-  ],
-  steps:[
-   '1. <b>Direct Web Upload:</b> นศ. อัปโหลดไฟล์ PDF จากคอมพิวเตอร์เข้าสู่หน้าคลังเอกสาร',
-   '2. <b>Security & PDPA:</b> ตรวจสอบสิทธิ์ เข้าถึงได้เฉพาะเจ้าของบัญชีและอาจารย์ที่ปรึกษาที่ได้รับอนุญาตเท่านั้น',
-   '3. <b>Intelligent Validation:</b> Paxa OCR อ่านวันที่ออกเอกสาร หากเกิน 90 วัน ระบบจะติด Flag <code>WARNING_EXPIRING</code>',
-   '4. <b>Matrix Synchronization:</b> อัปเดตตารางความพร้อมของทุกบริษัทที่ต้องใช้ Transcript ทันที',
-   '5. <b>Faculty Notification:</b> อาจารย์เห็นใน Admin Portal ว่านักศึกษาเตรียมเอกสารพร้อมสำหรับการขอหนังสือรับรองแล้ว'
-  ],
-  payload:{event_id:"evt_3c559d81",channel:"WEB_CLIENT",user_id:"usr_meen_6601",document_type:"TRANSCRIPT",file_s3_key:"secure/docs/usr_meen_6601/transcript_v1_2569.pdf",ocr_metadata:{issue_date:"2026-08-15",gpax:3.42,validity:"VALID",age_months:2.8},source_of_truth:"SYSTEM_VERIFIED_DOCUMENT"}},
-
- {title:'👩‍🏫 4. อาจารย์/แอดมินคณะ อนุมัติเอกสารใน Admin Portal',latency:'⚡ Average Latency: ~400ms (High Priority)',
-  stages:[
-   {name:'1. Admin Action',icon:'👩‍🏫',desc:'อาจารย์กดปุ่ม "อนุมัติ & ออกหนังสือ" ใน Admin Portal'},
-   {name:'2. RBAC Gateway',icon:'🛡️',desc:'Verify Admin Token (Role: FACULTY_ADVISOR)'},
-   {name:'3. PDF Worker',icon:'⚙️',desc:'Auto-generate หนังสือขอความอนุเคราะห์ (ตราครุฑ/ลายเซ็น)'},
-   {name:'4. Truth Tagging',icon:'🏷️',desc:'แปะป้าย SYSTEM_VERIFIED (ระดับสูงสุด)'},
-   {name:'5. DB State Update',icon:'🗄️',desc:'PostgreSQL: university_steps.status = APPROVED'},
-   {name:'6. Instant Push',icon:'🚀',desc:'ยิง LINE Push Flex ส่ง PDF ให้ นศ. + ติ๊กผ่านในเว็บ นศ.'}
-  ],
-  steps:[
-   '1. <b>Faculty Approval:</b> อาจารย์ตรวจคุณสมบัติ นศ. (ชั่วโมง, เกรด, บริษัท) แล้วกดปุ่มอนุมัติคำขอ',
-   '2. <b>Automated Letter Generation:</b> ระบบดึง Template หนังสือขอความอนุเคราะห์ของคณะ เติมชื่อ นศ. และชื่อผู้บริหารบริษัท แล้ว Gen PDF ทันที',
-   '3. <b>Authority Stamp:</b> สแตมป์สถานะ <code>SYSTEM_VERIFIED</code> ซึ่งเป็นระดับความน่าเชื่อถือสูงสุด',
-   '4. <b>Student Instant Notification:</b> ระบบยิง LINE Push Notification หา นศ. ทันที: "หนังสือขอความอนุเคราะห์ออกแล้ว ดาวน์โหลดได้เลย"',
-   '5. <b>Checklist Progression:</b> เช็กลิสต์ในหน้า "เอกสาร & ขั้นตอนคณะ" ของ นศ. เปลี่ยนเป็นสีเขียว ✔ โดยอัตโนมัติ'
-  ],
-  payload:{event_id:"evt_1f44e892",channel:"ADMIN_PORTAL",admin_id:"adm_somjai_prof",student_id:"usr_meen_6601",action:"APPROVE_OFFICIAL_LETTER",target_company:"บริษัท A (FinTech)",official_letter_no:"วท.2569/1108",source_of_truth:"SYSTEM_VERIFIED",output_actions:[{type:"LINE_PUSH_NOTIFICATION",to:"LINE_MEEN",template:"FLEX_LETTER_READY"},{type:"WEBSOCKET_BROADCAST",room:"usr_meen_6601",update:"CHECKLIST_PASSED"}]}}
-];
-
-let curScen=0;
-function renderPipeline(idx){
- curScen=idx;const p=PIPELINES[idx];
- $('#pipeTitle').textContent=p.title;$('#pipeLatency').textContent=p.latency;
- $('#pipeStages').innerHTML=p.stages.map((s,i)=>`
-   <div style="background:#222638;border:1px solid ${i===3?'#6366f1':'#374151'};border-radius:10px;padding:10px 8px;text-align:center">
-     <div style="font-size:20px">${s.icon}</div>
-     <b style="font-size:12px;display:block;margin:4px 0;color:#c7d2fe">${s.name}</b>
-     <small style="font-size:10.5px;color:#94a3b8;line-height:1.3;display:block">${s.desc}</small>
-   </div>
- `).join('');
- $('#pipeSteps').innerHTML=p.steps.map(s=>`<div style="margin-bottom:8px">• ${s}</div>`).join('');
- $('#pipeJson').textContent=JSON.stringify(p.payload,null,2);
- document.querySelectorAll('#scenPick span').forEach((s,i)=>s.classList.toggle('on',i===idx));
-}
-$('#scenPick').onclick=e=>{const idx=e.target.dataset.scen;if(idx!==undefined)renderPipeline(Number(idx));};
-
-function adminApprove(co){
- const log=$('#adminActionLog');log.style.display='block';
- log.innerHTML=`<b>⚡ Data Pipeline กำลังทำงาน (High Priority Queue):</b><br>
- 1. PostgreSQL: ปรับสถานะคำขอของ <b>มีน</b> เป็น <code>SYSTEM_VERIFIED (APPROVED)</code><br>
- 2. Worker: สร้างหนังสือขอความอนุเคราะห์เลขที่ วท.2569/1108 พร้อมตรามหาวิทยาลัย (PDF)<br>
- 3. Push Gateway: ส่ง LINE Flex Message แจ้งเตือนมีนแล้ว: <i>"หนังสือขอความอนุเคราะห์เสร็จแล้ว"</i><br>
- 4. WebSocket: ติ๊กผ่านในหน้า "เอกสาร & ขั้นตอนคณะ" เรียบร้อยแล้ว! 🎉`;
- $('#qMeen').style.opacity='.5';$('#qMeen button').disabled=true;
- $('#pendingBadge').textContent='✔ อนุมัติครบแล้ว 0 รายการ';$('#pendingBadge').className='chip ok';
- uni[1].done=true;uni[2].done=true;uniDocs[0].st=3;uniDocs[0].upd='อนุมัติโดยอาจารย์ (SYSTEM_VERIFIED)';
- renderUni();renderDash();
-}
-
 function autofill(){const u=$('#aUrl').value;if(!u){$('#afMsg').textContent='วางลิงก์ก่อน';return}
  if(/linkedin|facebook/i.test(u)){$('#afMsg').innerHTML='⚠ เว็บนี้ไม่อนุญาตให้ดึงข้อมูล: กรอกชื่อบริษัทและตำแหน่งเอง (ใช้เวลาไม่ถึง 10 วินาที)';return}
  $('#aCo').value='บริษัท H';$('#aRole').value='Data Analyst Intern';$('#afMsg').innerHTML='<span style="color:var(--ok)">✔ ดึงข้อมูลแล้ว: ตรวจให้ถูกต้องก่อนบันทึก</span>';}
 function render(){const nu=$('#newUser')&&$('#newUser').checked;$('#emptyState').style.display=nu?'block':'none';$('#activeState').style.display=nu?'none':'block';
- renderDocs();renderUni();renderDash();renderJobs();renderKanban();renderPipeline(curScen);$('#savedCount').textContent=saved.size;
+ renderDocs();renderUni();renderDash();renderJobs();renderKanban();renderNotif();renderOcrPending();$('#savedCount').textContent=saved.size;
  $('#savedList').innerHTML=jobs.filter(j=>saved.has(j.id)).map(jobCard).join('')||'<p class="sub">ยังไม่มีงานที่บันทึก</p>';}
 document.querySelectorAll('.pick span').forEach(s=>s.onclick=()=>s.classList.toggle('on'));
 render();
@@ -724,135 +489,36 @@ render();
 </style>
 <button id="aiFab" onclick="aiToggle()" title="พี่ฝึกงาน AI">🤖</button>
 <div id="aiPanel">
-  <div id="aiHead"><span style="font-size:24px">🤖</span><div style="flex:1"><b>พี่ฝึกงาน</b><br><small style="opacity:.85">ผู้ช่วย AI เรื่องฝึกงาน · Gemini</small></div>
-    <button class="btn sm ghost" style="padding:4px 8px" onclick="$('#aiSet').classList.toggle('show')" title="ตั้งค่า">⚙️</button>
-    <button class="btn sm ghost" style="padding:4px 8px" onclick="aiReset()" title="เริ่มใหม่">🗑</button>
+  <div id="aiHead"><span style="font-size:24px">🤖</span><div style="flex:1"><b>พี่ฝึกงาน</b><br><small style="opacity:.85">ผู้ช่วย AI เรื่องฝึกงาน · คุยต่อจาก LINE ได้</small></div>
     <button class="btn sm ghost" style="padding:4px 8px" onclick="aiToggle()">✕</button></div>
-  <div id="aiSet">
-    <label style="margin-top:0">Gemini API key</label><input id="gmKey" type="password" placeholder="AIza..." style="width:100%">
-    <label>โมเดล</label><input id="gmModel" style="width:100%" value="gemini-3.8-flash">
-    <label>Paxa API key (สำหรับอ่านรูป/PDF)</label><input id="pxKey2" type="password" placeholder="pxa_..." style="width:100%">
-    <small style="color:var(--mute)">คีย์เก็บใน localStorage ของเครื่องนี้เท่านั้น (POC: เวอร์ชันจริงต้องเรียกผ่าน backend)</small>
-    <div style="margin-top:8px"><button class="btn sm" onclick="aiSaveKeys()">บันทึก</button></div>
-  </div>
   <div id="aiMsgs"></div>
   <div id="aiSugg"></div>
-  <div id="aiFile" style="display:none;padding:6px 12px;font-size:12px;background:var(--pri2);color:var(--pri)"></div>
   <div id="aiBar">
-    <button class="save" onclick="$('#aiAttach').click()" title="แนบรูป/PDF">📎</button>
-    <input type="file" id="aiAttach" accept=".png,.jpg,.jpeg,.webp,.pdf" style="display:none" onchange="aiPick(this.files[0])">
     <textarea id="aiIn" rows="1" placeholder="ถามหรือสั่งงานได้เลย…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiSend()}"></textarea>
     <button class="btn" id="aiGo" onclick="aiSend()">➤</button>
   </div>
 </div>
 <script>
-const reminders=[];
-let aiHist=[],aiFileObj=null,aiBusy=false;
+let aiBusy=false;
 const SUGG=['สรุปให้หน่อยว่าตอนนี้ต้องทำอะไรบ้าง','บริษัท B เรียกสัมภาษณ์ 20 พ.ย. 14:00','บริษัทไหนเอกสารยังไม่ครบ','ช่วยเขียนอีเมลตามผลบริษัท F','ช่วยร่าง Cover Letter สมัครบริษัท A','หนังสือขอความอนุเคราะห์คืออะไร ต้องทำยังไง'];
-const STAT_TH={Saved:'บันทึกไว้',Applied:'สมัครแล้ว',Interview:'สัมภาษณ์',Offer:'ได้รับข้อเสนอ',Closed:'ปิด/ไม่ผ่าน'};
-
-function aiSystem(){return `คุณคือ "พี่ฝึกงาน" ผู้ช่วย AI ของ InternMatch ช่วยนักศึกษาไทยผ่านฤดูฝึกงาน ตอบเป็นภาษาไทย น้ำเสียงเป็นกันเองแบบรุ่นพี่ใจดี กระชับ ใช้ bullet เมื่อมีหลายข้อ
-วันนี้คือ ${new Date('2026-11-10').toISOString().slice(0,10)} (10 พ.ย. 2569)
-ผู้ใช้: "มีน" ปี 3 สาขาวิทยาการข้อมูล คณะวิทยาศาสตร์ มหาวิทยาลัย X · ฝึกงานภาคบังคับ ≥ 240 ชม. ช่วง มี.ค.–พ.ค. 2570 · คณะต้องการใบตอบรับภายใน 31 ม.ค. 2570 · อาจารย์ที่ปรึกษา อ.ดร.สมใจ ใจดี · ทักษะ SQL, Python, Excel, Power BI
-
-หน้าที่:
-1) ตอบคำถามเรื่องฝึกงาน ขั้นตอนคณะ และเอกสาร (หนังสือขอความอนุเคราะห์, ใบตอบรับ, Transcript ฯลฯ)
-2) สั่งงานด้วยภาษาพูด: เรียก tool เพื่อบันทึกงาน อัปเดตสถานะ ตั้งเตือน ติ๊กเช็กลิสต์คณะ
-3) อ่านเอกสารที่ผู้ใช้แนบ (ระบบจะแปลงเป็นข้อความให้แล้วในข้อความผู้ใช้) แล้วเสนอสิ่งที่ควรทำต่อ เช่น บันทึกเป็นใบสมัคร
-4) ช่วยเขียน Resume, Cover Letter และอีเมลตามผล โดยใช้ข้อมูลจริงของผู้ใช้และบริษัท
-
-กฎสำคัญ:
-- ข้อมูลส่วนตัวของผู้ใช้ (ใบสมัคร เอกสาร เช็กลิสต์) ให้เรียก get_overview ก่อนตอบเสมอ ห้ามเดา
-- ห้ามแต่งกำหนดการหรือกฎของคณะที่ไม่มีในข้อมูล ถ้าไม่รู้ให้บอกตรงๆ และแนะนำให้เช็กคู่มือคณะ
-- สถานะที่อัปเดตผ่านแชทถือเป็น "✎ ผู้ใช้บอกเอง" ใบสมัครที่ verified=true (สมัครผ่าน InternMatch) ห้ามเปลี่ยนสถานะ ให้บอกว่าบริษัทเป็นผู้อัปเดต
-- ข้อมูลที่อ่านจากเอกสารแนบเป็น "🤖 AI อ่าน" ให้ผู้ใช้ตรวจก่อน: สรุปสิ่งที่อ่านได้ แล้วถามยืนยันก่อนบันทึก (ยกเว้นผู้ใช้สั่งให้บันทึกเลย)
-- หลังเรียก tool สำเร็จ ให้บอกสั้นๆ ว่าทำอะไรไปแล้ว
-- วันที่ให้ใช้รูปแบบไทย เช่น 20 พ.ย. 2569`;}
-
-const TOOLS=[{functionDeclarations:[
- {name:'get_overview',description:'ดึงข้อมูลปัจจุบันของผู้ใช้: ใบสมัครทั้งหมด งานที่บันทึก เช็กลิสต์คณะ เอกสาร ความพร้อมเอกสารรายบริษัท และการเตือน',parameters:{type:'object',properties:{}}},
- {name:'add_application',description:'เพิ่มใบสมัคร/ตำแหน่งที่สนใจลงบอร์ดติดตาม',parameters:{type:'object',properties:{
-   company:{type:'string'},role:{type:'string'},status:{type:'string',enum:['Saved','Applied','Interview','Offer','Closed']},
-   next_step:{type:'string',description:'ขั้นตอนถัดไป เช่น ปิดรับ 30 พ.ย.'},url:{type:'string'},
-   required_documents:{type:'array',items:{type:'string'},description:'เอกสารที่ประกาศขอ'},from_document:{type:'boolean',description:'true ถ้าข้อมูลมาจากเอกสารที่ AI อ่าน'}},required:['company','role','status']}},
- {name:'update_application_status',description:'อัปเดตสถานะใบสมัครที่มีอยู่ (เฉพาะใบสมัครภายนอก)',parameters:{type:'object',properties:{
-   company:{type:'string',description:'ชื่อบริษัท (จับคู่แบบบางส่วนได้)'},status:{type:'string',enum:['Saved','Applied','Interview','Offer','Closed']},next_step:{type:'string'}},required:['company','status']}},
- {name:'add_reminder',description:'ตั้งการเตือน',parameters:{type:'object',properties:{text:{type:'string'},datetime:{type:'string',description:'ISO 8601 เวลาไทย เช่น 2026-11-19T20:00'}},required:['text','datetime']}},
- {name:'set_university_task',description:'ติ๊กหรือยกเลิกติ๊กรายการในเช็กลิสต์คณะ',parameters:{type:'object',properties:{task_keyword:{type:'string',description:'คำในชื่อรายการ'},done:{type:'boolean'}},required:['task_keyword','done']}},
-]}];
-
-function findApp(c){c=(c||'').replace(/บริษัท\s*/,'').trim().toLowerCase();return apps.find(a=>a.co.toLowerCase().includes(c)||c.includes(a.co.replace(/บริษัท\s*/,'').toLowerCase()));}
-const TOOL_FN={
- get_overview:()=>({
-   applications:apps.map(a=>({company:a.co,role:a.role,status:a.st,status_th:STAT_TH[a.st],verified_by_system:a.verified,next_step:a.next,days_since_update:a.upd??null,url:a.url||null,history:a.ev.map(e=>e.join(': '))})),
-   saved_jobs:jobs.filter(j=>saved.has(j.id)).map(j=>({company:j.co,role:j.role,deadline:j.close,source:j.src})),
-   university_checklist:uni.map(u=>({task:u.t,detail:u.d,done:u.done})),
-   university_documents:uniDocs.map(u=>({doc:u.t,current_step:u.steps[u.st],eta:u.eta,source:'ผู้ใช้อัปเดตเอง'})),
-   my_documents:myDocs.map(d=>({name:d.t,version:d.v,status:{ok:'พร้อม',warn:'ต้องแก้',bad:'ขาด'}[d.s],note:d.n})),
-   document_readiness:Object.fromEntries(Object.entries(need).map(([co,r])=>[co,Object.fromEntries(myDocs.filter(d=>r[d.k]!=='-').map(d=>[d.t,{ok:'แนบแล้ว',warn:'ต้องแก้',bad:'ขาด'}[r[d.k]]]))])),
-   reminders}),
- add_application:a=>{if(findApp(a.company))return{ok:false,error:'มีบริษัทนี้อยู่แล้ว ใช้ update_application_status แทน'};
-   apps.unshift({co:a.company,role:a.role,st:a.status,verified:false,url:a.url,ev:[['10 พ.ย.',a.from_document?'บันทึกจากเอกสาร (🤖 AI อ่าน) ผ่านแชท':'บันทึกผ่านแชท (✎)']],next:a.next_step||'—',upd:0});
-   if(a.required_documents?.length){need[a.company]=Object.fromEntries(myDocs.map(d=>{const hit=a.required_documents.some(x=>new RegExp(d.k==='id'?'บัตร|id':d.t.split(' ')[0].slice(0,5),'i').test(x));return[d.k,hit?(d.s==='ok'?'ok':d.s):'-']}));}
-   render();return{ok:true,saved:a.company+' – '+a.role};},
- update_application_status:a=>{const x=findApp(a.company);if(!x)return{ok:false,error:'ไม่พบบริษัท '+a.company};
-   if(x.verified)return{ok:false,error:'ใบสมัครนี้สมัครผ่าน InternMatch สถานะอัปเดตโดยบริษัทเท่านั้น'};
-   x.st=a.status;if(a.next_step)x.next=a.next_step;x.upd=0;x.ev.push(['10 พ.ย.','อัปเดตผ่านแชท (✎) → '+STAT_TH[a.status]]);render();return{ok:true,company:x.co,status:STAT_TH[a.status]};},
- add_reminder:a=>{reminders.push(a);return{ok:true,reminder:a,note:'ใน POC เก็บไว้ในรายการ (เวอร์ชันจริงส่งเตือนทาง LINE)'};},
- set_university_task:a=>{const u=uni.find(u=>u.t.includes(a.task_keyword));if(!u)return{ok:false,error:'ไม่พบรายการ',available:uni.map(u=>u.t)};u.done=a.done;render();return{ok:true,task:u.t,done:a.done};},
-};
-const TOOL_LABEL={get_overview:'📊 ดูข้อมูลของคุณ',add_application:'📋 เพิ่มใบสมัคร',update_application_status:'🔄 อัปเดตสถานะ',add_reminder:'⏰ ตั้งเตือน',set_university_task:'🎓 อัปเดตเช็กลิสต์คณะ'};
-
 function aiMd(t){const esc=t.replace(/&/g,'&amp;').replace(/</g,'&lt;');
  return esc.split(/\n{2,}/).map(b=>{const lines=b.split('\n');
   if(lines.every(l=>/^\s*([-*•]|\d+\.)\s+/.test(l)))return '<ul>'+lines.map(l=>'<li>'+l.replace(/^\s*([-*•]|\d+\.)\s+/,'')+'</li>').join('')+'</ul>';
   return '<p>'+lines.join('<br>')+'</p>';}).join('').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<i>$2</i>').replace(/^#+\s*(.*)$/gm,'<b>$1</b>');}
 function aiAdd(cls,html){const d=document.createElement('div');d.className='am '+cls;d.innerHTML=html;$('#aiMsgs').appendChild(d);$('#aiMsgs').scrollTop=1e9;return d;}
 function aiToggle(){$('#aiPanel').classList.toggle('show');if($('#aiPanel').classList.contains('show'))$('#aiIn').focus();}
-function aiSaveKeys(){localStorage.setItem('gmKey',$('#gmKey').value.trim());localStorage.setItem('gmModel',$('#gmModel').value.trim());if($('#pxKey2').value.trim())localStorage.setItem('pxKey',$('#pxKey2').value.trim());$('#aiSet').classList.remove('show');aiAdd('t','✔ บันทึกการตั้งค่าแล้ว');}
-function aiReset(){aiHist=[];$('#aiMsgs').innerHTML='';aiWelcome();}
-function aiWelcome(){aiAdd('b',aiMd('สวัสดีมีน 👋 พี่ฝึกงานเอง\n\nถามเรื่องฝึกงานหรือสั่งงานได้เลย เช่น\n- "บริษัท B เรียกสัมภาษณ์ 20 พ.ย."\n- แนบรูปโพสต์งาน 📎 แล้วพี่จะบันทึกให้\n- "ช่วยเขียนอีเมลตามผลบริษัท F"'));
- if(!localStorage.getItem('gmKey')){aiAdd('e','ยังไม่ได้ใส่ Gemini API key: กด ⚙️ ด้านบน');$('#aiSet').classList.add('show');}}
-function aiPick(f){if(!f)return;if(f.size>10485760)return alert('ไฟล์ใหญ่เกิน 10MB');aiFileObj=f;$('#aiFile').style.display='block';$('#aiFile').innerHTML=`📎 ${f.name} <a style="cursor:pointer;float:right" onclick="aiFileObj=null;this.parentNode.style.display='none'">✕</a>`;}
-
-async function paxaOcr(f){const key=localStorage.getItem('pxKey');if(!key)throw new Error('ยังไม่ได้ใส่ Paxa API key (กด ⚙️)');
- const r=await fetch('https://api.paxalabs.com/v1/ocr',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({document:await b64(f),model:'paxa-ocr-lite-v1'})});
- const d=await r.json();if(!r.ok||d.title)throw new Error('Paxa: '+(d.title||r.status)+' '+(d.reason||d.detail||''));return d.pages.map(p=>p.markdown).join('\n\n');}
-
-async function gemini(){const key=localStorage.getItem('gmKey'),model=localStorage.getItem('gmModel')||'gemini-3.8-flash';
- const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},
-  body:JSON.stringify({systemInstruction:{parts:[{text:aiSystem()}]},contents:aiHist,tools:TOOLS})});
- const d=await r.json();if(!r.ok)throw new Error('Gemini: '+(d.error?.message||r.status));
- const c=d.candidates?.[0]?.content;if(!c)throw new Error('Gemini ไม่ตอบ ('+(d.candidates?.[0]?.finishReason||d.promptFeedback?.blockReason||'unknown')+')');return c;}
-
-async function aiSend(text){if(aiBusy)return;text=(text||$('#aiIn').value).trim();if(!text&&!aiFileObj)return;
- if(!localStorage.getItem('gmKey')){$('#aiSet').classList.add('show');return aiAdd('e','ใส่ Gemini API key ก่อน');}
- aiBusy=true;$('#aiGo').disabled=true;$('#aiIn').value='';
- const f=aiFileObj;aiFileObj=null;$('#aiFile').style.display='none';
- aiAdd('u',aiMd(text||'(แนบไฟล์)')+(f?`<div style="opacity:.8;font-size:12px">📎 ${f.name}</div>`:''));
- let userText=text;
- try{
-  if(f){if(!confirm('ส่งไฟล์ "'+f.name+'" ไปให้ Paxa Labs อ่าน (ผู้ให้บริการภายนอก)?'))throw new Error('ยกเลิกการส่งไฟล์');
-   const t=aiAdd('t','🤖 กำลังอ่านเอกสารด้วย Paxa OCR…');const md=await paxaOcr(f);t.textContent='✔ อ่านเอกสารแล้ว';
-   userText=(text||'ช่วยดูเอกสารนี้ให้หน่อย')+`\n\n[เอกสารแนบ "${f.name}" อ่านด้วย AI OCR (🤖 อาจมีผิด):]\n${md.slice(0,12000)}`;}
-  aiHist.push({role:'user',parts:[{text:userText}]});
-  const typing=aiAdd('b','<i style="color:var(--mute)">กำลังคิด…</i>');
-  for(let i=0;i<6;i++){const c=await gemini();aiHist.push(c);
-   const calls=(c.parts||[]).filter(p=>p.functionCall);
-   if(!calls.length){typing.remove();const txt=(c.parts||[]).filter(p=>p.text&&!p.thought).map(p=>p.text).join('');aiAdd('b',aiMd(txt||'(ไม่มีคำตอบ)'));break;}
-   const resp=[];for(const p of calls){const fc=p.functionCall;let out;try{out=TOOL_FN[fc.name]?TOOL_FN[fc.name](fc.args||{}):{error:'unknown tool'}}catch(e){out={error:e.message}}
-    if(fc.name!=='get_overview'||i===0)$('#aiMsgs').insertBefore(Object.assign(document.createElement('div'),{className:'am t',textContent:(out.ok===false?'⚠ ':'')+TOOL_LABEL[fc.name]+(out.ok===false?' ไม่สำเร็จ':'')}),typing);
-    resp.push({functionResponse:{name:fc.name,response:out,...(fc.id?{id:fc.id}:{})}});}
-   aiHist.push({role:'user',parts:resp});}
- }catch(e){$('#aiMsgs').querySelectorAll('.am.b i').forEach(n=>n.closest('.am').remove());aiAdd('e','❌ '+e.message);
-  if(aiHist.length&&aiHist[aiHist.length-1].role==='user'&&aiHist[aiHist.length-1].parts[0].text)aiHist.pop();}
+function aiWelcome(){aiAdd('b',aiMd('สวัสดี 👋 พี่ฝึกงานเอง\n\nถามเรื่องฝึกงานหรือสั่งงานได้เลย เช่น\n- "บริษัท B เรียกสัมภาษณ์ 20 พ.ย."\n- "เหลืออะไรที่ยังไม่ส่งบ้าง"\n- "ช่วยเขียนอีเมลตามผลบริษัท F"\n\nบทสนทนานี้ตรงกับที่คุยใน LINE ทุกอย่าง'));}
+const TOOL_LABEL={add_application:'📋 เพิ่มใบสมัคร',update_application_status:'🔄 อัปเดตสถานะ',add_reminder:'⏰ ตั้งเตือน',set_university_task:'🎓 อัปเดตเช็กลิสต์คณะ'};
+async function aiSend(text){if(aiBusy)return;text=(text||$('#aiIn').value).trim();if(!text)return;aiBusy=true;$('#aiGo').disabled=true;$('#aiIn').value='';
+ aiAdd('u',aiMd(text));const typing=aiAdd('b','<i style="color:var(--mute)">กำลังคิด…</i>');
+ try{const r=await api('/api/chat',{method:'POST',body:JSON.stringify({text})});typing.remove();
+  if(!r.ok)aiAdd('e','❌ '+errMsg(r));
+  else{(r.data.actions||[]).forEach(a=>aiAdd('t',TOOL_LABEL[a]||a));aiAdd('b',aiMd(r.data.reply||'(ไม่มีคำตอบ)'));await loadState();}}
+ catch(e){typing.remove();aiAdd('e','❌ '+e.message);}
  finally{aiBusy=false;$('#aiGo').disabled=false;$('#aiIn').focus();}}
-
-const gmParam=new URLSearchParams(location.search).get('gmKey')||new URLSearchParams(location.search).get('geminiKey');
-if(gmParam){localStorage.setItem('gmKey',gmParam);$('#aiPanel').classList.add('show');}
 if(location.hash==='#ai')$('#aiPanel').classList.add('show');
-$('#gmKey').value=localStorage.getItem('gmKey')||'';$('#gmModel').value=localStorage.getItem('gmModel')||'gemini-3.8-flash';$('#pxKey2').value=localStorage.getItem('pxKey')||'';
 $('#aiSugg').innerHTML=SUGG.map(s=>`<span onclick="aiSend(this.textContent)">${s}</span>`).join('');
 aiWelcome();
+loadState().then(ok=>{if(!ok)showLogin();});
 </script>
 </body></html>
