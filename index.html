@@ -78,7 +78,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
     <a data-s="onboard">✨ เริ่มต้นใช้งาน</a>
     <a data-s="dash" class="on">🏠 วันนี้ต้องทำอะไร</a>
     <a data-s="uni">🎓 เอกสาร & ขั้นตอนคณะ</a>
-    <a data-s="docs">📁 คลังเอกสาร <span class="badge" style="background:var(--bad)" id="docAlert">2</span></a>
+    <a data-s="docs">📁 คลังเอกสาร</a>
     <a data-s="ocr">📸 อ่านเอกสาร (AI) <span class="badge" style="background:var(--ok)">ใหม่</span></a>
     <a data-s="chat">💬 พี่ฝึกงาน (แชท)</a>
     <a data-s="discover">🔎 ค้นหาฝึกงาน</a>
@@ -94,6 +94,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
 <section class="screen" id="onboard"><div class="onb card">
   <div class="steps"><i class="on"></i><i class="on"></i><i></i></div>
   <h1>ตั้งค่าฤดูฝึกงานของคุณ</h1><p class="sub">เราจะสร้างแผนและเช็กลิสต์ตามเงื่อนไขของคณะคุณ</p>
+  <div class="note" style="margin:0 0 8px">หน้าตัวอย่าง: ตัวเลือกในหน้านี้ยังไม่ถูกบันทึก</div>
   <label>มหาวิทยาลัย / คณะ</label><select><option>มหาวิทยาลัย X · คณะวิทยาศาสตร์ · สาขาวิทยาการข้อมูล</option></select>
   <label>ประเภท</label><div class="pick"><span class="on">ฝึกงานภาคบังคับ (≥ 240 ชม.)</span><span>สหกิจศึกษา (16 สัปดาห์)</span><span>สมัครใจ</span></div>
   <label>คณะต้องการเอกสารตอบรับภายใน</label><input type="date" value="2027-01-31"><small style="color:var(--ok)">✔ ดึงจากคู่มือคณะให้อัตโนมัติ (แก้ได้) · หรือ <a href="#">อัปโหลดคู่มือ PDF ให้ระบบอ่าน</a></small>
@@ -106,18 +107,16 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
 
 <!-- DASHBOARD -->
 <section class="screen on" id="dash">
-  <div class="row" style="justify-content:space-between"><h1>สวัสดี มีน 👋</h1>
-  <label style="margin:0;display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="newUser" onchange="render()"> จำลองผู้ใช้ใหม่ (วันแรก)</label></div>
+  <div class="row" style="justify-content:space-between"><h1>สวัสดี 👋</h1></div>
   <div id="emptyState" style="display:none;margin-bottom:16px" class="card">
     <h3 style="margin-top:0">🚀 เริ่มฤดูฝึกงานใน 4 ขั้น</h3><p class="sub">ใช้เวลาราว 10 นาที แล้วระบบจะเริ่มเตือนเรื่องที่ต้องทำให้</p>
     <div class="list">
       <div class="it"><span style="font-size:20px">📄</span><div style="flex:1"><b>อัปโหลด Resume</b><br><small style="color:var(--mute)">ใช้ซ้ำได้ทุกใบสมัคร</small></div><button class="btn sm" onclick="go('docs')">ทำเลย</button></div>
-      <div class="it"><span style="font-size:20px">💚</span><div style="flex:1"><b>เพิ่มเพื่อน LINE @internmatch</b><br><small style="color:var(--mute)">เจองานที่ไหนก็แชร์ลิงก์เข้า LINE ได้เลย</small></div><button class="btn sm line" onclick="go('notif')">เชื่อม</button></div>
+      <div class="it"><span style="font-size:20px">💚</span><div style="flex:1"><b>เพิ่มเพื่อน LINE OA ของโปรเจกต์</b><br><small style="color:var(--mute)">เจองานที่ไหนก็แชร์ลิงก์เข้า LINE ได้เลย</small></div><button class="btn sm line" onclick="go('notif')">เชื่อม</button></div>
       <div class="it"><span style="font-size:20px">⭐</span><div style="flex:1"><b>บันทึกบริษัทเป้าหมาย 5 ที่</b><br><small style="color:var(--mute)">จากหน้าค้นหา หรือวางลิงก์ที่เจอเอง</small></div><button class="btn sm" onclick="go('discover')">ทำเลย</button></div>
-      <div class="it"><span style="font-size:20px">🎓</span><div style="flex:1"><b>ลงทะเบียนวิชาฝึกงาน</b><br><small style="color:var(--mute)">คณะกำหนดภายใน 15 พ.ย.</small></div><button class="btn sm ghost" onclick="go('uni')">ดูขั้นตอน</button></div>
+      <div class="it"><span style="font-size:20px">🎓</span><div style="flex:1"><b>ลงทะเบียนวิชาฝึกงาน</b><br><small style="color:var(--mute)">ดูกำหนดการในคู่มือคณะ</small></div><button class="btn sm ghost" onclick="go('uni')">ดูขั้นตอน</button></div>
     </div></div>
   <div id="activeState">
-  <p class="sub">ฝึกงานภาคบังคับ · มี.ค.–พ.ค. 2570 · คณะต้องการใบตอบรับภายใน <b>31 ม.ค.</b> (อีก 82 วัน)</p>
   <div class="card" style="margin-bottom:16px">
     <div class="row" style="justify-content:space-between"><b>🧭 เส้นทางฤดูฝึกงานของคุณ</b><span class="chip pri" id="phaseTxt"></span></div>
     <div id="journey" style="display:flex;gap:6px;margin-top:12px"></div>
@@ -134,16 +133,9 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
 
 <!-- UNI -->
 <section class="screen" id="uni">
-  <h1>เอกสาร & ขั้นตอนคณะ</h1><p class="sub">มหาวิทยาลัย X · คณะวิทยาศาสตร์ · ฝึกงานภาคบังคับ ≥ 240 ชม. <span class="chip">ข้อมูลจากคู่มือคณะ ปี 2569 · ตรวจ 1 พ.ย.</span></p>
+  <h1>เอกสาร & ขั้นตอนคณะ</h1><p class="sub">เช็กลิสต์ตั้งต้นทั่วไป ยังไม่ใช่ของคณะคุณ <span class="chip">✎ ตรวจกำหนดการจริงกับคู่มือคณะ</span></p>
   <div class="row" style="align-items:flex-start">
     <div class="card" style="flex:1.4;min-width:340px"><h3 style="margin-top:0">เช็กลิสต์ <span class="chip ok" id="uniPct"></span></h3><div class="list" id="uniList"></div></div>
-    <div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:14px">
-      <div class="card"><h3 style="margin-top:0">👩‍🏫 อาจารย์ที่ปรึกษา</h3><b>อ.ดร.สมใจ ใจดี</b><br><small style="color:var(--mute)">เห็นความคืบหน้าของคุณ (คุณอนุญาตแล้ว)</small>
-        <div class="row" style="margin-top:10px"><button class="btn sm ghost">ส่งขออนุมัติบริษัท</button><button class="btn sm ghost">ปิดการแชร์</button></div></div>
-      <div class="card"><h3 style="margin-top:0">📄 สร้างหนังสือขอความอนุเคราะห์</h3><small style="color:var(--mute)">เลือกบริษัทจากใบสมัคร ระบบกรอกแบบฟอร์มคณะให้ แล้วส่งเจ้าหน้าที่เซ็น</small>
-        <select style="width:100%;margin-top:10px" id="letterCo"></select><button class="btn sm" style="margin-top:10px" onclick="alert('สร้างร่าง PDF แล้ว (POC)')">สร้างร่างเอกสาร</button></div>
-      <div class="card"><h3 style="margin-top:0">💬 จากรุ่นพี่สาขาเดียวกัน</h3><small>บริษัท A รับเด็กคณะนี้ 6 คนใน 2 ปี · ตอบกลับเฉลี่ย 9 วัน · ออกใบตอบรับให้ภายใน 1 สัปดาห์</small></div>
-    </div>
   </div>
 </section>
 
@@ -159,9 +151,6 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
   <div class="card" style="overflow:auto"><table id="matrix" style="width:100%;border-collapse:collapse"></table>
   <p class="sub" style="margin:10px 0 0">✔ แนบแล้ว · ⚠ ต้องแก้ · ✕ ขาด · — ไม่ต้องใช้</p></div>
 
-  <h3 style="margin-top:26px">3 · เอกสารจากคณะ (ส่วนที่มักใช้เวลานาน)</h3>
-  <p class="sub" style="margin-top:-6px">คณะไม่ได้เชื่อมต่อกับ InternMatch: <span class="chip">✎ อัปเดตโดยคุณ</span> กดที่ขั้นตอนเพื่ออัปเดต · วันที่คาดว่าจะได้คำนวณจากข้อมูลของรุ่นพี่</p>
-  <div class="card list" id="uniDocs"></div>
 </section>
 
 <!-- OCR -->
@@ -211,6 +200,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
 <section class="screen" id="discover">
   <div class="row" style="justify-content:space-between"><div><h1>ค้นหาฝึกงาน</h1><p class="sub">ประกาศจากแหล่งที่ได้รับอนุญาต พร้อมลิงก์ต้นทางทุกรายการ</p></div>
   <button class="btn ghost" onclick="openAdd()">＋ เพิ่มจาก URL เอง</button></div>
+  <div class="note" style="margin:0 0 12px">ประกาศตัวอย่างสำหรับทดลองใช้ ยังไม่ใช่ประกาศจริง · กด “ฉันสมัครแล้ว” จะบันทึกลงบอร์ดของคุณจริง</div>
   <div class="card row" style="margin-bottom:16px">
     <input id="q" placeholder="ค้นหาตำแหน่ง / บริษัท เช่น Data Analyst" style="flex:1;min-width:220px" oninput="renderJobs()">
     <select id="fMode" onchange="renderJobs()"><option value="">ทุกรูปแบบ</option><option>Onsite</option><option>Hybrid</option><option>Remote</option></select>
@@ -220,7 +210,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
 </section>
 
 <!-- SAVED -->
-<section class="screen" id="saved"><h1>ที่บันทึกไว้</h1><p class="sub">ตำแหน่งที่สนใจแต่ยังไม่ได้สมัคร</p><div class="grid" id="savedList"></div></section>
+<section class="screen" id="saved"><h1>ที่บันทึกไว้</h1><p class="sub">ตำแหน่งที่สนใจแต่ยังไม่ได้สมัคร</p><div class="note" style="margin:0 0 12px">ประกาศตัวอย่างสำหรับทดลองใช้ ยังไม่ใช่ประกาศจริง · กด “ฉันสมัครแล้ว” จะบันทึกลงบอร์ดของคุณจริง</div><div class="grid" id="savedList"></div></section>
 
 <!-- TRACKER -->
 <section class="screen" id="tracker">
@@ -241,14 +231,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
     <h3>ตั้งเตือนของฉัน</h3>
     <div class="row"><input id="remText" placeholder="เช่น ส่งใบตอบรับให้คณะ" style="flex:1;min-width:160px"><input type="datetime-local" id="remAt"><button class="btn sm" onclick="addRem()">ตั้งเตือน</button></div>
     <div class="list" id="remList" style="margin-top:8px"></div>
-    <h3>เตือนเมื่อ</h3>
-    <div class="toggle">วันปิดรับสมัครของงานที่บันทึก (ล่วงหน้า 3 วัน)<div class="sw" onclick="this.classList.toggle('off')"></div></div>
-    <div class="toggle">นัดสัมภาษณ์ (ล่วงหน้า 1 วัน)<div class="sw" onclick="this.classList.toggle('off')"></div></div>
-    <div class="toggle">สถานะเปลี่ยน (เฉพาะที่ระบบยืนยันได้)<div class="sw" onclick="this.classList.toggle('off')"></div></div>
-    <div class="toggle">เตือนให้อัปเดตใบสมัครภายนอก<div class="sw off" onclick="this.classList.toggle('off')"></div></div>
-    <p class="sub" style="margin-top:12px">ยกเลิกได้ทุกเมื่อ หรือพิมพ์ “หยุด” ใน LINE</p>
   </div>
-  <div><b>ตัวอย่างข้อความ</b><div class="phone"><div class="bubble">🔔 <b>InternMatch</b><br>พรุ่งนี้ 10:00 สัมภาษณ์<br><b>Data Analyst Intern – บริษัท A</b><br><br><span style="color:var(--pri)">ดูรายละเอียด →</span></div></div></div>
   </div>
 </section>
 
@@ -449,10 +432,6 @@ async function sendMsg(t){t=(t||$('#chatIn').value).trim();if(!t||chatBusy)retur
  await loadState();}
 const myDocs=[];let extraDocs=[];const ICONS={resume:'📄',tr:'🎓',port:'🗂️',cover:'✉️',id:'🪪'};
 const need={};
-const uniDocs=[
- {t:'หนังสือขอความอนุเคราะห์ – บริษัท A',st:2,upd:'อัปเดตโดยคุณ 8 พ.ย.',steps:['ยื่นคำขอ','เจ้าหน้าที่ตรวจ','รอคณบดีลงนาม','ได้รับเอกสาร','ส่งบริษัท'],eta:'คาดว่าได้ ~14 พ.ย. (รุ่นพี่ 23 คน รอเฉลี่ย 5 วันทำการ)'},
- {t:'ใบตอบรับฝึกงาน – บริษัท A',st:0,upd:'ยังไม่อัปเดต',steps:['รอบริษัท','ได้รับแล้ว','ส่งคณะ'],eta:'บริษัท A ออกใบตอบรับเฉลี่ย 7 วัน (จากรุ่นพี่ 6 คน) · กำหนดส่งคณะ 31 ม.ค.'},
-];
 const ic={ok:'<span class="chip ok">✔</span>',warn:'<span class="chip warn">⚠</span>',bad:'<span class="chip bad">✕</span>','-':'<span style="color:var(--mute)">—</span>'};
 function renderDocs(){
  $('#myDocs').innerHTML=myDocs.map(d=>`<div class="card"><div class="row" style="justify-content:space-between"><span style="font-size:22px">${d.i}</span>${ic[d.s]}</div>
@@ -463,17 +442,13 @@ function renderDocs(){
  Object.entries(need).map(([co,r])=>{const req=Object.values(r).filter(v=>v!=='-'),ok=req.filter(v=>v==='ok').length;
   return `<tr style="border-top:1px solid var(--line)"><td style="padding:10px 8px"><b>${co}</b></td>${myDocs.map(d=>`<td>${ic[r[d.k]]}</td>`).join('')}
   <td>${ok===req.length?'<span class="chip ok">พร้อมส่ง</span>':`<span class="chip warn">ขาด ${req.length-ok} รายการ</span>`}</td></tr>`}).join('');
- if(!Object.keys(need).length)$('#matrix').innerHTML='<tr><td style="padding:12px;color:var(--mute)">ตารางความพร้อมเอกสารรายบริษัทจะแสดงเมื่อระบบรู้ว่าแต่ละบริษัทขอเอกสารอะไร (ยังไม่เปิดใช้ในรอบนี้)</td></tr>';
- $('#uniDocs').innerHTML=uniDocs.map((u,k)=>`<div class="it" style="display:block"><div class="row" style="justify-content:space-between"><b>${u.t}</b><span class="chip">✎ ${u.upd}</span></div>
- <div style="display:flex;gap:4px;margin:10px 0 6px">${u.steps.map((s,i)=>`<div style="flex:1;cursor:pointer" title="กดเพื่อตั้งเป็นขั้นปัจจุบัน" onclick="uniDocs[${k}].st=${i};uniDocs[${k}].upd='อัปเดตโดยคุณ 10 พ.ย.';render()"><div style="height:6px;border-radius:6px;background:${i<u.st?'var(--ok)':i===u.st?'var(--warn)':'var(--line)'}"></div><small style="color:${i===u.st?'var(--warn)':'var(--mute)'}">${s}</small></div>`).join('')}</div>
- <small style="color:var(--mute)">⏱ ${u.eta}</small> <button class="btn sm ghost" style="float:right">แจ้งเตือนทาง LINE เมื่อพร้อม</button></div>`).join('');}
+ if(!Object.keys(need).length)$('#matrix').innerHTML='<tr><td style="padding:12px;color:var(--mute)">ตารางความพร้อมเอกสารรายบริษัทจะแสดงเมื่อระบบรู้ว่าแต่ละบริษัทขอเอกสารอะไร (ยังไม่เปิดใช้ในรอบนี้)</td></tr>';}
 const uni=[];
 const PH=['ค้นหา','สมัคร','สัมภาษณ์','ได้ใบตอบรับ','เอกสารคณะ','เริ่มฝึกงาน'];
 function renderUni(){const n=uni.filter(u=>u.done).length;$('#uniPct').textContent=`${n}/${uni.length} เสร็จ`;
  $('#uniList').innerHTML=uni.map((u,i)=>`<div class="it"><input type="checkbox" ${u.done?'checked':''} onchange="toggleTask(${i},this.checked)" style="width:18px;height:18px">
  <div style="flex:1;${u.done?'text-decoration:line-through;color:var(--mute)':''}"><b>${u.t}</b><br><small style="color:var(--mute)">${u.d}</small></div>${u.act&&!u.done?`<button class="btn sm ghost">${u.act}</button>`:''}</div>`).join('');
- $('#letterCo').innerHTML=apps.filter(a=>a.st!=='Closed'&&a.st!=='Saved').map(a=>`<option>${a.co} – ${a.role}</option>`).join('');
- const cur=2;$('#phaseTxt').textContent='ตอนนี้: '+PH[cur];
+ const cur=apps.some(a=>a.st==='Offer')?3:apps.some(a=>a.st==='Interview')?2:apps.some(a=>a.st==='Applied')?1:0;$('#phaseTxt').textContent='ตอนนี้: '+PH[cur];
  $('#journey').innerHTML=PH.map((p,i)=>`<div style="flex:1;text-align:center"><div style="height:6px;border-radius:6px;background:${i<cur?'var(--ok)':i===cur?'var(--pri)':'var(--line)'}"></div><small style="color:${i===cur?'var(--pri)':'var(--mute)'};font-weight:${i===cur?600:400}">${p}</small></div>`).join('');
  const todo=[];
  (serverState?serverState.unseen_reminders:[]).forEach(r=>todo.push(['⏰',esc(r.text),'เตือนที่ยังไม่ได้อ่าน',`seenRem('${r.id}')`]));
@@ -481,10 +456,8 @@ function renderUni(){const n=uni.filter(u=>u.done).length;$('#uniPct').textConte
  uni.filter(u=>!u.done).slice(0,2).forEach(u=>todo.push(['📝',esc(u.t),esc(u.d),"go('uni')"]));
  myDocs.filter(d=>d.s!=='ok').slice(0,2).forEach(d=>todo.push(['📁',esc(d.t+': '+d.n),'เอกสาร',"go('docs')"]));
  $('#todo').innerHTML=todo.map(t=>`<div class="it"><span style="font-size:20px">${t[0]}</span><div style="flex:1"><b>${t[1]}</b><br><small style="color:var(--mute)">${t[2]}</small></div><button class="btn sm" onclick="${t[3]}">ทำเลย</button></div>`).join('');}
-function autofill(){const u=$('#aUrl').value;if(!u){$('#afMsg').textContent='วางลิงก์ก่อน';return}
- if(/linkedin|facebook/i.test(u)){$('#afMsg').innerHTML='⚠ เว็บนี้ไม่อนุญาตให้ดึงข้อมูล: กรอกชื่อบริษัทและตำแหน่งเอง (ใช้เวลาไม่ถึง 10 วินาที)';return}
- $('#aCo').value='บริษัท H';$('#aRole').value='Data Analyst Intern';$('#afMsg').innerHTML='<span style="color:var(--ok)">✔ ดึงข้อมูลแล้ว: ตรวจให้ถูกต้องก่อนบันทึก</span>';}
-function render(){const nu=$('#newUser')&&$('#newUser').checked;$('#emptyState').style.display=nu?'block':'none';$('#activeState').style.display=nu?'none':'block';
+function autofill(){$('#afMsg').textContent='ยังดึงข้อมูลจากลิงก์ไม่ได้ในรอบนี้ กรอกชื่อบริษัทและตำแหน่งเองได้เลย';}
+function render(){const empty=!!serverState&&!apps.length;$('#emptyState').style.display=empty?'block':'none';$('#activeState').style.display='block';
  renderDocs();renderUni();renderDash();renderJobs();renderKanban();renderNotif();renderOcrPending();$('#savedCount').textContent=saved.size;
  $('#savedList').innerHTML=jobs.filter(j=>saved.has(j.id)).map(jobCard).join('')||'<p class="sub">ยังไม่มีงานที่บันทึก</p>';}
 document.querySelectorAll('.pick span').forEach(s=>s.onclick=()=>s.classList.toggle('on'));
