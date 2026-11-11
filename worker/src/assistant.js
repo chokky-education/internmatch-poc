@@ -3,7 +3,8 @@ import { systemPrompt } from './prompt.js';
 
 const STATUS = ['Saved', 'Applied', 'Interview', 'Offer', 'Closed'];
 import { STAT_TH, applicationCard, reminderSetCard } from './cards.js';
-export const FALLBACK_REPLY = 'ขอโทษนะ ตอนนี้พี่ตอบไม่ได้ ลองใหม่อีกครั้งนะ';
+export const FALLBACK_REPLY = 'ขอโทษนะ ตอนนี้พี่ตอบไม่ได้ ข้อความนี้ยังไม่ถูกบันทึก ลองส่งใหม่อีกครั้ง หรือกดปุ่มเมนูดูข้อมูลได้เลย';
+export const PARTIAL_REPLY = 'ทำรายการให้แล้วนะ ✅ แต่พี่สรุปต่อไม่ได้ ไม่ต้องส่งซ้ำ ดูผลได้จากการ์ดหรือกดเมนูด้านล่าง';
 const MAX_TURNS = 5, HISTORY = 20;
 
 export const TOOLS = [{ functionDeclarations: [
@@ -56,20 +57,35 @@ function cardFor(name, out, args) {
   return null;
 }
 
+// A tool may already have written data when the model fails. Then say so (ok:true, partial) and keep the cards;
+// otherwise nothing happened and nothing is saved (ok:false), so the user can resend.
+async function fail(env, userId, channel, text, actions, cards, done) {
+  if (done > 0) {
+    try {
+      await saveMessage(env, userId, channel, 'user', text);
+      await saveMessage(env, userId, channel, 'model', PARTIAL_REPLY, cards);
+      return { ok: true, partial: true, reply: PARTIAL_REPLY, actions, cards };
+    } catch (e) { console.error('assistant partial save error', e.message); }
+  }
+  return { ok: false, reply: FALLBACK_REPLY, actions: [], cards: [] };
+}
+
 export async function runAssistant(env, userId, channel, text) {
+  const actions = [], cards = [];
+  let done = 0;
   try {
     const past = (await env.DB.prepare('SELECT role, content FROM messages WHERE user_id=? ORDER BY created_at DESC, rowid DESC LIMIT ?').bind(userId, HISTORY).all()).results.reverse();
     const contents = [...past.map(m => ({ role: m.role, parts: [{ text: m.content }] })), { role: 'user', parts: [{ text }] }];
-    const actions = [], cards = [];
     for (let i = 0; i < MAX_TURNS; i++) {
       const c = await gemini(env, contents);
       contents.push(c);
       const calls = (c.parts || []).filter(p => p.functionCall);
       if (!calls.length) {
-        const reply = (c.parts || []).filter(p => p.text && !p.thought).map(p => p.text).join('').trim() || FALLBACK_REPLY;
+        const reply = (c.parts || []).filter(p => p.text && !p.thought).map(p => p.text).join('').trim();
+        if (!reply) return await fail(env, userId, channel, text, actions, cards, done);
         await saveMessage(env, userId, channel, 'user', text);
         await saveMessage(env, userId, channel, 'model', reply, cards);
-        return { reply, actions, cards };
+        return { ok: true, reply, actions, cards };
       }
       const resp = [];
       for (const { functionCall: f } of calls) {
@@ -77,14 +93,15 @@ export async function runAssistant(env, userId, channel, text) {
         try { out = toolImpl[f.name] ? await toolImpl[f.name](env, userId, f.args || {}, channel) : { ok: false, error: 'unknown_tool' }; }
         catch (e) { out = { ok: false, error: e.message }; }
         if (f.name !== 'get_overview') actions.push(f.name);
+        if (out?.ok && f.name !== 'get_overview') done++;
         const card = cardFor(f.name, out, f.args || {}); if (card) cards.push(card);
         resp.push({ functionResponse: { name: f.name, response: out, ...(f.id ? { id: f.id } : {}) } });
       }
       contents.push({ role: 'user', parts: resp });
     }
-    return { reply: FALLBACK_REPLY, actions, cards: [] };
+    return await fail(env, userId, channel, text, actions, cards, done);
   } catch (e) {
     console.error('assistant error', e.message);
-    return { reply: FALLBACK_REPLY, actions: [], cards: [] };
+    return await fail(env, userId, channel, text, actions, cards, done);
   }
 }

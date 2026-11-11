@@ -9,7 +9,7 @@ const GENERIC = 'ทำไม่สำเร็จ ลองใหม่อี�
 const ERR_TH = { not_found: 'รายการนี้ไม่มีแล้วนะ', system_verified: 'รายการนี้บริษัทเป็นผู้อัปเดต แก้เองไม่ได้นะ' };
 const LABEL = { app_status: 'เปลี่ยนสถานะ', app_undo: 'ยกเลิก', rem_delete: 'ลบการเตือน', rem_done: 'ทำแล้ว', rem_snooze: 'เลื่อน 1 ชม.', ext_confirm: 'ยืนยันบันทึก', ext_discard: 'ไม่ใช่', 'menu:today': 'วันนี้ต้องทำอะไร', 'menu:apps': 'ขอดูสถานะใบสมัครทั้งหมด', 'menu:checklist': 'เช็กลิสต์คณะเหลืออะไรบ้าง', 'menu:reminders': 'มีเตือนอะไรตั้งไว้บ้าง' };
 const thTime = iso => new Date(iso).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' });
-const EXT_ERR = { already_confirmed: 'อันนี้บันทึกไปแล้วนะ', duplicate: 'มีบริษัทนี้อยู่ในบอร์ดแล้วนะ' };
+const EXT_ERR = { already_confirmed: 'อันนี้บันทึกไปแล้วนะ', duplicate: 'มีบริษัทนี้อยู่ในบอร์ดแล้วนะ', missing_company: 'อ่านชื่อบริษัทไม่เจอ เลยยังไม่บันทึกนะ พิมพ์บอกพี่แทนได้ เช่น "สมัคร SCB แล้ว"' };
 
 async function dispatch(env, userId, channel, name, id, arg) {
   switch (name) {
@@ -39,8 +39,9 @@ async function dispatch(env, userId, channel, name, id, arg) {
       return r.ok ? { ok: true, reply: 'บันทึกแล้ว ✅ ดูบนบอร์ดได้เลย (ป้าย 🤖 AI อ่าน)', label: 'ext_confirm' } : { ok: false, reply: EXT_ERR[r.error] || 'บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะ' };
     }
     case 'ext_discard': case 'discard': {
-      await discardExtraction(env, userId, id);
-      return { ok: true, reply: 'โอเค ไม่บันทึกนะ', label: 'ext_discard' };
+      const r = await discardExtraction(env, userId, id);
+      if (r.ok) return { ok: true, reply: 'โอเค ไม่บันทึกนะ', label: 'ext_discard' };
+      return { ok: false, reply: r.error === 'already_confirmed' ? 'อันนี้บันทึกลงบอร์ดไปแล้วนะ ถ้าไม่ต้องการ ย้ายไป "ปิด/ไม่ผ่าน" บนบอร์ดได้เลย' : ERR_TH.not_found };
     }
     case 'menu': {
       const MENU = {

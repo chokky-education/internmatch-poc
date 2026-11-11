@@ -66,6 +66,22 @@ describe('runCardAction', () => {
     expect((await runCardAction(env, U, 'line', 'ext_confirm:e1')).reply).toBe('อันนี้บันทึกไปแล้วนะ');
     expect((await runCardAction(env, U, 'line', 'ext_discard:e2')).reply).toBe('โอเค ไม่บันทึกนะ');
   });
+  it('ext_discard after confirm says it is already on the board, keeps the application and writes no messages', async () => {
+    await env.DB.prepare("INSERT INTO extractions (id,user_id,doc_type,fields_json,status,channel,created_at) VALUES ('e3',?,'job_post',?,'pending','line',?)").bind(U, JSON.stringify({ company: 'ไทยดาต้า', role: 'Intern' }), new Date().toISOString()).run();
+    expect((await runCardAction(env, U, 'line', 'ext_confirm:e3')).ok).toBe(true);
+    const before = (await env.DB.prepare('SELECT count(*) c FROM messages').first()).c;
+    const r = await runCardAction(env, U, 'line', 'ext_discard:e3');
+    expect(r.ok).toBe(false);
+    expect(r.reply).toContain('บันทึกลงบอร์ดไปแล้ว');
+    expect((await env.DB.prepare("SELECT count(*) c FROM applications WHERE company='ไทยดาต้า'").first()).c).toBe(1);
+    expect((await env.DB.prepare('SELECT count(*) c FROM messages').first()).c).toBe(before);
+  });
+  it('ext_discard twice on a pending extraction is fine, and an unknown id is not found', async () => {
+    await env.DB.prepare("INSERT INTO extractions (id,user_id,doc_type,fields_json,status,channel,created_at) VALUES ('e4',?,'job_post','{}','pending','line',?)").bind(U, new Date().toISOString()).run();
+    expect((await runCardAction(env, U, 'line', 'ext_discard:e4')).ok).toBe(true);
+    expect((await runCardAction(env, U, 'line', 'ext_discard:e4')).ok).toBe(true);
+    expect(await runCardAction(env, U, 'line', 'ext_discard:nope')).toMatchObject({ ok: false, reply: 'รายการนี้ไม่มีแล้วนะ' });
+  });
   it('unknown action is a generic failure and writes no messages', async () => {
     const r = await runCardAction(env, U, 'web', 'nuke:1');
     expect(r).toMatchObject({ ok: false, reply: 'ทำไม่สำเร็จ ลองใหม่อีกครั้งนะ' });

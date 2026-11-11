@@ -49,9 +49,9 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
 .phone{width:300px;background:#8cabd9;border-radius:24px;padding:16px;margin-top:10px}.bubble{background:#fff;border-radius:14px;padding:12px;font-size:13px}
 .toggle{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
 .sw{width:40px;height:22px;border-radius:99px;background:var(--pri);position:relative;cursor:pointer}.sw:after{content:'';position:absolute;right:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff}.sw.off{background:#ccd}.sw.off:after{right:auto;left:3px}
-#login{position:fixed;inset:0;background:rgba(246,247,251,.97);display:none;align-items:center;justify-content:center;z-index:50}
-#login.show{display:flex}
-#login .box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;width:min(380px,92vw);box-shadow:0 18px 50px rgba(20,22,50,.15)}
+#login,#boot{position:fixed;inset:0;background:rgba(246,247,251,.97);display:none;align-items:center;justify-content:center;z-index:50}
+#login.show,#boot.show{display:flex}
+#login .box,#boot .box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;width:min(380px,92vw);box-shadow:0 18px 50px rgba(20,22,50,.15)}
 #bar .barin{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--pri2);color:var(--pri);padding:8px 14px;border-radius:10px;margin-bottom:10px;font-size:13px}
 #bar .barrem{background:var(--warnbg);color:var(--warn);padding:8px 14px;border-radius:10px;margin-bottom:8px;font-size:13px}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:99px;font-size:13px;z-index:60}
@@ -66,6 +66,11 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
   <div id="loginStep2" style="display:none;margin-top:14px"><input id="loginCode" inputmode="numeric" maxlength="6" placeholder="รหัส 6 หลัก" style="width:100%" onkeydown="if(event.key==='Enter')loginVerify()"><button class="btn" style="width:100%;margin-top:10px" onclick="loginVerify()">เข้าสู่ระบบ</button></div>
   <p class="sub" id="loginMsg" style="margin:12px 0 0"></p>
 </div></div>
+<div id="boot" class="show"><div class="box">
+  <div class="logo" style="margin-bottom:12px">Intern<b>Match</b></div>
+  <p class="sub" id="bootMsg" style="margin:0">กำลังโหลดข้อมูลของคุณ…</p>
+  <button class="btn" id="bootRetry" style="display:none;width:100%;margin-top:12px" onclick="boot()">ลองใหม่</button>
+</div></div>
 <div class="app">
 <aside>
   <div class="logo">Intern<b>Match</b><div style="font-size:11px;font-weight:500;color:var(--mute)">ผู้ช่วยพาคุณผ่านฤดูฝึกงาน</div></div>
@@ -73,7 +78,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
     <a data-s="onboard">✨ เริ่มต้นใช้งาน</a>
     <a data-s="dash" class="on">🏠 วันนี้ต้องทำอะไร</a>
     <a data-s="uni">🎓 เอกสาร & ขั้นตอนคณะ</a>
-    <a data-s="docs">📁 คลังเอกสาร <span class="badge" style="background:var(--bad)" id="docAlert">2</span></a>
+    <a data-s="docs">📁 คลังเอกสาร</a>
     <a data-s="ocr">📸 อ่านเอกสาร (AI) <span class="badge" style="background:var(--ok)">ใหม่</span></a>
     <a data-s="chat">💬 พี่ฝึกงาน (แชท)</a>
     <a data-s="discover">🔎 ค้นหาฝึกงาน</a>
@@ -89,6 +94,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
 <section class="screen" id="onboard"><div class="onb card">
   <div class="steps"><i class="on"></i><i class="on"></i><i></i></div>
   <h1>ตั้งค่าฤดูฝึกงานของคุณ</h1><p class="sub">เราจะสร้างแผนและเช็กลิสต์ตามเงื่อนไขของคณะคุณ</p>
+  <div class="note" style="margin:0 0 8px">หน้าตัวอย่าง: ตัวเลือกในหน้านี้ยังไม่ถูกบันทึก</div>
   <label>มหาวิทยาลัย / คณะ</label><select><option>มหาวิทยาลัย X · คณะวิทยาศาสตร์ · สาขาวิทยาการข้อมูล</option></select>
   <label>ประเภท</label><div class="pick"><span class="on">ฝึกงานภาคบังคับ (≥ 240 ชม.)</span><span>สหกิจศึกษา (16 สัปดาห์)</span><span>สมัครใจ</span></div>
   <label>คณะต้องการเอกสารตอบรับภายใน</label><input type="date" value="2027-01-31"><small style="color:var(--ok)">✔ ดึงจากคู่มือคณะให้อัตโนมัติ (แก้ได้) · หรือ <a href="#">อัปโหลดคู่มือ PDF ให้ระบบอ่าน</a></small>
@@ -101,18 +107,16 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
 
 <!-- DASHBOARD -->
 <section class="screen on" id="dash">
-  <div class="row" style="justify-content:space-between"><h1>สวัสดี มีน 👋</h1>
-  <label style="margin:0;display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="newUser" onchange="render()"> จำลองผู้ใช้ใหม่ (วันแรก)</label></div>
+  <div class="row" style="justify-content:space-between"><h1>สวัสดี 👋</h1></div>
   <div id="emptyState" style="display:none;margin-bottom:16px" class="card">
     <h3 style="margin-top:0">🚀 เริ่มฤดูฝึกงานใน 4 ขั้น</h3><p class="sub">ใช้เวลาราว 10 นาที แล้วระบบจะเริ่มเตือนเรื่องที่ต้องทำให้</p>
     <div class="list">
       <div class="it"><span style="font-size:20px">📄</span><div style="flex:1"><b>อัปโหลด Resume</b><br><small style="color:var(--mute)">ใช้ซ้ำได้ทุกใบสมัคร</small></div><button class="btn sm" onclick="go('docs')">ทำเลย</button></div>
-      <div class="it"><span style="font-size:20px">💚</span><div style="flex:1"><b>เพิ่มเพื่อน LINE @internmatch</b><br><small style="color:var(--mute)">เจองานที่ไหนก็แชร์ลิงก์เข้า LINE ได้เลย</small></div><button class="btn sm line" onclick="go('notif')">เชื่อม</button></div>
+      <div class="it"><span style="font-size:20px">💚</span><div style="flex:1"><b>เพิ่มเพื่อน LINE OA ของโปรเจกต์</b><br><small style="color:var(--mute)">เจองานที่ไหนก็แชร์ลิงก์เข้า LINE ได้เลย</small></div><button class="btn sm line" onclick="go('notif')">เชื่อม</button></div>
       <div class="it"><span style="font-size:20px">⭐</span><div style="flex:1"><b>บันทึกบริษัทเป้าหมาย 5 ที่</b><br><small style="color:var(--mute)">จากหน้าค้นหา หรือวางลิงก์ที่เจอเอง</small></div><button class="btn sm" onclick="go('discover')">ทำเลย</button></div>
-      <div class="it"><span style="font-size:20px">🎓</span><div style="flex:1"><b>ลงทะเบียนวิชาฝึกงาน</b><br><small style="color:var(--mute)">คณะกำหนดภายใน 15 พ.ย.</small></div><button class="btn sm ghost" onclick="go('uni')">ดูขั้นตอน</button></div>
+      <div class="it"><span style="font-size:20px">🎓</span><div style="flex:1"><b>ลงทะเบียนวิชาฝึกงาน</b><br><small style="color:var(--mute)">ดูกำหนดการในคู่มือคณะ</small></div><button class="btn sm ghost" onclick="go('uni')">ดูขั้นตอน</button></div>
     </div></div>
   <div id="activeState">
-  <p class="sub">ฝึกงานภาคบังคับ · มี.ค.–พ.ค. 2570 · คณะต้องการใบตอบรับภายใน <b>31 ม.ค.</b> (อีก 82 วัน)</p>
   <div class="card" style="margin-bottom:16px">
     <div class="row" style="justify-content:space-between"><b>🧭 เส้นทางฤดูฝึกงานของคุณ</b><span class="chip pri" id="phaseTxt"></span></div>
     <div id="journey" style="display:flex;gap:6px;margin-top:12px"></div>
@@ -129,16 +133,9 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
 
 <!-- UNI -->
 <section class="screen" id="uni">
-  <h1>เอกสาร & ขั้นตอนคณะ</h1><p class="sub">มหาวิทยาลัย X · คณะวิทยาศาสตร์ · ฝึกงานภาคบังคับ ≥ 240 ชม. <span class="chip">ข้อมูลจากคู่มือคณะ ปี 2569 · ตรวจ 1 พ.ย.</span></p>
+  <h1>เอกสาร & ขั้นตอนคณะ</h1><p class="sub">เช็กลิสต์ตั้งต้นทั่วไป ยังไม่ใช่ของคณะคุณ <span class="chip">✎ ตรวจกำหนดการจริงกับคู่มือคณะ</span></p>
   <div class="row" style="align-items:flex-start">
     <div class="card" style="flex:1.4;min-width:340px"><h3 style="margin-top:0">เช็กลิสต์ <span class="chip ok" id="uniPct"></span></h3><div class="list" id="uniList"></div></div>
-    <div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:14px">
-      <div class="card"><h3 style="margin-top:0">👩‍🏫 อาจารย์ที่ปรึกษา</h3><b>อ.ดร.สมใจ ใจดี</b><br><small style="color:var(--mute)">เห็นความคืบหน้าของคุณ (คุณอนุญาตแล้ว)</small>
-        <div class="row" style="margin-top:10px"><button class="btn sm ghost">ส่งขออนุมัติบริษัท</button><button class="btn sm ghost">ปิดการแชร์</button></div></div>
-      <div class="card"><h3 style="margin-top:0">📄 สร้างหนังสือขอความอนุเคราะห์</h3><small style="color:var(--mute)">เลือกบริษัทจากใบสมัคร ระบบกรอกแบบฟอร์มคณะให้ แล้วส่งเจ้าหน้าที่เซ็น</small>
-        <select style="width:100%;margin-top:10px" id="letterCo"></select><button class="btn sm" style="margin-top:10px" onclick="alert('สร้างร่าง PDF แล้ว (POC)')">สร้างร่างเอกสาร</button></div>
-      <div class="card"><h3 style="margin-top:0">💬 จากรุ่นพี่สาขาเดียวกัน</h3><small>บริษัท A รับเด็กคณะนี้ 6 คนใน 2 ปี · ตอบกลับเฉลี่ย 9 วัน · ออกใบตอบรับให้ภายใน 1 สัปดาห์</small></div>
-    </div>
   </div>
 </section>
 
@@ -154,9 +151,6 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
   <div class="card" style="overflow:auto"><table id="matrix" style="width:100%;border-collapse:collapse"></table>
   <p class="sub" style="margin:10px 0 0">✔ แนบแล้ว · ⚠ ต้องแก้ · ✕ ขาด · — ไม่ต้องใช้</p></div>
 
-  <h3 style="margin-top:26px">3 · เอกสารจากคณะ (ส่วนที่มักใช้เวลานาน)</h3>
-  <p class="sub" style="margin-top:-6px">คณะไม่ได้เชื่อมต่อกับ InternMatch: <span class="chip">✎ อัปเดตโดยคุณ</span> กดที่ขั้นตอนเพื่ออัปเดต · วันที่คาดว่าจะได้คำนวณจากข้อมูลของรุ่นพี่</p>
-  <div class="card list" id="uniDocs"></div>
 </section>
 
 <!-- OCR -->
@@ -206,6 +200,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
 <section class="screen" id="discover">
   <div class="row" style="justify-content:space-between"><div><h1>ค้นหาฝึกงาน</h1><p class="sub">ประกาศจากแหล่งที่ได้รับอนุญาต พร้อมลิงก์ต้นทางทุกรายการ</p></div>
   <button class="btn ghost" onclick="openAdd()">＋ เพิ่มจาก URL เอง</button></div>
+  <div class="note" style="margin:0 0 12px">ประกาศตัวอย่างสำหรับทดลองใช้ ยังไม่ใช่ประกาศจริง · กด “ฉันสมัครแล้ว” จะบันทึกลงบอร์ดของคุณจริง</div>
   <div class="card row" style="margin-bottom:16px">
     <input id="q" placeholder="ค้นหาตำแหน่ง / บริษัท เช่น Data Analyst" style="flex:1;min-width:220px" oninput="renderJobs()">
     <select id="fMode" onchange="renderJobs()"><option value="">ทุกรูปแบบ</option><option>Onsite</option><option>Hybrid</option><option>Remote</option></select>
@@ -215,7 +210,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
 </section>
 
 <!-- SAVED -->
-<section class="screen" id="saved"><h1>ที่บันทึกไว้</h1><p class="sub">ตำแหน่งที่สนใจแต่ยังไม่ได้สมัคร</p><div class="grid" id="savedList"></div></section>
+<section class="screen" id="saved"><h1>ที่บันทึกไว้</h1><p class="sub">ตำแหน่งที่สนใจแต่ยังไม่ได้สมัคร</p><div class="note" style="margin:0 0 12px">ประกาศตัวอย่างสำหรับทดลองใช้ ยังไม่ใช่ประกาศจริง · กด “ฉันสมัครแล้ว” จะบันทึกลงบอร์ดของคุณจริง</div><div class="grid" id="savedList"></div></section>
 
 <!-- TRACKER -->
 <section class="screen" id="tracker">
@@ -236,14 +231,7 @@ label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label+inp
     <h3>ตั้งเตือนของฉัน</h3>
     <div class="row"><input id="remText" placeholder="เช่น ส่งใบตอบรับให้คณะ" style="flex:1;min-width:160px"><input type="datetime-local" id="remAt"><button class="btn sm" onclick="addRem()">ตั้งเตือน</button></div>
     <div class="list" id="remList" style="margin-top:8px"></div>
-    <h3>เตือนเมื่อ</h3>
-    <div class="toggle">วันปิดรับสมัครของงานที่บันทึก (ล่วงหน้า 3 วัน)<div class="sw" onclick="this.classList.toggle('off')"></div></div>
-    <div class="toggle">นัดสัมภาษณ์ (ล่วงหน้า 1 วัน)<div class="sw" onclick="this.classList.toggle('off')"></div></div>
-    <div class="toggle">สถานะเปลี่ยน (เฉพาะที่ระบบยืนยันได้)<div class="sw" onclick="this.classList.toggle('off')"></div></div>
-    <div class="toggle">เตือนให้อัปเดตใบสมัครภายนอก<div class="sw off" onclick="this.classList.toggle('off')"></div></div>
-    <p class="sub" style="margin-top:12px">ยกเลิกได้ทุกเมื่อ หรือพิมพ์ “หยุด” ใน LINE</p>
   </div>
-  <div><b>ตัวอย่างข้อความ</b><div class="phone"><div class="bubble">🔔 <b>InternMatch</b><br>พรุ่งนี้ 10:00 สัมภาษณ์<br><b>Data Analyst Intern – บริษัท A</b><br><br><span style="color:var(--pri)">ดูรายละเอียด →</span></div></div></div>
   </div>
 </section>
 
@@ -287,7 +275,7 @@ async function api(path,opts={}){
  try{d=await r.json();}catch(e){}
  if(r.status===401&&!path.startsWith('/api/auth/'))showLogin();
  return{ok:r.ok,status:r.status,data:d};}
-const ERRTH={duplicate:'มีบริษัทนี้อยู่แล้ว',system_verified:'ใบสมัครนี้ระบบยืนยัน แก้เองไม่ได้',too_large:'ไฟล์ใหญ่เกิน 10MB',extract_failed:'อ่านเอกสารไม่สำเร็จ ลองใหม่อีกครั้ง',network:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้',already_confirmed:'บันทึกไปแล้ว',unauthorized:'กรุณาเข้าสู่ระบบ'};
+const ERRTH={duplicate:'มีบริษัทนี้อยู่แล้ว',system_verified:'ใบสมัครนี้ระบบยืนยัน แก้เองไม่ได้',too_large:'ไฟล์ใหญ่เกิน 10MB',extract_failed:'อ่านเอกสารไม่สำเร็จ ลองใหม่อีกครั้ง',network:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้',already_confirmed:'บันทึกไปแล้ว',missing_company:'อ่านชื่อบริษัทไม่เจอ เพิ่มใบสมัครเองได้ที่หน้าติดตามการสมัคร',unauthorized:'กรุณาเข้าสู่ระบบ'};
 const errMsg=r=>ERRTH[r.data&&r.data.error]||(r.data&&r.data.error)||('เกิดข้อผิดพลาด ('+r.status+')');
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3200);}
 const daysSince=iso=>Math.max(0,Math.round((Date.now()-Date.parse(iso))/864e5));
@@ -296,18 +284,23 @@ function applyState(s){serverState=s;
  uni.length=0;s.university_checklist.forEach(t=>uni.push({id:t.id,t:t.task,d:t.detail||'',done:t.done}));
  myDocs.length=0;extraDocs=[];s.my_documents.forEach(d=>{if(d.kind==='my_doc')myDocs.push({id:d.id,k:d.fields.k,i:ICONS[d.fields.k]||'📄',t:d.name,v:d.fields.version||'—',s:d.status,n:d.note||''});else extraDocs.push(d);});
  reminders.length=0;s.reminders.forEach(r=>reminders.push(r));}
-async function loadState(){const r=await api('/api/state');if(!r.ok)return false;$('#login').classList.remove('show');applyState(r.data);render();renderChat();renderBanner();return true;}
+async function loadState(){const r=await api('/api/state');if(!r.ok)return r.status||0;$('#login').classList.remove('show');applyState(r.data);render();renderChat();renderBanner();return true;}
 function renderBanner(){const b=$('#bar');if(!serverState||!b)return;const u=serverState.user,un=serverState.unseen_reminders||[];
  b.innerHTML=`<div class="barin"><span>🌐 LINE ใช้ไม่ได้? ทำทุกอย่างที่นี่ได้เหมือนกัน</span><span style="flex:1"></span><small>${esc(u.email)} · ${u.line_linked?'💚 ผูก LINE แล้ว':'ยังไม่ผูก LINE'}</small><a onclick="logout()" style="cursor:pointer;text-decoration:underline">ออกจากระบบ</a></div>`+un.map(r=>`<div class="barrem">⏰ ${esc(r.text)} <a onclick="seenRem('${r.id}')" style="cursor:pointer;text-decoration:underline">รับทราบ</a> · <a onclick="cardAct('rem_snooze:${r.id}')" style="cursor:pointer;text-decoration:underline">เลื่อน 1 ชม.</a></div>`).join('');}
 async function seenRem(id){await api('/api/reminders/'+id+'/seen',{method:'POST'});await loadState();}
-function showLogin(){$('#login').classList.add('show');}
+function showLogin(){$('#boot').classList.remove('show');$('#login').classList.add('show');}
+async function boot(){$('#bootMsg').textContent='กำลังโหลดข้อมูลของคุณ…';$('#bootRetry').style.display='none';$('#boot').classList.add('show');
+ const s=await loadState();
+ if(s===true){$('#boot').classList.remove('show');return;}
+ if(s===401){showLogin();return;}
+ $('#bootMsg').textContent='เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ข้อมูลของคุณยังอยู่ครบ ตรวจอินเทอร์เน็ตแล้วกดลองใหม่';$('#bootRetry').style.display='block';}
 async function loginReq(){const email=$('#loginEmail').value.trim();if(!email)return;$('#loginMsg').textContent='กำลังส่งรหัส…';
  const r=await api('/api/auth/request',{method:'POST',body:JSON.stringify({email})});
  if(r.ok){$('#loginStep2').style.display='block';$('#loginMsg').textContent='ส่งรหัส 6 หลักไปที่อีเมลแล้ว (ถ้าไม่เห็น ดูในโฟลเดอร์ Spam)';}
- else $('#loginMsg').textContent=r.data.error==='not_allowed'?'อีเมลนี้ยังไม่เปิดให้ใช้ในช่วงทดลอง':r.data.error==='too_soon'?'เพิ่งส่งรหัสไป รอ 1 นาทีแล้วลองใหม่':'ส่งอีเมลไม่สำเร็จ ลองใหม่อีกครั้ง';}
+ else $('#loginMsg').textContent=r.data.error==='network'?'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่':r.data.error==='not_allowed'?'อีเมลนี้ยังไม่เปิดให้ใช้ในช่วงทดลอง':r.data.error==='too_soon'?'เพิ่งส่งรหัสไป รอ 1 นาทีแล้วลองใหม่':'ส่งอีเมลไม่สำเร็จ ลองใหม่อีกครั้ง';}
 async function loginVerify(){const email=$('#loginEmail').value.trim(),code=$('#loginCode').value.trim();
  const r=await api('/api/auth/verify',{method:'POST',body:JSON.stringify({email,code})});
- if(r.ok){await loadState();}else $('#loginMsg').textContent={invalid:'รหัสไม่ถูกต้อง',expired:'รหัสหมดอายุ ขอรหัสใหม่',locked:'ใส่ผิดหลายครั้ง ขอรหัสใหม่'}[r.data.error]||'เข้าสู่ระบบไม่สำเร็จ';}
+ if(r.ok){await loadState();}else $('#loginMsg').textContent={network:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่',invalid:'รหัสไม่ถูกต้อง',expired:'รหัสหมดอายุ ขอรหัสใหม่',locked:'ใส่ผิดหลายครั้ง ขอรหัสใหม่'}[r.data.error]||'เข้าสู่ระบบไม่สำเร็จ';}
 async function logout(){await api('/api/auth/logout',{method:'POST'});location.reload();}
 const $=s=>document.querySelector(s);
 const today=new Date('2026-11-10');
@@ -412,7 +405,7 @@ function renderOut(x){const f=x.fields;
  ${note}<div class="row" style="margin-top:14px"><button class="btn" onclick="confirmExt('${x.id}')">✔ ยืนยันและบันทึก</button><button class="btn ghost" onclick="discardExt('${x.id}')">ไม่ใช่</button></div>`;}
 async function confirmExt(id){const r=await api('/api/extractions/'+id+'/confirm',{method:'POST'});toast(r.ok?'บันทึกแล้ว ✔ (ป้าย 🤖 AI อ่าน)':errMsg(r));await loadState();
  if(r.ok&&lastExt&&lastExt.id===id){const t=lastExt.doc_type;lastExt=null;$('#ocrOut').innerHTML='<p class="sub" style="margin:0">ผลลัพธ์จะแสดงที่นี่</p>';go(t==='job_post'?'tracker':'docs');}}
-async function discardExt(id){await api('/api/extractions/'+id+'/discard',{method:'POST'});if(lastExt&&lastExt.id===id){lastExt=null;$('#ocrOut').innerHTML='<p class="sub" style="margin:0">ผลลัพธ์จะแสดงที่นี่</p>';}await loadState();}
+async function discardExt(id){const r=await api('/api/extractions/'+id+'/discard',{method:'POST'});if(!r.ok)toast(r.data&&r.data.error==='already_confirmed'?'อันนี้บันทึกลงบอร์ดไปแล้ว ย้ายไป “ปิด/ไม่ผ่าน” บนบอร์ดได้':errMsg(r));if(lastExt&&lastExt.id===id){lastExt=null;$('#ocrOut').innerHTML='<p class="sub" style="margin:0">ผลลัพธ์จะแสดงที่นี่</p>';}await loadState();}
 function renderOcrPending(){const p=serverState?serverState.pending_extractions:[],el=$('#ocrPending');if(!el)return;el.style.display=p.length?'block':'none';
  el.innerHTML=p.length?'<h3 style="margin-top:0">🤖 รอคุณยืนยัน</h3>'+p.map(x=>`<div class="it" style="display:block"><b>${esc(x.fields.company||x.fields.program||x.fields.student_name||x.doc_type)}</b> <small style="color:var(--mute)">· จาก ${x.channel==='line'?'LINE':'เว็บ'}</small><div class="row" style="margin-top:6px"><button class="btn sm" onclick="confirmExt('${x.id}')">ยืนยัน</button><button class="btn sm ghost" onclick="discardExt('${x.id}')">ไม่ใช่</button></div></div>`).join(''):'';}
 const bub=(t,me,who)=>`<div style="align-self:${me?'flex-end':'flex-start'};max-width:82%">${who?`<small style="color:#fff">${who}</small>`:''}<div style="background:${me?'#9be15d':'#fff'};border-radius:16px;padding:9px 12px;font-size:13px;line-height:1.5">${t}</div></div>`;
@@ -431,14 +424,14 @@ function renderChat(){const el=$('#msgs');if(!el)return;const m=serverState?serv
  $('#quick').innerHTML=MENU_CHIPS.map(([d,l])=>`<span onclick="cardAct('${d}')">${l}</span>`).join('')+QUICK.map(q=>`<span onclick="sendMsg(this.textContent)">${q}</span>`).join('');el.scrollTop=1e9;}
 let chatBusy=false;
 async function sendMsg(t){t=(t||$('#chatIn').value).trim();if(!t||chatBusy)return;chatBusy=true;$('#chatIn').value='';
- $('#msgs').insertAdjacentHTML('beforeend',bub(esc(t),1,'🌐 เว็บ')+bub('<i>กำลังคิด…</i>',0));$('#msgs').scrollTop=1e9;
- const r=await api('/api/chat',{method:'POST',body:JSON.stringify({text:t})});chatBusy=false;if(!r.ok)toast(errMsg(r));await loadState();}
+ $('#msgs').insertAdjacentHTML('beforeend',bub(esc(t),1,'🌐 เว็บ')+'<div id="thinking" style="display:contents">'+bub('<i>กำลังคิด…</i>',0)+'</div>');$('#msgs').scrollTop=1e9;
+ const r=await api('/api/chat',{method:'POST',body:JSON.stringify({text:t})});chatBusy=false;
+ const th=$('#thinking');
+ if(!r.ok){if(th)th.remove();$('#chatIn').value=t;toast(errMsg(r));return;}
+ if(r.data.ok===false){if(th){th.innerHTML=bub(esc(r.data.reply),0);th.removeAttribute('id');}$('#chatIn').value=t;$('#msgs').scrollTop=1e9;return;}
+ await loadState();}
 const myDocs=[];let extraDocs=[];const ICONS={resume:'📄',tr:'🎓',port:'🗂️',cover:'✉️',id:'🪪'};
 const need={};
-const uniDocs=[
- {t:'หนังสือขอความอนุเคราะห์ – บริษัท A',st:2,upd:'อัปเดตโดยคุณ 8 พ.ย.',steps:['ยื่นคำขอ','เจ้าหน้าที่ตรวจ','รอคณบดีลงนาม','ได้รับเอกสาร','ส่งบริษัท'],eta:'คาดว่าได้ ~14 พ.ย. (รุ่นพี่ 23 คน รอเฉลี่ย 5 วันทำการ)'},
- {t:'ใบตอบรับฝึกงาน – บริษัท A',st:0,upd:'ยังไม่อัปเดต',steps:['รอบริษัท','ได้รับแล้ว','ส่งคณะ'],eta:'บริษัท A ออกใบตอบรับเฉลี่ย 7 วัน (จากรุ่นพี่ 6 คน) · กำหนดส่งคณะ 31 ม.ค.'},
-];
 const ic={ok:'<span class="chip ok">✔</span>',warn:'<span class="chip warn">⚠</span>',bad:'<span class="chip bad">✕</span>','-':'<span style="color:var(--mute)">—</span>'};
 function renderDocs(){
  $('#myDocs').innerHTML=myDocs.map(d=>`<div class="card"><div class="row" style="justify-content:space-between"><span style="font-size:22px">${d.i}</span>${ic[d.s]}</div>
@@ -449,17 +442,13 @@ function renderDocs(){
  Object.entries(need).map(([co,r])=>{const req=Object.values(r).filter(v=>v!=='-'),ok=req.filter(v=>v==='ok').length;
   return `<tr style="border-top:1px solid var(--line)"><td style="padding:10px 8px"><b>${co}</b></td>${myDocs.map(d=>`<td>${ic[r[d.k]]}</td>`).join('')}
   <td>${ok===req.length?'<span class="chip ok">พร้อมส่ง</span>':`<span class="chip warn">ขาด ${req.length-ok} รายการ</span>`}</td></tr>`}).join('');
- if(!Object.keys(need).length)$('#matrix').innerHTML='<tr><td style="padding:12px;color:var(--mute)">ตารางความพร้อมเอกสารรายบริษัทจะแสดงเมื่อระบบรู้ว่าแต่ละบริษัทขอเอกสารอะไร (ยังไม่เปิดใช้ในรอบนี้)</td></tr>';
- $('#uniDocs').innerHTML=uniDocs.map((u,k)=>`<div class="it" style="display:block"><div class="row" style="justify-content:space-between"><b>${u.t}</b><span class="chip">✎ ${u.upd}</span></div>
- <div style="display:flex;gap:4px;margin:10px 0 6px">${u.steps.map((s,i)=>`<div style="flex:1;cursor:pointer" title="กดเพื่อตั้งเป็นขั้นปัจจุบัน" onclick="uniDocs[${k}].st=${i};uniDocs[${k}].upd='อัปเดตโดยคุณ 10 พ.ย.';render()"><div style="height:6px;border-radius:6px;background:${i<u.st?'var(--ok)':i===u.st?'var(--warn)':'var(--line)'}"></div><small style="color:${i===u.st?'var(--warn)':'var(--mute)'}">${s}</small></div>`).join('')}</div>
- <small style="color:var(--mute)">⏱ ${u.eta}</small> <button class="btn sm ghost" style="float:right">แจ้งเตือนทาง LINE เมื่อพร้อม</button></div>`).join('');}
+ if(!Object.keys(need).length)$('#matrix').innerHTML='<tr><td style="padding:12px;color:var(--mute)">ตารางความพร้อมเอกสารรายบริษัทจะแสดงเมื่อระบบรู้ว่าแต่ละบริษัทขอเอกสารอะไร (ยังไม่เปิดใช้ในรอบนี้)</td></tr>';}
 const uni=[];
 const PH=['ค้นหา','สมัคร','สัมภาษณ์','ได้ใบตอบรับ','เอกสารคณะ','เริ่มฝึกงาน'];
 function renderUni(){const n=uni.filter(u=>u.done).length;$('#uniPct').textContent=`${n}/${uni.length} เสร็จ`;
  $('#uniList').innerHTML=uni.map((u,i)=>`<div class="it"><input type="checkbox" ${u.done?'checked':''} onchange="toggleTask(${i},this.checked)" style="width:18px;height:18px">
  <div style="flex:1;${u.done?'text-decoration:line-through;color:var(--mute)':''}"><b>${u.t}</b><br><small style="color:var(--mute)">${u.d}</small></div>${u.act&&!u.done?`<button class="btn sm ghost">${u.act}</button>`:''}</div>`).join('');
- $('#letterCo').innerHTML=apps.filter(a=>a.st!=='Closed'&&a.st!=='Saved').map(a=>`<option>${a.co} – ${a.role}</option>`).join('');
- const cur=2;$('#phaseTxt').textContent='ตอนนี้: '+PH[cur];
+ const cur=apps.some(a=>a.st==='Offer')?3:apps.some(a=>a.st==='Interview')?2:apps.some(a=>a.st==='Applied')?1:0;$('#phaseTxt').textContent='ตอนนี้: '+PH[cur];
  $('#journey').innerHTML=PH.map((p,i)=>`<div style="flex:1;text-align:center"><div style="height:6px;border-radius:6px;background:${i<cur?'var(--ok)':i===cur?'var(--pri)':'var(--line)'}"></div><small style="color:${i===cur?'var(--pri)':'var(--mute)'};font-weight:${i===cur?600:400}">${p}</small></div>`).join('');
  const todo=[];
  (serverState?serverState.unseen_reminders:[]).forEach(r=>todo.push(['⏰',esc(r.text),'เตือนที่ยังไม่ได้อ่าน',`seenRem('${r.id}')`]));
@@ -467,10 +456,8 @@ function renderUni(){const n=uni.filter(u=>u.done).length;$('#uniPct').textConte
  uni.filter(u=>!u.done).slice(0,2).forEach(u=>todo.push(['📝',esc(u.t),esc(u.d),"go('uni')"]));
  myDocs.filter(d=>d.s!=='ok').slice(0,2).forEach(d=>todo.push(['📁',esc(d.t+': '+d.n),'เอกสาร',"go('docs')"]));
  $('#todo').innerHTML=todo.map(t=>`<div class="it"><span style="font-size:20px">${t[0]}</span><div style="flex:1"><b>${t[1]}</b><br><small style="color:var(--mute)">${t[2]}</small></div><button class="btn sm" onclick="${t[3]}">ทำเลย</button></div>`).join('');}
-function autofill(){const u=$('#aUrl').value;if(!u){$('#afMsg').textContent='วางลิงก์ก่อน';return}
- if(/linkedin|facebook/i.test(u)){$('#afMsg').innerHTML='⚠ เว็บนี้ไม่อนุญาตให้ดึงข้อมูล: กรอกชื่อบริษัทและตำแหน่งเอง (ใช้เวลาไม่ถึง 10 วินาที)';return}
- $('#aCo').value='บริษัท H';$('#aRole').value='Data Analyst Intern';$('#afMsg').innerHTML='<span style="color:var(--ok)">✔ ดึงข้อมูลแล้ว: ตรวจให้ถูกต้องก่อนบันทึก</span>';}
-function render(){const nu=$('#newUser')&&$('#newUser').checked;$('#emptyState').style.display=nu?'block':'none';$('#activeState').style.display=nu?'none':'block';
+function autofill(){$('#afMsg').textContent='ยังดึงข้อมูลจากลิงก์ไม่ได้ในรอบนี้ กรอกชื่อบริษัทและตำแหน่งเองได้เลย';}
+function render(){const empty=!!serverState&&!apps.length;$('#emptyState').style.display=empty?'block':'none';$('#activeState').style.display='block';
  renderDocs();renderUni();renderDash();renderJobs();renderKanban();renderNotif();renderOcrPending();$('#savedCount').textContent=saved.size;
  $('#savedList').innerHTML=jobs.filter(j=>saved.has(j.id)).map(jobCard).join('')||'<p class="sub">ยังไม่มีงานที่บันทึก</p>';}
 document.querySelectorAll('.pick span').forEach(s=>s.onclick=()=>s.classList.toggle('on'));
@@ -521,13 +508,14 @@ const TOOL_LABEL={add_application:'📋 เพิ่มใบสมัคร',up
 async function aiSend(text){if(aiBusy)return;text=(text||$('#aiIn').value).trim();if(!text)return;aiBusy=true;$('#aiGo').disabled=true;$('#aiIn').value='';
  aiAdd('u',aiMd(text));const typing=aiAdd('b','<i style="color:var(--mute)">กำลังคิด…</i>');
  try{const r=await api('/api/chat',{method:'POST',body:JSON.stringify({text})});typing.remove();
-  if(!r.ok)aiAdd('e','❌ '+errMsg(r));
+  if(!r.ok){aiAdd('e','❌ '+errMsg(r));$('#aiIn').value=text;}
+  else if(r.data.ok===false){aiAdd('e','❌ '+esc(r.data.reply));$('#aiIn').value=text;}
   else{(r.data.actions||[]).forEach(a=>aiAdd('t',TOOL_LABEL[a]||a));aiAdd('b',aiMd(r.data.reply||'(ไม่มีคำตอบ)')+(r.data.cards||[]).map(renderCard).join(''));await loadState();}}
  catch(e){typing.remove();aiAdd('e','❌ '+e.message);}
  finally{aiBusy=false;$('#aiGo').disabled=false;$('#aiIn').focus();}}
 if(location.hash==='#ai')$('#aiPanel').classList.add('show');
 $('#aiSugg').innerHTML=SUGG.map(s=>`<span onclick="aiSend(this.textContent)">${s}</span>`).join('');
 aiWelcome();
-loadState().then(ok=>{if(!ok)showLogin();});
+boot();
 </script>
 </body></html>

@@ -87,9 +87,34 @@ describe('runAssistant', () => {
   });
   it('on Gemini failure replies with a Thai apology and saves nothing', async () => {
     queue = ['ERR'];
+    const { FALLBACK_REPLY } = await import('../src/assistant.js');
     const r = await runAssistant(env, U, 'web', 'สมัครบริษัท Z แล้ว');
-    expect(r.reply).toBe('ขอโทษนะ ตอนนี้พี่ตอบไม่ได้ ลองใหม่อีกครั้งนะ');
+    expect(r.ok).toBe(false);
+    expect(r.reply).toBe(FALLBACK_REPLY);
     expect(await apps()).toEqual([]);
+    expect(await msgs()).toEqual([]);
+  });
+  it('a tool saved the data but Gemini then failed: partial success, card kept, both messages saved, told not to resend', async () => {
+    const { PARTIAL_REPLY } = await import('../src/assistant.js');
+    queue = [fc('add_application', { company: 'บริษัท Z', status: 'Applied' }), 'ERR'];
+    const r = await runAssistant(env, U, 'web', 'สมัครบริษัท Z แล้ว');
+    expect(r.ok).toBe(true);
+    expect(r.partial).toBe(true);
+    expect(r.reply).toBe(PARTIAL_REPLY);
+    expect(r.cards.length).toBe(1);
+    expect((await apps()).length).toBe(1);
+    expect((await msgs()).map(m => m.role)).toEqual(['user', 'model']);
+  });
+  it('a failed tool (duplicate) followed by a Gemini failure is a full failure and saves nothing', async () => {
+    queue = [fc('add_application', { company: 'บริษัท B', status: 'Applied' }), 'ERR'];
+    const r = await runAssistant(env, U, 'web', 'สมัครบริษัท B แล้ว');
+    expect(r.ok).toBe(false);
+    expect(await msgs()).toEqual([]);
+  });
+  it('running out of tool turns with nothing saved is a full failure', async () => {
+    queue = Array.from({ length: 5 }, () => fc('get_overview', {}));
+    const r = await runAssistant(env, U, 'web', 'ขอดูข้อมูล');
+    expect(r.ok).toBe(false);
     expect(await msgs()).toEqual([]);
   });
   it('includes earlier messages from the other channel as history', async () => {

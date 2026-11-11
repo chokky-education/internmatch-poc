@@ -24,13 +24,14 @@ export function reminderDueCard({ id, text }) {
   ] };
 }
 
-export function extractionCard({ id, doc_type, fields: f }) {
+export function extractionCard({ id, doc_type, fields: f }, { retype } = {}) {
   const rows = doc_type === 'job_post'
     ? [['บริษัท', f.company], ['ตำแหน่ง', f.role], f.deadline ? ['ปิดรับ', thDate(f.deadline)] : null, f.allowance ? ['ค่าตอบแทน', f.allowance] : null, f.documents?.length ? ['ต้องใช้', f.documents.join(', ')] : null]
     : Object.entries(f).filter(([, v]) => v !== null && v !== '' && !(Array.isArray(v) && !v.length)).map(([k, v]) => [k, Array.isArray(v) ? v.map(x => (typeof x === 'object' ? `${thDate(x.date) || '—'} ${x.task || ''}` : x)).join(', ') : thDate(String(v))]);
   return { kind: 'extraction', title: doc_type === 'job_post' ? 'อ่านโพสต์ประกาศงานแล้ว' : 'อ่านเอกสารแล้ว', truth: 'AI_EXTRACTED', rows: rows.filter(Boolean).slice(0, 6), actions: [
     { label: '✅ ยืนยันบันทึก', data: `ext_confirm:${id}`, style: 'primary' },
     { label: '✖ ไม่ใช่', data: `ext_discard:${id}`, style: 'secondary' },
+    ...(retype ? [{ label: 'เอกสารชนิดอื่น', data: retype, style: 'secondary' }] : []),
   ] };
 }
 
