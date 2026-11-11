@@ -1,7 +1,7 @@
 import { env, SELF } from 'cloudflare:test';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { seedUser } from '../src/store.js';
 import { handleEvent, verifySignature } from '../src/line.js';
+import { seedDemo } from './fixtures.js';
 
 const LU = 'Uline1', USER = 'user-l';
 let realFetch, replies, geminiCalls, brevo, geminiQueue, paxaBody;
@@ -14,7 +14,7 @@ async function sign(body, secret = 'line-secret') {
 }
 async function linkUser() {
   await env.DB.prepare('INSERT INTO users (id,email,line_user_id,created_at) VALUES (?,?,?,?)').bind(USER, 'ton@example.com', LU, new Date().toISOString()).run();
-  await seedUser(env, USER);
+  await seedDemo(env, USER);
 }
 
 beforeEach(async () => {

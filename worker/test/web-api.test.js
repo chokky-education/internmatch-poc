@@ -1,6 +1,7 @@
 import { env, SELF } from 'cloudflare:test';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { seedUser, getOverview } from '../src/store.js';
+import { getOverview } from '../src/store.js';
+import { seedDemo } from './fixtures.js';
 import { runAssistant } from '../src/assistant.js';
 
 const U = 'user-w', COOKIE = 'im_session=abcdef0123456789';
@@ -15,7 +16,7 @@ beforeEach(async () => {
   env.GEMINI_API_KEY = 'g'; env.PAXA_API_KEY = 'p';
   await env.DB.prepare('INSERT INTO users (id,email,created_at) VALUES (?,?,?)').bind(U, 'ton@example.com', new Date().toISOString()).run();
   await env.DB.prepare('INSERT INTO sessions (token,user_id,expires_at) VALUES (?,?,?)').bind('abcdef0123456789', U, new Date(Date.now() + 1e9).toISOString()).run();
-  await seedUser(env, U);
+  await seedDemo(env, U);
   geminiQueue = []; paxaBody = { status: 'complete', fields: { company: 'ไทยดาต้า', role: 'Intern' } };
   realFetch = globalThis.fetch;
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (u, init) => {

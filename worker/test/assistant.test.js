@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:test';
+import { seedDemo } from './fixtures.js';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { seedUser } from '../src/store.js';
 import { runAssistant } from '../src/assistant.js';
 
 const U = 'user-a';
@@ -12,7 +12,7 @@ beforeEach(async () => {
   await env.DB.exec('DELETE FROM users; DELETE FROM applications; DELETE FROM tasks; DELETE FROM documents; DELETE FROM reminders; DELETE FROM audit_log; DELETE FROM messages;');
   env.GEMINI_API_KEY = 'g-key';
   await env.DB.prepare('INSERT INTO users (id,email,created_at) VALUES (?,?,?)').bind(U, 'ton@example.com', new Date().toISOString()).run();
-  await seedUser(env, U);
+  await seedDemo(env, U);
   queue = []; geminiBodies = []; realFetch = globalThis.fetch;
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (u, init) => {
     if (String(u).includes('generativelanguage.googleapis.com')) {
@@ -28,6 +28,16 @@ afterEach(() => vi.restoreAllMocks());
 
 const apps = async () => (await env.DB.prepare('SELECT * FROM applications WHERE user_id=? AND company=?').bind(U, 'บริษัท Z').all()).results;
 const msgs = async () => (await env.DB.prepare('SELECT channel, role, content FROM messages WHERE user_id=? ORDER BY rowid').bind(U).all()).results;
+
+describe('save-first behaviour', () => {
+  it('add_application does not require a role, and the prompt tells the bot to save immediately without asking for the role first', async () => {
+    const { TOOLS } = await import('../src/assistant.js');
+    const { systemPrompt } = await import('../src/prompt.js');
+    const add = TOOLS[0].functionDeclarations.find(f => f.name === 'add_application');
+    expect(add.parameters.required).toEqual(['company', 'status']);
+    expect(systemPrompt(null)).toContain('เรียก add_application ทันที');
+  });
+});
 
 describe('runAssistant', () => {
   it('executes add_application as USER_REPORTED, returns the reply and persists both messages with the channel', async () => {

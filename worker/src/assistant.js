@@ -9,9 +9,9 @@ const MAX_TURNS = 5, HISTORY = 20;
 export const TOOLS = [{ functionDeclarations: [
   { name: 'get_overview', description: 'ดึงข้อมูลปัจจุบันของผู้ใช้: ใบสมัครทั้งหมด เช็กลิสต์คณะ เอกสาร และการเตือน', parameters: { type: 'object', properties: {} } },
   { name: 'add_application', description: 'เพิ่มใบสมัคร/ตำแหน่งที่สนใจลงบอร์ดติดตาม', parameters: { type: 'object', properties: {
-    company: { type: 'string' }, role: { type: 'string' }, status: { type: 'string', enum: STATUS },
+    company: { type: 'string' }, role: { type: 'string', description: 'ตำแหน่ง ถ้าผู้ใช้ไม่บอกให้เว้นไว้' }, status: { type: 'string', enum: STATUS },
     next_step: { type: 'string', description: 'ขั้นตอนถัดไป เช่น ปิดรับ 30 พ.ย.' }, url: { type: 'string' },
-    from_document: { type: 'boolean', description: 'true ถ้าข้อมูลมาจากเอกสารที่ AI อ่าน' } }, required: ['company', 'role', 'status'] } },
+    from_document: { type: 'boolean', description: 'true ถ้าข้อมูลมาจากเอกสารที่ AI อ่าน' } }, required: ['company', 'status'] } },
   { name: 'update_application_status', description: 'อัปเดตสถานะใบสมัครที่มีอยู่ (เฉพาะใบสมัครภายนอก)', parameters: { type: 'object', properties: {
     company: { type: 'string', description: 'ชื่อบริษัท (จับคู่แบบบางส่วนได้)' }, status: { type: 'string', enum: STATUS }, next_step: { type: 'string' } }, required: ['company', 'status'] } },
   { name: 'add_reminder', description: 'ตั้งการเตือน', parameters: { type: 'object', properties: {

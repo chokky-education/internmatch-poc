@@ -1,23 +1,42 @@
 import { env } from 'cloudflare:test';
+import { seedDemo } from './fixtures.js';
+import { seedUser } from '../src/store.js';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { seedUser, getOverview, addApplication, updateApplicationStatus, setTask, addReminder, addDocument } from '../src/store.js';
+import { getOverview, addApplication, updateApplicationStatus, setTask, addReminder, addDocument } from '../src/store.js';
 
 const U = 'user-1';
 beforeEach(async () => {
   await env.DB.exec('DELETE FROM users; DELETE FROM applications; DELETE FROM tasks; DELETE FROM documents; DELETE FROM reminders; DELETE FROM audit_log;');
   await env.DB.prepare('INSERT INTO users (id,email,created_at) VALUES (?,?,?)').bind(U, 'ton@example.com', new Date().toISOString()).run();
-  await seedUser(env, U);
+  await seedDemo(env, U);
 });
 const audit = async () => (await env.DB.prepare('SELECT * FROM audit_log WHERE user_id=? ORDER BY at, rowid').bind(U).all()).results;
 
 describe('seed + overview', () => {
-  it('seedUser creates applications, checklist and my documents with truth levels', async () => {
+  it('seedDemo test fixture creates applications, checklist and my documents with truth levels', async () => {
     const o = await getOverview(env, U);
     expect(o.applications.length).toBe(5);
     expect(o.university_checklist.length).toBe(6);
     expect(o.my_documents.length).toBe(5);
     expect(o.applications.every(a => ['SYSTEM_VERIFIED', 'USER_REPORTED', 'AI_EXTRACTED'].includes(a.truth_level))).toBe(true);
     expect(o.applications.find(a => a.company === 'บริษัท A').verified_by_system).toBe(true);
+  });
+});
+
+describe('new real user', () => {
+  it('seedUser gives a new user an empty board and no sample documents, only a checklist that is not marked verified or done', async () => {
+    await env.DB.exec('DELETE FROM applications; DELETE FROM tasks; DELETE FROM documents;');
+    await seedUser(env, U);
+    const o = await getOverview(env, U);
+    expect(o.applications).toEqual([]);
+    expect(o.my_documents).toEqual([]);
+    expect(o.university_checklist.length).toBeGreaterThan(0);
+    expect(o.university_checklist.every(t => !t.done && t.truth_level !== 'SYSTEM_VERIFIED')).toBe(true);
+  });
+  it('addApplication without a role saves with role "ไม่ระบุ"', async () => {
+    const r = await addApplication(env, U, { company: 'Dynamic', status: 'Applied', truth_level: 'USER_REPORTED' }, 'line');
+    expect(r.ok).toBe(true);
+    expect((await getOverview(env, U)).applications.find(a => a.company === 'Dynamic').role).toBe('ไม่ระบุ');
   });
 });
 

@@ -1,6 +1,6 @@
 import { env, SELF } from 'cloudflare:test';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { seedUser, addReminder } from '../src/store.js';
+import { addReminder } from '../src/store.js';
 import { sendDueReminders } from '../src/reminders.js';
 
 const U = 'user-r', LU = 'Uremind';

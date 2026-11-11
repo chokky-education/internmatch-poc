@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:test';
+import { seedDemo } from './fixtures.js';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { seedUser } from '../src/store.js';
 import { extractDocument, confirmExtraction, discardExtraction, formatExtraction } from '../src/ocr.js';
 
 const U = 'user-o';
@@ -12,7 +12,7 @@ beforeEach(async () => {
   await env.DB.exec('DELETE FROM users; DELETE FROM applications; DELETE FROM tasks; DELETE FROM documents; DELETE FROM extractions; DELETE FROM audit_log;');
   env.PAXA_API_KEY = 'p-key';
   await env.DB.prepare('INSERT INTO users (id,email,created_at) VALUES (?,?,?)').bind(U, 'ton@example.com', new Date().toISOString()).run();
-  await seedUser(env, U);
+  await seedDemo(env, U);
   paxaResp = { status: 200, body: { status: 'complete', fields: jobFields, unverified: [] } };
   paxaBodies = []; realFetch = globalThis.fetch;
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (u, init) => {

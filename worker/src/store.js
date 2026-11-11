@@ -1,4 +1,4 @@
-import { SEED_APPLICATIONS, SEED_TASKS, SEED_DOCUMENTS } from './seed.js';
+import { SEED_TASKS } from './seed.js';
 
 const nowIso = () => new Date().toISOString();
 const uuid = () => crypto.randomUUID();
@@ -12,15 +12,8 @@ async function audit(env, userId, entity, entityId, change, channel, truth) {
 
 export async function seedUser(env, userId) {
   const now = nowIso(), db = env.DB;
-  const stmts = [
-    ...SEED_APPLICATIONS.map(a => db.prepare('INSERT INTO applications (id,user_id,company,role,status,next_step,url,truth_level,history_json,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
-      .bind(uuid(), userId, a.company, a.role, a.status, a.next, a.url || null, a.truth, JSON.stringify(a.history), now)),
-    ...SEED_TASKS.map((t, i) => db.prepare('INSERT INTO tasks (id,user_id,title,detail,done,truth_level,sort) VALUES (?,?,?,?,?,?,?)')
-      .bind(uuid(), userId, t.title, t.detail, t.done, 'SYSTEM_VERIFIED', i)),
-    ...SEED_DOCUMENTS.map(d => db.prepare('INSERT INTO documents (id,user_id,kind,title,status,note,fields_json,truth_level,created_at) VALUES (?,?,?,?,?,?,?,?,?)')
-      .bind(uuid(), userId, 'my_doc', d.title, d.status, d.note, JSON.stringify({ k: d.k, version: d.v }), 'USER_REPORTED', now)),
-  ];
-  await db.batch(stmts);
+  await db.batch(SEED_TASKS.map((t, i) => db.prepare('INSERT INTO tasks (id,user_id,title,detail,done,truth_level,sort) VALUES (?,?,?,?,?,?,?)')
+    .bind(uuid(), userId, t.title, t.detail, 0, 'USER_REPORTED', i)));
 }
 
 export async function getOverview(env, userId) {
@@ -46,10 +39,11 @@ async function findApp(env, userId, company) {
 }
 
 export async function addApplication(env, userId, a, channel) {
-  if (await findApp(env, userId, a.company)) return { ok: false, error: 'duplicate' };
+  const existing = (await env.DB.prepare('SELECT company FROM applications WHERE user_id=?').bind(userId).all()).results;
+  if (existing.some(r => bare(r.company) === bare(a.company))) return { ok: false, error: 'duplicate' };
   const id = uuid(), hist = [[thDate(), `บันทึกผ่าน ${channel === 'line' ? 'LINE' : 'เว็บ'} (${a.truth_level})`]];
   await env.DB.prepare('INSERT INTO applications (id,user_id,company,role,status,next_step,url,truth_level,history_json,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
-    .bind(id, userId, a.company, a.role, a.status, a.next_step || '—', a.url || null, a.truth_level, JSON.stringify(hist), nowIso()).run();
+    .bind(id, userId, a.company, a.role || 'ไม่ระบุ', a.status, a.next_step || '—', a.url || null, a.truth_level, JSON.stringify(hist), nowIso()).run();
   await audit(env, userId, 'application', id, { op: 'add', company: a.company, status: a.status }, channel, a.truth_level);
   return { ok: true, id };
 }
