@@ -42,6 +42,7 @@
 - ตรรกะทั้งหมดอยู่ใน `worker/` (Cloudflare Worker + D1): auth, store, Gemini assistant, Paxa OCR, LINE webhook, cron เตือน ห้ามมี logic ซ้ำในเบราว์เซอร์ LINE webhook (`src/line.js`) และ Web API (`src/web-api.js`) เรียกฟังก์ชันชุดเดียวกัน โดยส่ง `channel` = `line`|`web` ลง audit log
 - **ล็อกอินเว็บด้วยอีเมล + OTP ไม่พึ่ง LINE** ช่วง prototype ใช้ได้เฉพาะอีเมลใน `ALLOWED_EMAILS` การผูก LINE ทำโดยพิมพ์อีเมลและ OTP ในแชท
 - ข้อมูลที่ AI อ่านต้องกดยืนยัน (postback ใน LINE หรือปุ่มบนเว็บ) ก่อนบันทึกเสมอ ติดป้าย `AI_EXTRACTED`
+- **การ์ดตอบกลับ:** คำตอบที่ต้องตรวจหรือกดต่อ (บันทึก/เปลี่ยนสถานะใบสมัคร, ตั้งเตือน, เตือนถึงเวลา, ผล OCR) เป็น card object กลางใน `worker/src/cards.js` แล้ว LINE แปลงเป็น Flex ด้วย `flex.js` ส่วนเว็บแสดงด้วย `renderCard()` ใน `index.html` ปุ่มทุกปุ่มเรียก `runCardAction` (`worker/src/actions.js`) ผ่าน postback ใน LINE หรือ `POST /api/actions` บนเว็บ ห้ามเขียน logic ของปุ่มแยกตามช่องทาง
 - **ไม่มีส่วนอาจารย์/Admin/Approval** ในผลิตภัณฑ์นี้
 - เตือน: Cron ทุก 15 นาที push ทาง LINE ถ้าส่งไม่สำเร็จจะแสดงเป็นแบนเนอร์บนเว็บ
 - วิธีตั้งค่าและ deploy: `docs/line-setup.md` · สเปก: `docs/superpowers/specs/2026-11-11-line-primary-web-fallback-design.md`

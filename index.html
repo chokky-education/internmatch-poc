@@ -298,7 +298,7 @@ function applyState(s){serverState=s;
  reminders.length=0;s.reminders.forEach(r=>reminders.push(r));}
 async function loadState(){const r=await api('/api/state');if(!r.ok)return false;$('#login').classList.remove('show');applyState(r.data);render();renderChat();renderBanner();return true;}
 function renderBanner(){const b=$('#bar');if(!serverState||!b)return;const u=serverState.user,un=serverState.unseen_reminders||[];
- b.innerHTML=`<div class="barin"><span>🌐 LINE ใช้ไม่ได้? ทำทุกอย่างที่นี่ได้เหมือนกัน</span><span style="flex:1"></span><small>${esc(u.email)} · ${u.line_linked?'💚 ผูก LINE แล้ว':'ยังไม่ผูก LINE'}</small><a onclick="logout()" style="cursor:pointer;text-decoration:underline">ออกจากระบบ</a></div>`+un.map(r=>`<div class="barrem">⏰ ${esc(r.text)} <a onclick="seenRem('${r.id}')" style="cursor:pointer;text-decoration:underline">รับทราบ</a></div>`).join('');}
+ b.innerHTML=`<div class="barin"><span>🌐 LINE ใช้ไม่ได้? ทำทุกอย่างที่นี่ได้เหมือนกัน</span><span style="flex:1"></span><small>${esc(u.email)} · ${u.line_linked?'💚 ผูก LINE แล้ว':'ยังไม่ผูก LINE'}</small><a onclick="logout()" style="cursor:pointer;text-decoration:underline">ออกจากระบบ</a></div>`+un.map(r=>`<div class="barrem">⏰ ${esc(r.text)} <a onclick="seenRem('${r.id}')" style="cursor:pointer;text-decoration:underline">รับทราบ</a> · <a onclick="cardAct('rem_snooze:${r.id}')" style="cursor:pointer;text-decoration:underline">เลื่อน 1 ชม.</a></div>`).join('');}
 async function seenRem(id){await api('/api/reminders/'+id+'/seen',{method:'POST'});await loadState();}
 function showLogin(){$('#login').classList.add('show');}
 async function loginReq(){const email=$('#loginEmail').value.trim();if(!email)return;$('#loginMsg').textContent='กำลังส่งรหัส…';
@@ -417,9 +417,16 @@ function renderOcrPending(){const p=serverState?serverState.pending_extractions:
  el.innerHTML=p.length?'<h3 style="margin-top:0">🤖 รอคุณยืนยัน</h3>'+p.map(x=>`<div class="it" style="display:block"><b>${esc(x.fields.company||x.fields.program||x.fields.student_name||x.doc_type)}</b> <small style="color:var(--mute)">· จาก ${x.channel==='line'?'LINE':'เว็บ'}</small><div class="row" style="margin-top:6px"><button class="btn sm" onclick="confirmExt('${x.id}')">ยืนยัน</button><button class="btn sm ghost" onclick="discardExt('${x.id}')">ไม่ใช่</button></div></div>`).join(''):'';}
 const bub=(t,me,who)=>`<div style="align-self:${me?'flex-end':'flex-start'};max-width:82%">${who?`<small style="color:#fff">${who}</small>`:''}<div style="background:${me?'#9be15d':'#fff'};border-radius:16px;padding:9px 12px;font-size:13px;line-height:1.5">${t}</div></div>`;
 const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-const QUICK=['เหลืออะไรที่ยังไม่ส่งบ้าง','บริษัท B ตอบกลับแล้ว ให้ไปสัมภาษณ์ 20 พ.ย.','สรุปให้หน่อยว่าตอนนี้ต้องทำอะไรบ้าง'];
+const ACT_RE=/^[a-z_]+:[0-9A-Za-z-]+(:[A-Za-z]+)?$/;
+const TRUTH_LBL={USER_REPORTED:'✎ อัปเดตโดยคุณ',AI_EXTRACTED:'🤖 อ่านโดย AI · ตรวจก่อนยืนยัน',SYSTEM_VERIFIED:'✔ ยืนยันโดยระบบ'};
+function renderCard(c){if(!c)return'';
+ const rows=(c.rows||[]).map(([k,v])=>`<div style="display:flex;gap:8px;font-size:13px;margin-top:4px"><span style="flex:2;color:var(--mute)">${esc(k)}</span><span style="flex:5">${esc(v==null||v===''?'—':v)}</span></div>`).join('');
+ const btns=(c.actions||[]).filter(x=>ACT_RE.test(x.data||'')).map(x=>`<button class="btn sm${x.style==='primary'?'':' ghost'}" data-act="${x.data}" onclick="cardAct(this.dataset.act)">${esc(x.label)}</button>`).join('');
+ return `<div style="align-self:flex-start;max-width:82%;background:#fff;color:var(--ink,#222);border:1px solid #e5e7ee;border-radius:14px;padding:11px 13px;margin-top:2px"><b style="font-size:14px">${esc(c.title)}</b>${c.subtitle?`<div style="font-size:12px;color:var(--mute)">${esc(c.subtitle)}</div>`:''}${TRUTH_LBL[c.truth]?`<div style="font-size:11px;color:var(--mute);margin-top:2px">${TRUTH_LBL[c.truth]}</div>`:''}${rows}${btns?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${btns}</div>`:''}</div>`;}
+async function cardAct(data){if(!ACT_RE.test(data||''))return;const r=await api('/api/actions',{method:'POST',body:JSON.stringify({data})});toast(r.ok?r.data.reply:errMsg(r));await loadState();}
+const QUICK=['เหลืออะไรที่ยังไม่ส่งบ้าง','สมัคร SCB ตำแหน่ง Data intern แล้ว','สรุปให้หน่อยว่าตอนนี้ต้องทำอะไรบ้าง'];
 function renderChat(){const el=$('#msgs');if(!el)return;const m=serverState?serverState.messages:[];
- el.innerHTML=m.length?m.map(x=>bub(esc(x.content).replace(/\n/g,'<br>'),x.role==='user',x.channel==='line'?'💬 LINE':'🌐 เว็บ')).join(''):'<p style="color:#fff;text-align:center">ยังไม่มีบทสนทนา ลองทักพี่ฝึกงานได้เลย</p>';
+ el.innerHTML=m.length?m.map(x=>bub(esc(x.content).replace(/\n/g,'<br>'),x.role==='user',x.channel==='line'?'💬 LINE':'🌐 เว็บ')+(x.cards||[]).map(renderCard).join('')).join(''):'<p style="color:#fff;text-align:center">ยังไม่มีบทสนทนา ลองทักพี่ฝึกงานได้เลย</p>';
  $('#quick').innerHTML=QUICK.map(q=>`<span onclick="sendMsg(this.textContent)">${q}</span>`).join('');el.scrollTop=1e9;}
 let chatBusy=false;
 async function sendMsg(t){t=(t||$('#chatIn').value).trim();if(!t||chatBusy)return;chatBusy=true;$('#chatIn').value='';
@@ -514,7 +521,7 @@ async function aiSend(text){if(aiBusy)return;text=(text||$('#aiIn').value).trim(
  aiAdd('u',aiMd(text));const typing=aiAdd('b','<i style="color:var(--mute)">กำลังคิด…</i>');
  try{const r=await api('/api/chat',{method:'POST',body:JSON.stringify({text})});typing.remove();
   if(!r.ok)aiAdd('e','❌ '+errMsg(r));
-  else{(r.data.actions||[]).forEach(a=>aiAdd('t',TOOL_LABEL[a]||a));aiAdd('b',aiMd(r.data.reply||'(ไม่มีคำตอบ)'));await loadState();}}
+  else{(r.data.actions||[]).forEach(a=>aiAdd('t',TOOL_LABEL[a]||a));aiAdd('b',aiMd(r.data.reply||'(ไม่มีคำตอบ)')+(r.data.cards||[]).map(renderCard).join(''));await loadState();}}
  catch(e){typing.remove();aiAdd('e','❌ '+e.message);}
  finally{aiBusy=false;$('#aiGo').disabled=false;$('#aiIn').focus();}}
 if(location.hash==='#ai')$('#aiPanel').classList.add('show');
