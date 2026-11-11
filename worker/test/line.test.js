@@ -4,7 +4,7 @@ import { handleEvent, verifySignature } from '../src/line.js';
 import { seedDemo } from './fixtures.js';
 
 const LU = 'Uline1', USER = 'user-l';
-let menuLinks = [], rejectFlex = false, realFetch, replies, geminiCalls, brevo, geminiQueue, paxaBody, paxaBodies;
+let loadings = [], menuLinks = [], rejectFlex = false, realFetch, replies, geminiCalls, brevo, geminiQueue, paxaBody, paxaBodies;
 const text = t => ({ candidates: [{ content: { role: 'model', parts: [{ text: t }] } }] });
 const ev = (over, extra = {}) => ({ type: 'message', webhookEventId: crypto.randomUUID(), replyToken: 'rt-' + Math.random(), source: { userId: LU }, message: { type: 'text', id: 'm1', text: 'หวัดดี' }, ...over, ...extra });
 const lastReply = () => replies.at(-1).messages.map(m => m.text).join('\n');
@@ -20,13 +20,14 @@ async function linkUser() {
 beforeEach(async () => {
   await env.DB.exec('DELETE FROM users; DELETE FROM sessions; DELETE FROM otps; DELETE FROM applications; DELETE FROM tasks; DELETE FROM documents; DELETE FROM reminders; DELETE FROM messages; DELETE FROM extractions; DELETE FROM audit_log; DELETE FROM line_events;');
   env.GEMINI_API_KEY = 'g'; env.PAXA_API_KEY = 'p';
-  menuLinks = []; delete env.RICHMENU_MAIN; rejectFlex = false; replies = []; geminiCalls = 0; brevo = []; geminiQueue = [text('ตอบแล้ว')];
+  menuLinks = []; loadings = []; delete env.RICHMENU_MAIN; rejectFlex = false; replies = []; geminiCalls = 0; brevo = []; geminiQueue = [text('ตอบแล้ว')];
   paxaBody = { status: 'complete', fields: { company: 'ไทยดาต้า', role: 'Intern', deadline: '2026-11-30' } };
   paxaBodies = [];
   realFetch = globalThis.fetch;
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (u, init) => {
     const s = String(u);
     if (s.includes('api.line.me/v2/bot/message/reply')) { const b = JSON.parse(init.body); replies.push(b); return new Response('{}', { status: rejectFlex && JSON.stringify(b).includes('"flex"') ? 400 : 200 }); }
+    if (s.includes('/v2/bot/chat/loading/start')) { loadings.push(JSON.parse(init.body)); return new Response('{}', { status: 202 }); }
     if (s.includes('/v2/bot/user/') && s.includes('/richmenu/')) { menuLinks.push(s); return new Response('{}', { status: 200 }); }
     if (s.includes('api-data.line.me')) return new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
     if (s.includes('generativelanguage')) { geminiCalls++; return new Response(JSON.stringify(geminiQueue.shift() || text('ok')), { status: 200 }); }
@@ -112,6 +113,12 @@ describe('unlinked users', () => {
 });
 
 describe('linked users', () => {
+  it('text shows the loading animation first, then replies quoting the user message', async () => {
+    await linkUser();
+    await handleEvent(env, ev({ source: { type: 'user', userId: LU }, message: { type: 'text', id: 'm', text: 'สรุปให้หน่อย', quoteToken: 'qt-1' } }));
+    expect(loadings).toEqual([{ chatId: LU, loadingSeconds: 20 }]);
+    expect(replies.at(-1).messages[0].quoteToken).toBe('qt-1');
+  });
   it('text goes to the assistant and the reply is sent', async () => {
     await linkUser();
     await handleEvent(env, ev({ message: { type: 'text', id: 'm', text: 'สรุปให้หน่อย' } }));
