@@ -1,6 +1,7 @@
 import { json, readJson } from './http.js';
 import { getOverview, addApplication, updateApplicationStatus, setTaskById, addReminder, deleteReminder, markReminderSeen } from './store.js';
 import { runAssistant } from './assistant.js';
+import { runCardAction } from './actions.js';
 import { extractDocument, confirmExtraction, discardExtraction } from './ocr.js';
 
 const STATUS = ['Saved', 'Applied', 'Interview', 'Offer', 'Closed'];
@@ -31,6 +32,11 @@ export async function handleApi(req, env, user, url) {
     const { text } = await readJson(req);
     if (!text || !String(text).trim()) return J({ error: 'empty' }, 400);
     return J(await runAssistant(env, user.id, 'web', String(text).trim()));
+  }
+  if (p === '/api/actions' && m === 'POST') {
+    const { data } = await readJson(req);
+    if (!data || typeof data !== 'string') return J({ error: 'bad_request' }, 400);
+    return J(await runCardAction(env, user.id, 'web', data));
   }
   if (p === '/api/ocr' && m === 'POST') {
     let fd; try { fd = await req.formData(); } catch { return J({ error: 'bad_form' }, 400); }

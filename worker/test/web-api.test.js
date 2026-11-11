@@ -98,6 +98,14 @@ describe('web api', () => {
     expect(m[1].cards).toEqual([]);
     expect(m[0].cards_json).toBeUndefined();
   });
+  it('POST /api/actions runs a card action as channel web; 400 when data is missing', async () => {
+    const a = await post('/api/applications', { company: 'SCB', role: 'DI', status: 'Applied' });
+    const { id } = await a.json();
+    const r = await (await post('/api/actions', { data: `app_status:${id}:Interview` })).json();
+    expect(r.ok).toBe(true);
+    expect((await env.DB.prepare("SELECT channel FROM audit_log WHERE entity='application' ORDER BY rowid DESC").first()).channel).toBe('web');
+    expect((await post('/api/actions', {})).status).toBe(400);
+  });
   it('POST /api/reminders stores a Bangkok-time reminder', async () => {
     const r = await post('/api/reminders', { text: 'สัมภาษณ์', datetime: '2026-11-19T20:00' });
     expect((await r.json()).due_at).toBe('2026-11-19T13:00:00.000Z');
