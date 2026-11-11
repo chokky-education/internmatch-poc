@@ -431,8 +431,12 @@ function renderChat(){const el=$('#msgs');if(!el)return;const m=serverState?serv
  $('#quick').innerHTML=MENU_CHIPS.map(([d,l])=>`<span onclick="cardAct('${d}')">${l}</span>`).join('')+QUICK.map(q=>`<span onclick="sendMsg(this.textContent)">${q}</span>`).join('');el.scrollTop=1e9;}
 let chatBusy=false;
 async function sendMsg(t){t=(t||$('#chatIn').value).trim();if(!t||chatBusy)return;chatBusy=true;$('#chatIn').value='';
- $('#msgs').insertAdjacentHTML('beforeend',bub(esc(t),1,'🌐 เว็บ')+bub('<i>กำลังคิด…</i>',0));$('#msgs').scrollTop=1e9;
- const r=await api('/api/chat',{method:'POST',body:JSON.stringify({text:t})});chatBusy=false;if(!r.ok)toast(errMsg(r));await loadState();}
+ $('#msgs').insertAdjacentHTML('beforeend',bub(esc(t),1,'🌐 เว็บ')+'<div id="thinking" style="display:contents">'+bub('<i>กำลังคิด…</i>',0)+'</div>');$('#msgs').scrollTop=1e9;
+ const r=await api('/api/chat',{method:'POST',body:JSON.stringify({text:t})});chatBusy=false;
+ const th=$('#thinking');
+ if(!r.ok){if(th)th.remove();$('#chatIn').value=t;toast(errMsg(r));return;}
+ if(r.data.ok===false){if(th)th.innerHTML=bub(esc(r.data.reply),0);$('#chatIn').value=t;$('#msgs').scrollTop=1e9;return;}
+ await loadState();}
 const myDocs=[];let extraDocs=[];const ICONS={resume:'📄',tr:'🎓',port:'🗂️',cover:'✉️',id:'🪪'};
 const need={};
 const uniDocs=[
@@ -521,7 +525,8 @@ const TOOL_LABEL={add_application:'📋 เพิ่มใบสมัคร',up
 async function aiSend(text){if(aiBusy)return;text=(text||$('#aiIn').value).trim();if(!text)return;aiBusy=true;$('#aiGo').disabled=true;$('#aiIn').value='';
  aiAdd('u',aiMd(text));const typing=aiAdd('b','<i style="color:var(--mute)">กำลังคิด…</i>');
  try{const r=await api('/api/chat',{method:'POST',body:JSON.stringify({text})});typing.remove();
-  if(!r.ok)aiAdd('e','❌ '+errMsg(r));
+  if(!r.ok){aiAdd('e','❌ '+errMsg(r));$('#aiIn').value=text;}
+  else if(r.data.ok===false){aiAdd('e','❌ '+esc(r.data.reply));$('#aiIn').value=text;}
   else{(r.data.actions||[]).forEach(a=>aiAdd('t',TOOL_LABEL[a]||a));aiAdd('b',aiMd(r.data.reply||'(ไม่มีคำตอบ)')+(r.data.cards||[]).map(renderCard).join(''));await loadState();}}
  catch(e){typing.remove();aiAdd('e','❌ '+e.message);}
  finally{aiBusy=false;$('#aiGo').disabled=false;$('#aiIn').focus();}}
