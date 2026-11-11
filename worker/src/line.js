@@ -1,11 +1,13 @@
 import { requestOtp, verifyOtp } from './auth.js';
 import { runAssistant } from './assistant.js';
-import { extractDocument } from './ocr.js';
+import { extractDocument, discardExtraction } from './ocr.js';
+import { DOCTYPES } from './doctypes.js';
 import { runCardAction } from './actions.js';
 import { extractionCard } from './cards.js';
 import { toFlex } from './flex.js';
 
 const MAX_TEXT = 4900;
+const DOC_PICK = [['handbook', 'คู่มือ/ประกาศคณะ'], ['transcript', 'Transcript'], ['acceptance', 'หนังสือตอบรับ'], ['job_post', 'โพสต์ประกาศงาน']];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const msg = t => ({ type: 'text', text: String(t).slice(0, MAX_TEXT) });
 
@@ -68,15 +70,29 @@ async function handleUnlinked(env, e, lineUserId) {
   return reply(env, e.replyToken, [msg(ASK_EMAIL)]);
 }
 
-async function handleImage(env, e, user) {
-  const r = await fetch(`https://api-data.line.me/v2/bot/message/${e.message.id}/content`, { headers: { Authorization: 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN } });
-  if (!r.ok) return reply(env, e.replyToken, [msg('โหลดรูปไม่สำเร็จ ลองส่งใหม่อีกครั้งนะ')]);
-  const out = await extractDocument(env, user.id, 'line', { bytes: await r.arrayBuffer(), mime: r.headers.get('Content-Type') || 'image/jpeg' });
-  if (!out.ok) return reply(env, e.replyToken, [msg('อ่านรูปไม่สำเร็จ ลองส่งใหม่ หรือพิมพ์ข้อมูลมาให้พี่ได้เลย')]);
-  return replyWithCards(env, e.replyToken, '📸 อ่านเอกสารแล้ว ตรวจข้อมูลในการ์ดก่อนยืนยันนะ', [extractionCard(out.extraction)]);
+// The image id rides in the button data, so no extra table is needed to re-read it as another type.
+async function askDocType(env, replyToken, messageId, lead) {
+  const items = DOC_PICK.map(([k, label]) => ({ type: 'action', action: { type: 'postback', label, data: `ocr_pick:${messageId}:${k}`, displayText: label } }));
+  return reply(env, replyToken, [{ ...msg(lead), quickReply: { items } }]);
+}
+
+async function readLineImage(env, replyToken, user, messageId, docType = 'job_post') {
+  const r = await fetch(`https://api-data.line.me/v2/bot/message/${messageId}/content`, { headers: { Authorization: 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN } });
+  if (!r.ok) return reply(env, replyToken, [msg('โหลดรูปไม่สำเร็จ ลองส่งใหม่อีกครั้งนะ')]);
+  const out = await extractDocument(env, user.id, 'line', { bytes: await r.arrayBuffer(), mime: r.headers.get('Content-Type') || 'image/jpeg', docType });
+  if (!out.ok) return reply(env, replyToken, [msg(out.error === 'too_large' ? 'รูปใหญ่เกิน 10MB ลองส่งรูปที่เล็กลง หรืออัปโหลดบนเว็บนะ' : 'อ่านรูปไม่สำเร็จ ลองส่งใหม่ หรือพิมพ์ข้อมูลมาให้พี่ได้เลย')]);
+  const f = out.extraction.fields;
+  if (docType === 'job_post' && !f.company && !f.role) {
+    await discardExtraction(env, user.id, out.extraction.id);
+    return askDocType(env, replyToken, messageId, 'พี่อ่านเป็นโพสต์งานไม่ออก รูปนี้คือเอกสารอะไร เลือกด้านล่างได้เลย');
+  }
+  return replyWithCards(env, replyToken, '📸 อ่านเอกสารแล้ว ตรวจข้อมูลในการ์ดก่อนยืนยันนะ', [extractionCard(out.extraction, { retype: `ocr_ask:${messageId}` })]);
 }
 
 async function handlePostback(env, e, user) {
+  const [name, id, arg] = String(e.postback?.data || '').split(':');
+  if (name === 'ocr_ask' && id) return askDocType(env, e.replyToken, id, 'รูปนี้คือเอกสารอะไร เลือกด้านล่างได้เลย');
+  if (name === 'ocr_pick' && id && DOCTYPES[arg]) return readLineImage(env, e.replyToken, user, id, arg);
   const r = await runCardAction(env, user.id, 'line', String(e.postback?.data || ''));
   return replyWithCards(env, e.replyToken, r.reply, r.cards);
 }
@@ -94,7 +110,7 @@ export async function handleEvent(env, e) {
     if (!user) return await handleUnlinked(env, e, lineUserId);
     if (e.type === 'follow') return await reply(env, e.replyToken, [msg('ยินดีต้อนรับกลับมานะ 👋 ถามหรือสั่งงานพี่ได้เลย')]);
     if (e.type === 'postback') return await handlePostback(env, e, user);
-    if (e.message?.type === 'image') return await handleImage(env, e, user);
+    if (e.message?.type === 'image') return await readLineImage(env, e.replyToken, user, e.message.id);
     if (e.message?.type === 'text') {
       const r = await runAssistant(env, user.id, 'line', e.message.text);
       return await replyWithCards(env, e.replyToken, r.reply, r.cards);

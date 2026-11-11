@@ -29,11 +29,12 @@ export async function confirmExtraction(env, userId, extractionId, channel) {
   if (!row) return { ok: false, error: 'not_found' };
   if (row.status === 'confirmed') return { ok: false, error: 'already_confirmed' };
   if (row.status !== 'pending') return { ok: false, error: 'not_pending' };
+  if (row.doc_type === 'job_post' && !JSON.parse(row.fields_json).company) return { ok: false, error: 'missing_company' };
   const claim = await env.DB.prepare("UPDATE extractions SET status='confirmed' WHERE id=? AND status='pending'").bind(extractionId).run();
   if (!claim.meta.changes) return { ok: false, error: 'already_confirmed' };
   const f = JSON.parse(row.fields_json);
   const res = row.doc_type === 'job_post'
-    ? await addApplication(env, userId, { company: f.company || 'ไม่ทราบบริษัท', role: f.role || 'Intern', status: 'Saved', next_step: f.deadline ? 'ปิดรับ ' + thDate(f.deadline) : '—', url: f.apply_url || null, truth_level: 'AI_EXTRACTED' }, channel)
+    ? await addApplication(env, userId, { company: f.company, role: f.role || 'Intern', status: 'Saved', next_step: f.deadline ? 'ปิดรับ ' + thDate(f.deadline) : '—', url: f.apply_url || null, truth_level: 'AI_EXTRACTED' }, channel)
     : await addDocument(env, userId, { kind: row.doc_type, title: DOCTYPES[row.doc_type].label, fields: f, truth_level: 'AI_EXTRACTED' }, channel);
   if (!res.ok) {
     await env.DB.prepare("UPDATE extractions SET status='pending' WHERE id=?").bind(extractionId).run();

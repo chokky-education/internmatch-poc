@@ -4,7 +4,7 @@ import { handleEvent, verifySignature } from '../src/line.js';
 import { seedDemo } from './fixtures.js';
 
 const LU = 'Uline1', USER = 'user-l';
-let menuLinks = [], rejectFlex = false, realFetch, replies, geminiCalls, brevo, geminiQueue, paxaBody;
+let menuLinks = [], rejectFlex = false, realFetch, replies, geminiCalls, brevo, geminiQueue, paxaBody, paxaBodies;
 const text = t => ({ candidates: [{ content: { role: 'model', parts: [{ text: t }] } }] });
 const ev = (over, extra = {}) => ({ type: 'message', webhookEventId: crypto.randomUUID(), replyToken: 'rt-' + Math.random(), source: { userId: LU }, message: { type: 'text', id: 'm1', text: 'หวัดดี' }, ...over, ...extra });
 const lastReply = () => replies.at(-1).messages.map(m => m.text).join('\n');
@@ -22,6 +22,7 @@ beforeEach(async () => {
   env.GEMINI_API_KEY = 'g'; env.PAXA_API_KEY = 'p';
   menuLinks = []; delete env.RICHMENU_MAIN; rejectFlex = false; replies = []; geminiCalls = 0; brevo = []; geminiQueue = [text('ตอบแล้ว')];
   paxaBody = { status: 'complete', fields: { company: 'ไทยดาต้า', role: 'Intern', deadline: '2026-11-30' } };
+  paxaBodies = [];
   realFetch = globalThis.fetch;
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (u, init) => {
     const s = String(u);
@@ -29,7 +30,7 @@ beforeEach(async () => {
     if (s.includes('/v2/bot/user/') && s.includes('/richmenu/')) { menuLinks.push(s); return new Response('{}', { status: 200 }); }
     if (s.includes('api-data.line.me')) return new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { 'Content-Type': 'image/jpeg' } });
     if (s.includes('generativelanguage')) { geminiCalls++; return new Response(JSON.stringify(geminiQueue.shift() || text('ok')), { status: 200 }); }
-    if (s.includes('paxalabs')) return new Response(JSON.stringify(paxaBody), { status: 200 });
+    if (s.includes('paxalabs')) { paxaBodies.push(JSON.parse(init.body)); return new Response(JSON.stringify(paxaBody), { status: 200 }); }
     if (s.includes('api.brevo.com')) { brevo.push(JSON.parse(init.body)); return new Response('{}', { status: 201 }); }
     return realFetch(u, init);
   });
@@ -122,8 +123,33 @@ describe('linked users', () => {
     const flex = replies.at(-1).messages.find(m => m.type === 'flex');
     expect(JSON.stringify(flex)).toContain('🤖 อ่านโดย AI');
     const data = flex.contents.footer.contents.map(b => b.action.data);
-    expect(data.map(d => d.split(':')[0])).toEqual(['ext_confirm', 'ext_discard']);
+    expect(data.map(d => d.split(':')[0])).toEqual(['ext_confirm', 'ext_discard', 'ocr_ask']);
     expect(replies.at(-1).messages.some(m => m.quickReply)).toBe(false);
+  });
+  it('an image Paxa cannot read as a job post asks which document it is, with 4 quick replies, and keeps nothing pending', async () => {
+    await linkUser();
+    paxaBody = { status: 'complete', fields: { company: null, role: null } };
+    await handleEvent(env, ev({ message: { type: 'image', id: 'img1' } }));
+    const q = replies.at(-1).messages.find(m => m.quickReply).quickReply.items;
+    expect(q.length).toBe(4);
+    expect(q.every(i => i.action.data.startsWith('ocr_pick:img1:'))).toBe(true);
+    expect(q.map(i => i.action.data.split(':')[2])).toEqual(['handbook', 'transcript', 'acceptance', 'job_post']);
+    expect((await env.DB.prepare('SELECT status FROM extractions WHERE user_id=?').bind(USER).first()).status).toBe('discarded');
+  });
+  it('picking a document type re-reads the same image with that type schema and shows a confirmable card', async () => {
+    await linkUser();
+    paxaBody = { status: 'complete', fields: { student_name: 'สมชาย' } };
+    await handleEvent(env, ev({ type: 'postback', message: undefined, postback: { data: 'ocr_pick:img1:transcript' } }));
+    expect(JSON.stringify(paxaBodies.at(-1).schema)).toContain('student_name');
+    const flex = replies.at(-1).messages.find(m => m.type === 'flex');
+    expect(flex.contents.footer.contents.map(b => b.action.data.split(':')[0])).toContain('ext_confirm');
+  });
+  it('the other-type button on the card asks for the type, and a made-up type is a generic failure', async () => {
+    await linkUser();
+    await handleEvent(env, ev({ type: 'postback', message: undefined, postback: { data: 'ocr_ask:img1' } }));
+    expect(replies.at(-1).messages.find(m => m.quickReply).quickReply.items.length).toBe(4);
+    await handleEvent(env, ev({ type: 'postback', message: undefined, postback: { data: 'ocr_pick:img1:hack' } }));
+    expect(lastReply()).toContain('ทำไม่สำเร็จ');
   });
   it('a text that makes the bot save an application replies with text plus a flex card with undo', async () => {
     await linkUser();

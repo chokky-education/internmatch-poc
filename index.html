@@ -287,7 +287,7 @@ async function api(path,opts={}){
  try{d=await r.json();}catch(e){}
  if(r.status===401&&!path.startsWith('/api/auth/'))showLogin();
  return{ok:r.ok,status:r.status,data:d};}
-const ERRTH={duplicate:'มีบริษัทนี้อยู่แล้ว',system_verified:'ใบสมัครนี้ระบบยืนยัน แก้เองไม่ได้',too_large:'ไฟล์ใหญ่เกิน 10MB',extract_failed:'อ่านเอกสารไม่สำเร็จ ลองใหม่อีกครั้ง',network:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้',already_confirmed:'บันทึกไปแล้ว',unauthorized:'กรุณาเข้าสู่ระบบ'};
+const ERRTH={duplicate:'มีบริษัทนี้อยู่แล้ว',system_verified:'ใบสมัครนี้ระบบยืนยัน แก้เองไม่ได้',too_large:'ไฟล์ใหญ่เกิน 10MB',extract_failed:'อ่านเอกสารไม่สำเร็จ ลองใหม่อีกครั้ง',network:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้',already_confirmed:'บันทึกไปแล้ว',missing_company:'อ่านชื่อบริษัทไม่เจอ เพิ่มใบสมัครเองได้ที่หน้าติดตามการสมัคร',unauthorized:'กรุณาเข้าสู่ระบบ'};
 const errMsg=r=>ERRTH[r.data&&r.data.error]||(r.data&&r.data.error)||('เกิดข้อผิดพลาด ('+r.status+')');
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3200);}
 const daysSince=iso=>Math.max(0,Math.round((Date.now()-Date.parse(iso))/864e5));

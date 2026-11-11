@@ -5,7 +5,7 @@ import { runCardAction } from './actions.js';
 import { extractDocument, confirmExtraction, discardExtraction } from './ocr.js';
 
 const STATUS = ['Saved', 'Applied', 'Interview', 'Offer', 'Closed'];
-const ERR = { duplicate: 409, system_verified: 403, not_found: 404, already_confirmed: 409, not_pending: 409, too_large: 413, invalid_datetime: 400 };
+const ERR = { duplicate: 409, system_verified: 403, not_found: 404, already_confirmed: 409, not_pending: 409, too_large: 413, invalid_datetime: 400, missing_company: 400 };
 const fail = (J, error) => J({ ok: false, error }, ERR[error] || 502);
 
 export async function state(env, user) {

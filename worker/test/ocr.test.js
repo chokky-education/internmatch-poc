@@ -57,6 +57,14 @@ describe('confirmExtraction', () => {
     expect(a.truth_level).toBe('AI_EXTRACTED');
     expect(a.status).toBe('Saved');
   });
+  it('a job post with no company is refused, creates nothing and stays pending', async () => {
+    paxaResp = { status: 200, body: { status: 'complete', fields: { company: null, role: 'Intern' } } };
+    const { extraction } = await extractDocument(env, U, 'line', { bytes: bytes(), mime: 'image/jpeg' });
+    const before = await count('applications');
+    expect(await confirmExtraction(env, U, extraction.id, 'line')).toEqual({ ok: false, error: 'missing_company' });
+    expect(await count('applications')).toBe(before);
+    expect((await env.DB.prepare('SELECT status FROM extractions WHERE id=?').bind(extraction.id).first()).status).toBe('pending');
+  });
   it('confirming twice returns already_confirmed and creates only one application', async () => {
     const { extraction } = await extractDocument(env, U, 'line', { bytes: bytes(), mime: 'image/jpeg' });
     await confirmExtraction(env, U, extraction.id, 'line');
