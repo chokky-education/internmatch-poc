@@ -7,3 +7,6 @@ worker/.wrangler/
 worker/.dev.vars
 
 .pages/
+
+.playwright-cli/
+output/playwright/

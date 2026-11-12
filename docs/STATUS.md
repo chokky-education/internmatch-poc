@@ -7,15 +7,15 @@ _Last updated: 2026-11-12_
 ## Now (what is true today)
 
 - **Shipped on `main`:** LINE-primary / web-fallback backend in `worker/` (auth by email + OTP, Gemini assistant, Paxa OCR with confirm step, cards + `runCardAction`, cron reminders with web-banner fallback). Web app reworked into a 2-column dashboard home and a 5-item menu (commit `71d1cdb`).
-- **Live before this release:** Pages served `d115287` and the Worker was last changed by the auth allowlist secret repair. No Worker runtime code is changed in this PR.
+- **Live:** Pages publishes through GitHub Actions after the required `check` job. The live `release.json` identifies the deployed SHA; HTML/config hashes are checked against it. Worker `internmatch-api` remains unchanged by the release-tooling work and retains the earlier auth allowlist repair.
 - **Release policy:** `AGENTS.md` and `docs/release-workflow.md` require agent-owned PR → CI → merge → deploy → production verification, including operational changes. CI checks backend/tooling/docs and gates the Pages deployment; the live manifest and asset hashes identify the merged commit. Worker/DB/secrets deploy remains the agent's responsibility using existing local credentials.
-- **Bootstrap after merging PR #4:** apply `.github/main-protection.json` (PR + current required `check`, including admins), switch Pages to GitHub Actions, and verify the merged CI/deploy/live checks and repository settings. These settings are not implied by YAML; the shipping agent must verify the API responses before reporting success. Production results belong in the PR/task report rather than an unreviewed follow-up edit here.
+- **Verified repository settings (2026-11-12):** PR #4 merged as `b69b77f`; required PRs and strict GitHub Actions `check` are enabled on `main`, including admins. Force pushes/deletions are disabled and conversations must be resolved. Pages source is `workflow`. CI run `43204001491` passed both `check` and `deploy-pages`; standalone live verification passed all 14 baseline checks for that SHA. [CI/deploy evidence](https://github.com/chokky-education/internmatch-poc/actions/runs/43204001491). Settings were read back from GitHub, not inferred from files. Always re-check current settings and live revision when continuing a release.
 - **Auth repair already shipped:** the four existing team accounts were restored to the production allowlist; the affected user re-linked LINE and successfully continued chatting. The cause of the earlier missing LINE binding was not conclusively located. Web logout preserves LINE linking in the backend test suite.
 - **Prototype limits:** only emails in the `ALLOWED_EMAILS` secret can log in.
 
 ## In flight
 
-- PR #4: shared instructions and enforced release workflow; complete the bootstrap checks above before calling it shipped. PR #5 contains separate research/handoff work and is not part of this release.
+- PR #5 contains separate research/handoff work and is not part of the release-workflow setup. PR #4 is merged, deployed and verified; the policy request-shape correction and its guard are included in this handoff.
 
 - PR #2 `feat: typing animation and quoted replies (LINE OA + web)` on branch `claude/ux-ui-loading-animation-68c749`: open, not merged. Check it before touching chat rendering in `index.html` or `line.js`.
 
@@ -28,7 +28,7 @@ _Last updated: 2026-11-12_
 
 ## Next (suggested, not yet agreed with the owner)
 
-1. Finish and verify PR #4 release bootstrap; then decide PR #2 separately: review, merge, or close.
+1. Continue only work the owner has authorized. PR #2 and PR #5 are separate open work; review them when requested.
 2. Persist onboarding choices (university / faculty / programme) to D1 and use them to pick a faculty checklist.
 3. Replace sample job listings with a real source, keeping "รายงานข้อมูลผิด" and source links.
 
@@ -40,6 +40,7 @@ _Last updated: 2026-11-12_
 
 ## Log
 
+- 2026-11-12: Completed PR #4 bootstrap: verified required PR/strict CI for admins, Actions-based Pages publishing, successful merged CI/deploy, 14 live baseline checks and desktop/mobile login-shell browser checks. Corrected the protection API’s mutually exclusive request fields and added regression guards for that request and for generated/nested checkout search pollution; no user data or Worker code changed.
 - 2026-11-12: Reviewed PR #4 against the owner’s complete-release requirement. Fixed cached index classification and secret scan coverage, added ten tooling regression checks, CI-gated public-only Pages artifacts with a revision manifest and live verification, and an auditable branch policy/runbook. No app runtime behavior changed.
 - 2026-11-12: Added CI, `scripts/check-docs.mjs`, `CODING_STANDARDS.md`, `docs/agent-kickoff.md`; AGENTS.md now requires PRs instead of pushing to `main`.
 - 2026-11-12: Added `CLAUDE.md`/`GEMINI.md` pointers to `AGENTS.md` and ADRs 0001-0003 so agents from any vendor share one set of instructions and know the deliberate decisions.
