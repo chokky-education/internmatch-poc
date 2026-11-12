@@ -1,3 +1,4 @@
+import { context } from '../src/seasons.js';
 import { env, SELF } from 'cloudflare:test';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { getOverview } from '../src/store.js';
@@ -7,7 +8,7 @@ import { runAssistant } from '../src/assistant.js';
 const U = 'user-w', COOKIE = 'im_session=abcdef0123456789';
 let realFetch, geminiQueue, paxaBody;
 const text = t => ({ candidates: [{ content: { role: 'model', parts: [{ text: t }] } }] });
-const api = (path, init = {}) => SELF.fetch('https://x.test' + path, { ...init, headers: { Cookie: COOKIE, ...(init.headers || {}) } });
+const api = async (path, init = {}) => SELF.fetch('https://x.test' + path, { ...init, headers: { Cookie: COOKIE, 'X-Season-Id':(await context(env,U)).season.id,'X-Selection-Version':String((await context(env,U)).selection_version), ...(init.headers || {}) } });
 const post = (path, body) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 const patch = (path, body) => api(path, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
@@ -109,5 +110,23 @@ describe('web api', () => {
   it('POST /api/reminders stores a Bangkok-time reminder', async () => {
     const r = await post('/api/reminders', { text: 'สัมภาษณ์', datetime: '2026-11-19T20:00' });
     expect((await r.json()).due_at).toBe('2026-11-19T13:00:00.000Z');
+  });
+});
+
+describe('profile and season API', () => {
+  it('keeps profile and season snapshots separate and rejects stale and foreign writes', async () => {
+    const initial = await (await api('/api/state')).json();
+    const p = await patch('/api/profile',{profile:{study_year:'3',university:'มหาวิทยาลัยทดสอบ'},version:initial.profile_version});
+    expect(p.status).toBe(200);
+    const created = await (await post('/api/seasons',{name:'ฤดู A'})).json();
+    expect(created.season.education.study_year).toBe('3');
+    expect((await patch('/api/profile',{profile:{study_year:'4'},version:initial.profile_version+1})).status).toBe(200);
+    expect((await patch('/api/profile',{profile:{study_year:'2'},version:initial.profile_version})).status).toBe(409);
+    expect((await post(`/api/seasons/${created.season.id}/select`,{selection_version:initial.selection_version})).status).toBe(200);
+    const next = await (await api('/api/state')).json();
+    expect(next.profile.study_year).toBe('4');
+    expect(next.selected_season.education.study_year).toBe('3');
+    expect((await patch('/api/seasons/foreign',{season:{name:'wrong'},version:0})).status).toBe(404);
+    expect((await post(`/api/seasons/${created.season.id}/select`,{selection_version:initial.selection_version})).status).toBe(409);
   });
 });

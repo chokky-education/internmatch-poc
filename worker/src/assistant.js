@@ -1,14 +1,19 @@
-import { context, scoped } from './seasons.js';
+import { proposeProfile,proposeSeason } from './profile-proposals.js';
+import { saveMilestone } from './milestones.js';
+import { context, scoped, listSeasons } from './seasons.js';
 import { getOverview, addApplication, updateApplicationStatus, setTask, addReminder, deleteReminder } from './store.js';
 import { systemPrompt } from './prompt.js';
 
 const STATUS = ['Saved', 'Applied', 'Interview', 'Offer', 'Closed'];
-import { STAT_TH, applicationCard, reminderSetCard } from './cards.js';
+import { STAT_TH, applicationCard, reminderSetCard, proposalCard } from './cards.js';
 export const FALLBACK_REPLY = 'ขอโทษนะ ตอนนี้พี่ตอบไม่ได้ ข้อความนี้ยังไม่ถูกบันทึก ลองส่งใหม่อีกครั้ง หรือกดปุ่มเมนูดูข้อมูลได้เลย';
 export const PARTIAL_REPLY = 'ทำรายการให้แล้วนะ ✅ แต่พี่สรุปต่อไม่ได้ ไม่ต้องส่งซ้ำ ดูผลได้จากการ์ดหรือกดเมนูด้านล่าง';
 const MAX_TURNS = 5, HISTORY = 20;
 
 export const TOOLS = [{ functionDeclarations: [
+  {name:'propose_profile',description:'เสนอแก้โปรไฟล์จากคำสั่งชัดเจนของผู้ใช้ ต้องกดยืนยันการ์ดก่อนบันทึก',parameters:{type:'object',properties:Object.fromEntries(['preferred_name','university','faculty','major','study_year'].map(k=>[k,{type:'string'}]).concat([['career_interests',{type:'array',items:{type:'string'}}]]))}},
+  {name:'propose_season',description:'เสนอสร้างฤดูด้วย create_name เลือกฤดูด้วย select_name ชื่อเต็มตรงกัน หรือแก้ฤดูที่เลือกด้วย name/education/details ต้องยืนยันก่อนบันทึก ถ้าชื่อคลุมเครือถามก่อน',parameters:{type:'object',properties:{create_name:{type:'string'},select_name:{type:'string'},name:{type:'string'},education:{type:'object',properties:Object.fromEntries(['university','faculty','major','study_year'].map(k=>[k,{type:'string'}]))},details:{type:'object',properties:{type:{type:'string'},other_type:{type:'string'},hours:{type:'number'},weeks:{type:'number'},source:{type:'string'},start_date:{type:'string'},end_date:{type:'string'}}}}}},
+  {name:'add_milestone',description:'บันทึกวันสำคัญแล้วเสนอเตือนให้กดยืนยัน date เว้นได้เมื่อไม่ทราบ',parameters:{type:'object',properties:{title:{type:'string'},date:{type:'string'},end_date:{type:'string'},source:{type:'string'}},required:['title']}},
   { name: 'get_overview', description: 'ดึงข้อมูลปัจจุบันของผู้ใช้: ใบสมัครทั้งหมด เช็กลิสต์คณะ เอกสาร และการเตือน', parameters: { type: 'object', properties: {} } },
   { name: 'add_application', description: 'เพิ่มใบสมัคร/ตำแหน่งที่สนใจลงบอร์ดติดตาม', parameters: { type: 'object', properties: {
     company: { type: 'string' }, role: { type: 'string', description: 'ตำแหน่ง ถ้าผู้ใช้ไม่บอกให้เว้นไว้' }, status: { type: 'string', enum: STATUS },
@@ -25,8 +30,11 @@ export const TOOLS = [{ functionDeclarations: [
 ] }];
 
 const toolImpl = {
+  propose_profile:(env,u,a)=>proposeProfile(env,u,a),
+  propose_season:(env,u,a)=>proposeSeason(env,u,a),
+  add_milestone:(env,u,a,ch)=>saveMilestone(env,u,a,ch),
   get_overview: async (env, u) => { const o = await getOverview(env, u); o.applications.forEach(a => a.status_th = STAT_TH[a.status]); return o; },
-  add_application: (env, u, a, ch) => addApplication(env, u, { ...a, truth_level: a.from_document ? 'AI_EXTRACTED' : 'USER_REPORTED' }, ch),
+  add_application: (env, u, a, ch) => a.from_document ? {ok:false,error:'confirmation_required',instruction:'ให้ผู้ใช้ส่งเอกสารผ่าน OCR และตรวจการ์ดยืนยันก่อนบันทึก'} : addApplication(env, u, { ...a, truth_level:'USER_REPORTED' }, ch),
   update_application_status: (env, u, a, ch) => updateApplicationStatus(env, u, a, ch),
   add_reminder: (env, u, a, ch) => addReminder(env, u, a, ch),
   delete_reminder: (env, u, a, ch) => deleteReminder(env, u, { text_keyword: a.text_keyword }, ch),
@@ -36,7 +44,7 @@ const toolImpl = {
 async function gemini(env, contents) {
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${env.GEMINI_MODEL}:generateContent`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
-    body: JSON.stringify({ systemInstruction: { parts: [{ text: systemPrompt(null) }] }, contents, tools: TOOLS }),
+    body: JSON.stringify({ systemInstruction: { parts: [{ text: systemPrompt(env.ASSISTANT_CONTEXT) }] }, contents, tools: TOOLS }),
   });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error('Gemini ' + (d.error?.message || r.status));
@@ -53,6 +61,7 @@ export async function saveMessage(env, userId, channel, role, content, cards = n
 
 function cardFor(name, out, args) {
   if (!out?.ok) return null;
+  if(out.proposal)return proposalCard(out.proposal);
   if (name === 'add_application') return applicationCard({ ...out, truth_level: args.from_document ? 'AI_EXTRACTED' : 'USER_REPORTED' }, { undo: true });
   if (name === 'update_application_status') return applicationCard({ ...out, truth_level: 'USER_REPORTED' });
   if (name === 'add_reminder') return reminderSetCard(out);
@@ -74,7 +83,7 @@ async function fail(env, userId, channel, text, actions, cards, done) {
 
 export async function runAssistant(env, userId, channel, text) {
   const c=await context(env,userId);
-  env=scoped(env,c.season.id);
+  env={...scoped(env,c.season.id),ASSISTANT_CONTEXT:{profile:c.profile,season:c.season,seasons:(await listSeasons(env,userId)).map(s=>({id:s.id,name:s.name}))}};
   const actions = [], cards = [];
   let done = 0;
   try {

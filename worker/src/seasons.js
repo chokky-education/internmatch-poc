@@ -88,6 +88,8 @@ export async function saveSeason(env,userId,id,patch,expected,channel) {
       if(p[k]!==null&&(typeof p[k]!=='number'||!Number.isFinite(p[k])||p[k]<=0)) return {ok:false,error:'bad_request'};
       details[k]=p[k];
     }
+    for(const k of ['hours','weeks'])if(details[k+'_status']==='known'&&!details[k])return {ok:false,error:'bad_request'};
+    if(details.type==='other'&&!details.other_type?.trim())return {ok:false,error:'bad_request'};
     for(const k of ['start_date','end_date']) if(details[k]&&(!/^\d{4}-\d{2}-\d{2}$/.test(details[k])||!Number.isFinite(Date.parse(details[k]))||new Date(details[k]).toISOString().slice(0,10)!==details[k])) return {ok:false,error:'bad_request'};
     if(details.start_date&&details.end_date&&details.end_date<details.start_date) return {ok:false,error:'bad_request'};
   }

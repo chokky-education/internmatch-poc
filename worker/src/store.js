@@ -9,9 +9,9 @@ const bare = s => String(s || '').replace(/บริษัท\s*/, '').trim().to
 async function scope(env,userId) { return (await context(env,userId)).season.id; }
 async function write(env,userId,seasonId,stmt,entity,id,change,channel,truth) {
  // Both the mutation and its provenance commit in a single D1 transaction.
- const audit=env.DB.prepare('INSERT INTO audit_log(id,user_id,season_id,entity,entity_id,change_json,channel,truth_level,at) VALUES (?,?,?,?,?,?,?,?,?)')
+ const audit=env.DB.prepare('INSERT INTO audit_log(id,user_id,season_id,entity,entity_id,change_json,channel,truth_level,at) SELECT ?,?,?,?,?,?,?,?,? WHERE changes()>0')
  .bind(uuid(),userId,seasonId,entity,id,JSON.stringify(change),channel,truth||'USER_REPORTED',nowIso());
- await env.DB.batch([stmt,audit]);
+ const results=await env.DB.batch([stmt,audit]);return results[0].meta.changes;
 }
 
 export async function seedUser(env, userId) {
@@ -50,8 +50,9 @@ export async function addApplication(env, userId, a, channel) {
   const existing = (await env.DB.prepare('SELECT company FROM applications WHERE user_id=? AND season_id=?').bind(userId, seasonId).all()).results;
   if (existing.some(r => bare(r.company) === bare(a.company))) return { ok: false, error: 'duplicate' };
   const id = uuid(), hist = [[thDate(), `บันทึกผ่าน ${channel === 'line' ? 'LINE' : 'เว็บ'} (${a.truth_level})`]];
-  await write(env, userId, seasonId, env.DB.prepare('INSERT INTO applications (id,user_id,season_id,company,role,status,next_step,url,truth_level,history_json,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
-    .bind(id, userId, seasonId, a.company, a.role || 'ไม่ระบุ', a.status, a.next_step || '—', a.url || null, a.truth_level, JSON.stringify(hist), nowIso()), 'application', id, { op: 'add', company: a.company, status: a.status }, channel, a.truth_level);
+  const inserted=await write(env, userId, seasonId, env.DB.prepare('INSERT INTO applications (id,user_id,season_id,company,role,status,next_step,url,truth_level,history_json,updated_at) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE NOT EXISTS(SELECT 1 FROM applications WHERE user_id=? AND season_id=? AND lower(trim(replace(company,"บริษัท","")))=?)')
+    .bind(id, userId, seasonId, a.company, a.role || 'ไม่ระบุ', a.status, a.next_step || '—', a.url || null, a.truth_level, JSON.stringify(hist), nowIso(),userId,seasonId,bare(a.company)), 'application', id, { op: 'add', company: a.company, status: a.status }, channel, a.truth_level);
+  if(!inserted)return {ok:false,error:'duplicate'};
   return { ok: true, id, company: a.company, role: a.role || 'ไม่ระบุ', status: a.status };
 }
 
@@ -83,9 +84,12 @@ export async function setTaskById(env, userId, id, done, channel) {
   return { ok: true };
 }
 
-export async function markReminderSeen(env, userId, id) {
-  const r = await env.DB.prepare('UPDATE reminders SET seen_at=? WHERE id=? AND user_id=?').bind(nowIso(), id, userId).run();
-  return { ok: r.meta.changes > 0 };
+export async function markReminderSeen(env,userId,id,channel='web') {
+ const r=await env.DB.prepare('SELECT * FROM reminders WHERE id=? AND user_id=?').bind(id,userId).first();
+ if(!r)return {ok:false,error:'not_found'};
+ if(r.seen_at)return {ok:true};
+ await write(env,userId,r.season_id,env.DB.prepare('UPDATE reminders SET seen_at=? WHERE id=? AND user_id=?').bind(nowIso(),id,userId),'reminder',id,{op:'seen'},channel,'USER_REPORTED');
+ return {ok:true};
 }
 
 export async function addReminder(env, userId, { text, datetime }, channel) {
@@ -113,7 +117,7 @@ export async function snoozeReminder(env, userId, id, minutes, channel, now = ne
   const r = await env.DB.prepare('SELECT * FROM reminders WHERE id=? AND user_id=? AND season_id=?').bind(id, userId, seasonId).first();
   if (!r) return { ok: false, error: 'not_found' };
   const due = new Date(now.getTime() + minutes * 60000).toISOString();
-  await write(env, userId, seasonId, env.DB.prepare('UPDATE reminders SET due_at=?, sent_at=NULL, delivery=NULL, seen_at=NULL WHERE id=? AND user_id=? AND season_id=?').bind(due, id, userId, seasonId), 'reminder', id, { op: 'snooze', due_at: due }, channel, 'USER_REPORTED');
+  await write(env, userId, seasonId, env.DB.prepare('UPDATE reminders SET due_at=?,version=version+1, sent_at=NULL, delivery=NULL, seen_at=NULL WHERE id=? AND user_id=? AND season_id=?').bind(due, id, userId, seasonId), 'reminder', id, { op: 'snooze', due_at: due }, channel, 'USER_REPORTED');
   return { ok: true, id, text: r.text, due_at: due };
 }
 

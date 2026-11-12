@@ -1,3 +1,4 @@
+import {context,scoped} from './seasons.js';
 import { requestOtp, verifyOtp } from './auth.js';
 import { runAssistant } from './assistant.js';
 import { extractDocument, discardExtraction } from './ocr.js';
@@ -71,12 +72,13 @@ async function handleUnlinked(env, e, lineUserId) {
 }
 
 // The image id rides in the button data, so no extra table is needed to re-read it as another type.
-async function askDocType(env, replyToken, messageId, lead) {
-  const items = DOC_PICK.map(([k, label]) => ({ type: 'action', action: { type: 'postback', label, data: `ocr_pick:${messageId}:${k}`, displayText: label } }));
+async function askDocType(env, replyToken, messageId, lead, seasonId) {
+  const items = DOC_PICK.map(([k, label]) => ({ type: 'action', action: { type: 'postback', label, data: `ocr_pick:${messageId}:${k}:${seasonId}`, displayText: label } }));
   return reply(env, replyToken, [{ ...msg(lead), quickReply: { items } }]);
 }
 
 async function readLineImage(env, replyToken, user, messageId, docType = 'job_post') {
+  const origin=await context(env,user.id);env=scoped(env,origin.season.id);
   const r = await fetch(`https://api-data.line.me/v2/bot/message/${messageId}/content`, { headers: { Authorization: 'Bearer ' + env.LINE_CHANNEL_ACCESS_TOKEN } });
   if (!r.ok) return reply(env, replyToken, [msg('โหลดรูปไม่สำเร็จ ลองส่งใหม่อีกครั้งนะ')]);
   const out = await extractDocument(env, user.id, 'line', { bytes: await r.arrayBuffer(), mime: r.headers.get('Content-Type') || 'image/jpeg', docType });
@@ -84,15 +86,15 @@ async function readLineImage(env, replyToken, user, messageId, docType = 'job_po
   const f = out.extraction.fields;
   if (docType === 'job_post' && !f.company && !f.role) {
     await discardExtraction(env, user.id, out.extraction.id);
-    return askDocType(env, replyToken, messageId, 'พี่อ่านเป็นโพสต์งานไม่ออก รูปนี้คือเอกสารอะไร เลือกด้านล่างได้เลย');
+    return askDocType(env, replyToken, messageId, 'พี่อ่านเป็นโพสต์งานไม่ออก รูปนี้คือเอกสารอะไร เลือกด้านล่างได้เลย',origin.season.id);
   }
-  return replyWithCards(env, replyToken, '📸 อ่านเอกสารแล้ว ตรวจข้อมูลในการ์ดก่อนยืนยันนะ', [extractionCard(out.extraction, { retype: `ocr_ask:${messageId}` })]);
+  return replyWithCards(env, replyToken, '📸 อ่านเอกสารแล้ว ตรวจข้อมูลในการ์ดก่อนยืนยันนะ', [extractionCard(out.extraction, { retype: `ocr_ask:${messageId}:${origin.season.id}` })]);
 }
 
 async function handlePostback(env, e, user) {
-  const [name, id, arg] = String(e.postback?.data || '').split(':');
-  if (name === 'ocr_ask' && id) return askDocType(env, e.replyToken, id, 'รูปนี้คือเอกสารอะไร เลือกด้านล่างได้เลย');
-  if (name === 'ocr_pick' && id && DOCTYPES[arg]) return readLineImage(env, e.replyToken, user, id, arg);
+  const [name, id, arg, target] = String(e.postback?.data || '').split(':');
+  if (name === 'ocr_ask' && id){const c=await context(scoped(env,arg),user.id);return askDocType(env,e.replyToken,id,'รูปนี้คือเอกสารอะไร เลือกด้านล่างได้เลย',c.season.id);}
+  if (name === 'ocr_pick' && id && DOCTYPES[arg]){await context(scoped(env,target),user.id);return readLineImage(scoped(env,target),e.replyToken,user,id,arg);}
   const r = await runCardAction(env, user.id, 'line', String(e.postback?.data || ''));
   return replyWithCards(env, e.replyToken, r.reply, r.cards);
 }
@@ -108,6 +110,7 @@ export async function handleEvent(env, e) {
     if (!['message', 'postback', 'follow'].includes(e.type)) return;
     const user = await env.DB.prepare('SELECT * FROM users WHERE line_user_id=?').bind(lineUserId).first();
     if (!user) return await handleUnlinked(env, e, lineUserId);
+    const c=await context(env,user.id);env=scoped(env,c.season.id);
     if (e.type === 'follow') return await reply(env, e.replyToken, [msg('ยินดีต้อนรับกลับมานะ 👋 ถามหรือสั่งงานพี่ได้เลย')]);
     if (e.type === 'postback') return await handlePostback(env, e, user);
     if (e.message?.type === 'image') return await readLineImage(env, e.replyToken, user, e.message.id);

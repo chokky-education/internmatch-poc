@@ -45,3 +45,10 @@ it('rolls back a data mutation when audit persistence fails',async()=>{
   expect((await getOverview(env,U)).applications).toHaveLength(0);
  } finally {await env.DB.exec('DROP TRIGGER fail_test_audit;');}
 });
+it('a rapid repeated application request inserts and audits only once',async()=>{
+ const a={company:'บริษัท Concurrent',status:'Saved',truth_level:'USER_REPORTED'};
+ const results=await Promise.all([addApplication(env,U,a,'web'),addApplication(env,U,a,'line')]);
+ expect(results.filter(r=>r.ok)).toHaveLength(1);
+ expect((await getOverview(env,U)).applications).toHaveLength(1);
+ expect((await env.DB.prepare("SELECT * FROM audit_log WHERE entity='application'").all()).results).toHaveLength(1);
+});

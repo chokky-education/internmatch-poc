@@ -1,6 +1,6 @@
 export function corsHeaders(env, req) {
   const origin = req?.headers.get('Origin');
-  const h = { 'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', Vary: 'Origin' };
+  const h = { 'Access-Control-Allow-Methods': 'GET,POST,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Season-Id, X-Selection-Version', Vary: 'Origin' };
   if (origin && origin === env.WEB_ORIGIN) { h['Access-Control-Allow-Origin'] = origin; h['Access-Control-Allow-Credentials'] = 'true'; }
   return h;
 }

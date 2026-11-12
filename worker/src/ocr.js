@@ -1,5 +1,4 @@
 import { context, scoped } from './seasons.js';
-import { addApplication, addDocument } from './store.js';
 import { DOCTYPES } from './doctypes.js';
 
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -7,7 +6,7 @@ const b64 = buf => { let s = ''; const u = new Uint8Array(buf); for (let i = 0; 
 const thDate = v => /^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(v).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' }) : v;
 
 export async function extractDocument(env, userId, channel, { bytes, mime, docType = 'job_post' }) {
-  const origin=(await context(env,userId)).season.id;
+  const originContext=await context(env,userId),origin=originContext.season.id;
   const type = DOCTYPES[docType];
   if (!type) return { ok: false, error: 'unknown_doc_type' };
   if (bytes.byteLength > MAX_BYTES) return { ok: false, error: 'too_large' };
@@ -23,7 +22,7 @@ export async function extractDocument(env, userId, channel, { bytes, mime, docTy
   const id = crypto.randomUUID();
   await env.DB.prepare('INSERT INTO extractions (id,user_id,season_id,doc_type,fields_json,status,channel,created_at) VALUES (?,?,?,?,?,?,?,?)')
     .bind(id, userId, origin, docType, JSON.stringify(d.fields), 'pending', channel, new Date().toISOString()).run();
-  return { ok: true, extraction: { id, doc_type: docType, fields: d.fields } };
+  return { ok: true, extraction: { id, doc_type: docType, fields: d.fields,season_name:originContext.season.name,season_id:origin } };
 }
 
 export async function confirmExtraction(env, userId, extractionId, channel) {
@@ -33,17 +32,25 @@ export async function confirmExtraction(env, userId, extractionId, channel) {
   if (row.status === 'confirmed') return { ok: false, error: 'already_confirmed' };
   if (row.status !== 'pending') return { ok: false, error: 'not_pending' };
   if (row.doc_type === 'job_post' && !JSON.parse(row.fields_json).company) return { ok: false, error: 'missing_company' };
-  const claim = await env.DB.prepare("UPDATE extractions SET status='confirmed' WHERE id=? AND status='pending'").bind(extractionId).run();
-  if (!claim.meta.changes) return { ok: false, error: 'already_confirmed' };
-  const f = JSON.parse(row.fields_json);
-  const res = row.doc_type === 'job_post'
-    ? await addApplication(env, userId, { company: f.company, role: f.role || 'Intern', status: 'Saved', next_step: f.deadline ? 'ปิดรับ ' + thDate(f.deadline) : '—', url: f.apply_url || null, truth_level: 'AI_EXTRACTED' }, channel)
-    : await addDocument(env, userId, { kind: row.doc_type, title: DOCTYPES[row.doc_type].label, fields: f, truth_level: 'AI_EXTRACTED' }, channel);
-  if (!res.ok) {
-    await env.DB.prepare("UPDATE extractions SET status='pending' WHERE id=?").bind(extractionId).run();
-    return { ok: false, error: res.error };
-  }
-  return { ok: true, created: row.doc_type === 'job_post' ? 'application' : 'document' };
+  if(!row.season_id)return {ok:false,error:'not_found'};
+  if(Date.now()-Date.parse(row.created_at)>=86400e3)return {ok:false,error:'expired'};
+  const f=JSON.parse(row.fields_json),id=crypto.randomUUID(),at=new Date().toISOString();
+  const isJob=row.doc_type==='job_post';
+  const duplicate=isJob?(await env.DB.prepare('SELECT company FROM applications WHERE user_id=? AND season_id=?').bind(userId,row.season_id).all()).results.some(a=>a.company.replace(/บริษัท\s*/, '').trim().toLowerCase()===f.company.replace(/บริษัท\s*/, '').trim().toLowerCase()):false;
+  if(duplicate)return {ok:false,error:'duplicate'};
+  // A unique target ID acts as this transaction's claim token, never visible between batches.
+  const marker='applying-'+id;
+  const guard="EXISTS(SELECT 1 FROM extractions WHERE id=? AND user_id=? AND status=?)";
+  const stmt=isJob ? env.DB.prepare(`INSERT INTO applications(id,user_id,season_id,company,role,status,next_step,url,truth_level,history_json,updated_at) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE ${guard}`)
+   .bind(id,userId,row.season_id,f.company,f.role||'Intern','Saved',f.deadline?'ปิดรับ '+thDate(f.deadline):'—',f.apply_url||null,'AI_EXTRACTED',JSON.stringify([[at,'ยืนยันผล OCR ผ่าน '+channel]]),at,extractionId,userId,marker)
+   :env.DB.prepare(`INSERT INTO documents(id,user_id,season_id,kind,title,status,note,fields_json,truth_level,created_at) SELECT ?,?,?,?,?,?,?,?,?,? WHERE ${guard}`)
+   .bind(id,userId,row.season_id,row.doc_type,DOCTYPES[row.doc_type].label,'warn','อ่านโดย AI กรุณาตรวจสอบ',row.fields_json,'AI_EXTRACTED',at,extractionId,userId,marker);
+  const results=await env.DB.batch([
+    env.DB.prepare("UPDATE extractions SET status=? WHERE id=? AND user_id=? AND status='pending'").bind(marker,extractionId,userId),stmt,
+    env.DB.prepare(`INSERT INTO audit_log(id,user_id,season_id,entity,entity_id,change_json,channel,truth_level,at) SELECT ?,?,?,?,?,?,?,?,? WHERE ${guard}`).bind(crypto.randomUUID(),userId,row.season_id,isJob?'application':'document',id,JSON.stringify({op:'confirm_extraction',extraction_id:extractionId}),channel,'AI_EXTRACTED',at,extractionId,userId,marker),
+    env.DB.prepare("UPDATE extractions SET status='confirmed' WHERE id=? AND user_id=? AND status=?").bind(extractionId,userId,marker)
+  ]);
+  return results[0].meta.changes?{ok:true,created:isJob?'application':'document'}:{ok:false,error:'already_confirmed'};
 }
 
 export async function discardExtraction(env, userId, extractionId) {
