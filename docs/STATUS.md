@@ -52,3 +52,5 @@ _Last updated: 2026-11-13_
 - 2026-11-13: Production migration and Worker release verified with protected backup, 11-table fingerprints, authenticated API smoke and complete fixture cleanup. Fixed Pages rerun artifact selection after a failed maintenance-overlap verification; this follow-up changes only release tooling/docs.
 
 - 2026-11-13: Final release inspection added milestones to the shared overview so the assistant can read dates before a reminder has been confirmed. Added an isolation/unconfirmed-reminder regression; no schema change.
+
+- 2026-11-13: Addressed automated review on PR #10 by anchoring artifact regression assertions to complete YAML keys; an `artifact_name` suffix can no longer satisfy the upload `name` assertion.

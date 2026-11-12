@@ -78,6 +78,6 @@ test('Pages bundle includes only public assets and a revision manifest', t => {
 
 test('Pages reruns upload and select an artifact unique to that attempt',()=>{
  const workflow=readFileSync(new URL('../../.github/workflows/ci.yml',import.meta.url),'utf8');
- assert.match(workflow,/name: github-pages-\$\{\{ github\.run_attempt \}\}/);
- assert.match(workflow,/artifact_name: github-pages-\$\{\{ github\.run_attempt \}\}/);
+ assert.match(workflow,/^\s+name: github-pages-\$\{\{ github\.run_attempt \}\}$/m);
+ assert.match(workflow,/^\s+artifact_name: github-pages-\$\{\{ github\.run_attempt \}\}$/m);
 });
