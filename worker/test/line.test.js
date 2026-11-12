@@ -112,6 +112,31 @@ describe('unlinked users', () => {
 });
 
 describe('linked users', () => {
+  it('web login and logout preserve the LINE link across follow and later messages', async () => {
+    await linkUser();
+    await SELF.fetch('https://x.test/api/auth/request', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'ton@example.com' }),
+    });
+    const code = JSON.stringify(brevo[0]).match(/\b(\d{6})\b/)[1];
+    const login = await SELF.fetch('https://x.test/api/auth/verify', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'ton@example.com', code }),
+    });
+    expect(login.status).toBe(200);
+    const { token } = await login.json();
+    const logout = await SELF.fetch('https://x.test/api/auth/logout', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + token },
+    });
+    expect(logout.status).toBe(200);
+    expect((await SELF.fetch('https://x.test/api/me', { headers: { Authorization: 'Bearer ' + token } })).status).toBe(401);
+    expect((await env.DB.prepare('SELECT line_user_id FROM users WHERE id=?').bind(USER).first()).line_user_id).toBe(LU);
+    await handleEvent(env, ev({ type: 'follow', message: undefined }));
+    expect(lastReply()).toContain('ยินดีต้อนรับกลับมา');
+    await handleEvent(env, ev({ message: { type: 'text', id: 'after-logout', text: 'สรุปให้หน่อย' } }));
+    expect(lastReply()).toBe('ตอบแล้ว');
+    expect(brevo).toHaveLength(1);
+  });
   it('text goes to the assistant and the reply is sent', async () => {
     await linkUser();
     await handleEvent(env, ev({ message: { type: 'text', id: 'm', text: 'สรุปให้หน่อย' } }));
