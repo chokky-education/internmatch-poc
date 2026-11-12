@@ -1,4 +1,5 @@
 // Test-only sample data. Never seeded for real users.
+import { context } from '../src/seasons.js';
 import { seedUser } from '../src/store.js';
 export const SAMPLE_APPLICATIONS = [
   { company: 'บริษัท A', role: 'Data Analyst Intern', status: 'Interview', truth: 'SYSTEM_VERIFIED', next: 'สัมภาษณ์ 11 พ.ย. 10:00', history: [['1 พ.ย.', 'สมัครผ่าน InternMatch'], ['8 พ.ย.', 'บริษัทเปลี่ยนเป็นสัมภาษณ์']] },
@@ -17,11 +18,12 @@ export const SAMPLE_DOCUMENTS = [
 
 export async function seedDemo(env, userId) {
   await seedUser(env, userId);
+  const seasonId = (await context(env,userId)).season.id;
   const now = new Date().toISOString(), db = env.DB;
   await db.batch([
-    ...SAMPLE_APPLICATIONS.map(a => db.prepare('INSERT INTO applications (id,user_id,company,role,status,next_step,url,truth_level,history_json,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
-      .bind(crypto.randomUUID(), userId, a.company, a.role, a.status, a.next, a.url || null, a.truth, JSON.stringify(a.history), now)),
-    ...SAMPLE_DOCUMENTS.map(d => db.prepare('INSERT INTO documents (id,user_id,kind,title,status,note,fields_json,truth_level,created_at) VALUES (?,?,?,?,?,?,?,?,?)')
-      .bind(crypto.randomUUID(), userId, 'my_doc', d.title, d.status, d.note, JSON.stringify({ k: d.k, version: d.v }), 'USER_REPORTED', now)),
+    ...SAMPLE_APPLICATIONS.map(a => db.prepare('INSERT INTO applications (id,user_id,season_id,company,role,status,next_step,url,truth_level,history_json,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+      .bind(crypto.randomUUID(), userId, seasonId, a.company, a.role, a.status, a.next, a.url || null, a.truth, JSON.stringify(a.history), now)),
+    ...SAMPLE_DOCUMENTS.map(d => db.prepare('INSERT INTO documents (id,user_id,season_id,kind,title,status,note,fields_json,truth_level,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+      .bind(crypto.randomUUID(), userId, seasonId, 'my_doc', d.title, d.status, d.note, JSON.stringify({ k: d.k, version: d.v }), 'USER_REPORTED', now)),
   ]);
 }

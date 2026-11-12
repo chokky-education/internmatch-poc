@@ -1,3 +1,4 @@
+import { context, scoped, listSeasons } from './seasons.js';
 import { json, readJson } from './http.js';
 import { getOverview, addApplication, updateApplicationStatus, setTaskById, addReminder, deleteReminder, markReminderSeen } from './store.js';
 import { runAssistant } from './assistant.js';
@@ -9,17 +10,21 @@ const ERR = { duplicate: 409, system_verified: 403, not_found: 404, already_conf
 const fail = (J, error) => J({ ok: false, error }, ERR[error] || 502);
 
 export async function state(env, user) {
+  const c = await context(env,user.id);
+  env = scoped(env,c.season.id);
   const [o, msgs, pend] = await Promise.all([
     getOverview(env, user.id),
-    env.DB.prepare('SELECT channel, role, content, created_at, cards_json FROM messages WHERE user_id=? ORDER BY created_at DESC, rowid DESC LIMIT 50').bind(user.id).all(),
-    env.DB.prepare("SELECT id, doc_type, fields_json, channel, created_at FROM extractions WHERE user_id=? AND status='pending' ORDER BY created_at").bind(user.id).all(),
+    env.DB.prepare('SELECT channel, role, content, created_at, cards_json FROM messages WHERE user_id=? AND season_id=? ORDER BY created_at DESC, rowid DESC LIMIT 50').bind(user.id,c.season.id).all(),
+    env.DB.prepare("SELECT id, doc_type, fields_json, channel, created_at FROM extractions WHERE user_id=? AND season_id=? AND status='pending' ORDER BY created_at").bind(user.id,c.season.id).all(),
   ]);
   const now = Date.now();
+  const unseen = (await env.DB.prepare("SELECT r.*,s.name AS season_name FROM reminders r LEFT JOIN seasons s ON s.id=r.season_id AND s.user_id=r.user_id WHERE r.user_id=? AND r.seen_at IS NULL AND r.due_at<=? AND (r.delivery IS NULL OR r.delivery='failed') ORDER BY r.due_at").bind(user.id,new Date(now).toISOString()).all()).results;
   return {
     ...o,
+    profile: c.profile, profile_version: c.user.profile_version, selected_season: c.season, selection_version:c.selection_version, seasons: await listSeasons(env,user.id),
     messages: msgs.results.reverse().map(({ cards_json, ...m }) => ({ ...m, cards: cards_json ? JSON.parse(cards_json) : [] })),
     pending_extractions: pend.results.map(e => ({ id: e.id, doc_type: e.doc_type, fields: JSON.parse(e.fields_json), channel: e.channel })),
-    unseen_reminders: o.reminders.filter(r => !r.seen_at && Date.parse(r.due_at) <= now && (!r.delivery || r.delivery === 'failed')),
+    unseen_reminders: unseen,
     user: { email: user.email, line_linked: !!user.line_user_id },
   };
 }

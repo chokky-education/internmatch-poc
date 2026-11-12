@@ -1,3 +1,4 @@
+import { context, scoped } from './seasons.js';
 import { addApplication, addDocument } from './store.js';
 import { DOCTYPES } from './doctypes.js';
 
@@ -6,6 +7,7 @@ const b64 = buf => { let s = ''; const u = new Uint8Array(buf); for (let i = 0; 
 const thDate = v => /^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(v).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' }) : v;
 
 export async function extractDocument(env, userId, channel, { bytes, mime, docType = 'job_post' }) {
+  const origin=(await context(env,userId)).season.id;
   const type = DOCTYPES[docType];
   if (!type) return { ok: false, error: 'unknown_doc_type' };
   if (bytes.byteLength > MAX_BYTES) return { ok: false, error: 'too_large' };
@@ -19,14 +21,15 @@ export async function extractDocument(env, userId, channel, { bytes, mime, docTy
     if (!r.ok || d.title || !d.fields) return { ok: false, error: 'extract_failed' };
   } catch { return { ok: false, error: 'extract_failed' }; }
   const id = crypto.randomUUID();
-  await env.DB.prepare('INSERT INTO extractions (id,user_id,doc_type,fields_json,status,channel,created_at) VALUES (?,?,?,?,?,?,?)')
-    .bind(id, userId, docType, JSON.stringify(d.fields), 'pending', channel, new Date().toISOString()).run();
+  await env.DB.prepare('INSERT INTO extractions (id,user_id,season_id,doc_type,fields_json,status,channel,created_at) VALUES (?,?,?,?,?,?,?,?)')
+    .bind(id, userId, origin, docType, JSON.stringify(d.fields), 'pending', channel, new Date().toISOString()).run();
   return { ok: true, extraction: { id, doc_type: docType, fields: d.fields } };
 }
 
 export async function confirmExtraction(env, userId, extractionId, channel) {
   const row = await env.DB.prepare('SELECT * FROM extractions WHERE id=? AND user_id=?').bind(extractionId, userId).first();
   if (!row) return { ok: false, error: 'not_found' };
+  if(row.season_id) env=scoped(env,row.season_id);
   if (row.status === 'confirmed') return { ok: false, error: 'already_confirmed' };
   if (row.status !== 'pending') return { ok: false, error: 'not_pending' };
   if (row.doc_type === 'job_post' && !JSON.parse(row.fields_json).company) return { ok: false, error: 'missing_company' };
@@ -46,6 +49,7 @@ export async function confirmExtraction(env, userId, extractionId, channel) {
 export async function discardExtraction(env, userId, extractionId) {
   const row = await env.DB.prepare('SELECT status FROM extractions WHERE id=? AND user_id=?').bind(extractionId, userId).first();
   if (!row) return { ok: false, error: 'not_found' };
+  if(row.season_id) env=scoped(env,row.season_id);
   if (row.status === 'confirmed') return { ok: false, error: 'already_confirmed' };
   if (row.status === 'discarded') return { ok: true };
   const r = await env.DB.prepare("UPDATE extractions SET status='discarded' WHERE id=? AND user_id=? AND status='pending'").bind(extractionId, userId).run();

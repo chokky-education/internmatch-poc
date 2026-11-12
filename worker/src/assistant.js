@@ -1,3 +1,4 @@
+import { context, scoped } from './seasons.js';
 import { getOverview, addApplication, updateApplicationStatus, setTask, addReminder, deleteReminder } from './store.js';
 import { systemPrompt } from './prompt.js';
 
@@ -45,8 +46,9 @@ async function gemini(env, contents) {
 }
 
 export async function saveMessage(env, userId, channel, role, content, cards = null) {
-  await env.DB.prepare('INSERT INTO messages (id,user_id,channel,role,content,created_at,cards_json) VALUES (?,?,?,?,?,?,?)')
-    .bind(crypto.randomUUID(), userId, channel, role, content, new Date().toISOString(), cards && cards.length ? JSON.stringify(cards) : null).run();
+  const seasonId=(await context(env,userId)).season.id;
+  await env.DB.prepare('INSERT INTO messages (id,user_id,season_id,channel,role,content,created_at,cards_json) VALUES (?,?,?,?,?,?,?,?)')
+    .bind(crypto.randomUUID(), userId, seasonId, channel, role, content, new Date().toISOString(), cards && cards.length ? JSON.stringify(cards) : null).run();
 }
 
 function cardFor(name, out, args) {
@@ -71,10 +73,12 @@ async function fail(env, userId, channel, text, actions, cards, done) {
 }
 
 export async function runAssistant(env, userId, channel, text) {
+  const c=await context(env,userId);
+  env=scoped(env,c.season.id);
   const actions = [], cards = [];
   let done = 0;
   try {
-    const past = (await env.DB.prepare('SELECT role, content FROM messages WHERE user_id=? ORDER BY created_at DESC, rowid DESC LIMIT ?').bind(userId, HISTORY).all()).results.reverse();
+    const past = (await env.DB.prepare('SELECT role, content FROM messages WHERE user_id=? AND season_id=? ORDER BY created_at DESC, rowid DESC LIMIT ?').bind(userId, c.season.id, HISTORY).all()).results.reverse();
     const contents = [...past.map(m => ({ role: m.role, parts: [{ text: m.content }] })), { role: 'user', parts: [{ text }] }];
     for (let i = 0; i < MAX_TURNS; i++) {
       const c = await gemini(env, contents);
