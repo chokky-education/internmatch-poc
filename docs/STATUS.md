@@ -2,9 +2,11 @@
 
 The one file that says where the work stands. **Read it first; update it last.** Every agent that finishes a chunk of work rewrites the "Now" and "Next" sections and adds one line to the log at the bottom, in the same commit as the work.
 
-_Last updated: 2026-11-12_
+_Last updated: 2026-11-13_
 
 ## Now (what is true today)
+
+- **Profile release candidate:** Guided profile/seasons/milestones implemented and Local UAT approved by owner, including the dialog layout revision. 136 backend tests and browser UAT passed before release integration. Feature remains on its branch until PR/CI/merge. Production migration and Worker deployment are pending; follow `docs/profile-release.md`.
 
 - **Shipped on `main`:** LINE-primary / web-fallback backend in `worker/` (auth by email + OTP, Gemini assistant, Paxa OCR with confirm step, cards + `runCardAction`, cron reminders with web-banner fallback). Web app reworked into a 2-column dashboard home and a 5-item menu (commit `71d1cdb`).
 - **Live:** Pages publishes through GitHub Actions after the required `check` job. The live `release.json` identifies the deployed SHA; HTML/config hashes are checked against it. Worker `internmatch-api` remains unchanged by the release-tooling work and retains the earlier auth allowlist repair.
@@ -23,13 +25,13 @@ _Last updated: 2026-11-12_
 
 - 📁 เอกสาร: faculty checklist is a generic 6-item seed (`worker/src/seed.js`), not tied to a real faculty.
 - 🔎 ค้นหาฝึกงาน and ⭐ ที่บันทึกไว้: job listings are sample data in `index.html`; "ฉันสมัครแล้ว" does write to the real board.
-- ⚙️ `onboard` (university / faculty / programme): preview page, choices are not saved.
-- No `GLOSSARY.md` yet. `/domain-modeling` creates it when the first term gets settled. ADRs 0001-0003 exist in `docs/adr/`.
+- Profile/season/milestone persistence replaces the unsaved onboard form in this release candidate. Dates without confirmed reminders do not yet appear on Dashboard.
+- `GLOSSARY.md` defines profile/season vocabulary; ADR 0004 records shared selected season and historical context.
 
 ## Next (suggested, not yet agreed with the owner)
 
 1. Continue only work the owner has authorized. PR #2 and PR #5 are separate open work; review them when requested.
-2. Persist onboarding choices (university / faculty / programme) to D1 and use them to pick a faculty checklist.
+2. Finish the authorized profile release via PR/CI/merge, guarded D1 migration, Worker deployment and separate live verification. Faculty checklist remains generic.
 3. Replace sample job listings with a real source, keeping "รายงานข้อมูลผิด" and source links.
 
 ## Gotchas
@@ -45,3 +47,5 @@ _Last updated: 2026-11-12_
 - 2026-11-12: Added CI, `scripts/check-docs.mjs`, `CODING_STANDARDS.md`, `docs/agent-kickoff.md`; AGENTS.md now requires PRs instead of pushing to `main`.
 - 2026-11-12: Added `CLAUDE.md`/`GEMINI.md` pointers to `AGENTS.md` and ADRs 0001-0003 so agents from any vendor share one set of instructions and know the deliberate decisions.
 - 2026-11-12: Index made hand-maintained (script no longer overwrites `INDEX.md`), now covers `worker/`, `.sql`, `.toml`, `.csv`. Added this file.
+
+- 2026-11-13: Owner accepted Local UAT and authorized PR/CI/merge/deploy. Integrated current release tooling, expanded the public asset manifest for profile JS/CSS, and added a temporary maintenance entry plus reviewed migration/production smoke procedure. Production operations are not yet complete at this commit.

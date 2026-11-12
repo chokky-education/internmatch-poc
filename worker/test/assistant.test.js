@@ -132,3 +132,10 @@ describe('runAssistant', () => {
     expect(fr.response.error).toBe('system_verified');
   });
 });
+it('never lets a model document flag bypass OCR confirmation',async()=>{
+ queue=[fc('add_application',{company:'บริษัท Z',status:'Saved',from_document:true}),text('กรุณาตรวจและยืนยันผล OCR ก่อนบันทึก')];
+ await runAssistant(env,U,'line','ข้อมูลจากเอกสาร');
+ expect(await apps()).toHaveLength(0);
+ const response=geminiBodies[1].contents.at(-1).parts[0].functionResponse.response;
+ expect(response.error).toBe('confirmation_required');
+});

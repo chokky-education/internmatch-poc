@@ -1,0 +1,15 @@
+const headers={Authorization:'Bearer '+'b'.repeat(64),'Content-Type':'application/json'};
+const call=async(path,method='GET',body)=>{const r=await fetch('http://localhost:8787'+path,{method,headers,...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,data:await r.json()};};
+let s=(await call('/api/state')).data;
+const legacy=s.seasons.find(x=>x.name==='ฤดูฝึกงานเดิม');
+const created=await call('/api/seasons','POST',{name:'ฤดูสำหรับตรวจการ์ดเดิม'});
+await call('/api/seasons/'+created.data.season.id+'/select','POST',{selection_version:s.selection_version});
+const action=await call('/api/actions','POST',{data:'app_status:legacy-app:Interview'});
+if(!action.data.ok)throw Error('legacy card failed');
+s=(await call('/api/state')).data;
+if(s.applications.length!==0||s.selected_season.id!==created.data.season.id)throw Error('legacy card switched or contaminated current season');
+const rows=await(await fetch('http://localhost:8788/rows')).json();
+const app=rows.applications.find(r=>r.id==='legacy-app');
+if(app.status!=='Interview'||app.season_id!==legacy.id)throw Error('legacy target mismatch');
+await call('/api/seasons/'+legacy.id+'/select','POST',{selection_version:s.selection_version});
+console.log('PASS: migrated legacy card updates original season while another season is selected; selection remains unchanged.');

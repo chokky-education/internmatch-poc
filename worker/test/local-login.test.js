@@ -17,7 +17,7 @@ describe('local development login', () => {
     expect(state.university_checklist).toHaveLength(6);
     const task = state.university_checklist[0];
     const update = await call(`http://localhost:8787/api/tasks/${task.id}`, bindings, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done: true }),
+      method: 'PATCH', headers: { 'Content-Type': 'application/json','X-Season-Id':state.selected_season.id,'X-Selection-Version':String(state.selection_version) }, body: JSON.stringify({ done: true }),
     });
     expect(update.status).toBe(200);
     const again = await (await call('http://127.0.0.1:8787/api/state', bindings)).json();

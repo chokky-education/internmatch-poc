@@ -1,3 +1,5 @@
+import { confirmProposal } from './milestones.js';
+import { context, scoped } from './seasons.js';
 // Card button dispatcher shared by LINE postbacks and POST /api/actions.
 import { getOverview, updateApplicationStatus, deleteApplication, deleteReminder, markReminderSeen, snoozeReminder } from './store.js';
 import { confirmExtraction, discardExtraction } from './ocr.js';
@@ -11,8 +13,18 @@ const LABEL = { app_status: 'เปลี่ยนสถานะ', app_undo: '�
 const thTime = iso => new Date(iso).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' });
 const EXT_ERR = { already_confirmed: 'อันนี้บันทึกไปแล้วนะ', duplicate: 'มีบริษัทนี้อยู่ในบอร์ดแล้วนะ', missing_company: 'อ่านชื่อบริษัทไม่เจอ เลยยังไม่บันทึกนะ พิมพ์บอกพี่แทนได้ เช่น "สมัคร SCB แล้ว"' };
 
-async function dispatch(env, userId, channel, name, id, arg) {
+async function dispatch(env, userId, channel, name, id, arg, options) {
   switch (name) {
+    case 'proposal_confirm': {
+      const r=await confirmProposal(env,userId,id,channel,options?.reminders);
+      const errors={expired:'การ์ดหมดอายุแล้ว เปิดรายการเพื่อทำใหม่ได้เลย',conflict:'ข้อมูลเปลี่ยนแล้ว เปิดรายการเพื่อตรวจใหม่ก่อนนะ',invalid_datetime:'เลือกเวลาเตือนในอนาคต',not_found:'ไม่พบรายการนี้'};
+      return r.ok?{ok:true,reply:`ยืนยันแล้ว · ${r.season_name}${r.sent_preserved?' · เก็บประวัติที่ส่งแล้ว '+r.sent_preserved+' รายการ':''}`}:{ok:false,reply:errors[r.error]||GENERIC};
+    }
+    case 'proposal_discard': {
+      const r=await env.DB.prepare("UPDATE pending_actions SET status='discarded' WHERE id=? AND user_id=? AND status='pending'").bind(id,userId).run();
+      return {ok:!!r.meta.changes,reply:r.meta.changes?'ไม่ได้ตั้งหรือเปลี่ยนการเตือน':'รายการนี้ดำเนินการไปแล้ว'};
+    }
+
     case 'app_status': {
       if (!STATUS.includes(arg)) return { ok: false, reply: GENERIC };
       const r = await updateApplicationStatus(env, userId, { id, status: arg }, channel);
@@ -27,7 +39,7 @@ async function dispatch(env, userId, channel, name, id, arg) {
       return r.ok ? { ok: true, reply: 'ลบการเตือนแล้ว' } : { ok: false, reply: ERR_TH[r.error] || GENERIC };
     }
     case 'rem_done': {
-      const r = await markReminderSeen(env, userId, id);
+      const r = await markReminderSeen(env, userId, id, channel);
       return r.ok ? { ok: true, reply: 'เยี่ยมเลย ✅' } : { ok: false, reply: ERR_TH.not_found };
     }
     case 'rem_snooze': {
@@ -57,10 +69,16 @@ async function dispatch(env, userId, channel, name, id, arg) {
   }
 }
 
-export async function runCardAction(env, userId, channel, data) {
+export async function runCardAction(env, userId, channel, data, options) {
   const [name, id, arg] = String(data || '').split(':');
+  const tables={app_status:'applications',app_undo:'applications',rem_delete:'reminders',rem_done:'reminders',rem_snooze:'reminders',ext_confirm:'extractions',confirm:'extractions',ext_discard:'extractions',discard:'extractions',proposal_confirm:'pending_actions',proposal_discard:'pending_actions'};
+  if(tables[name]) {
+    const target=await env.DB.prepare(`SELECT season_id FROM ${tables[name]} WHERE id=? AND user_id=?`).bind(id,userId).first();
+    if(!target?.season_id)return {ok:false,reply:'รายการนี้ไม่มีแล้วนะ',cards:[]};
+    env=scoped(env,target.season_id);
+  } else {const c=await context(env,userId);env=scoped(env,c.season.id);}
   let out;
-  try { out = await dispatch(env, userId, channel, name, id, arg); } catch (e) { console.error('card action error', e.message); out = { ok: false, reply: GENERIC }; }
+  try { out = await dispatch(env, userId, channel, name, id, arg, options); } catch (e) { console.error('card action error', e.message); out = { ok: false, reply: GENERIC }; }
   const cards = out.cards || [];
   if (out.ok) {
     const label = LABEL[out.label || name] || name;

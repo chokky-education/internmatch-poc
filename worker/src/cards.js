@@ -17,18 +17,18 @@ export function reminderSetCard({ id, text, due_at }) {
   return { kind: 'reminder_set', title: text, truth: 'USER_REPORTED', rows: [['เวลา', thDateTime(due_at)]], actions: [{ label: 'ลบ', data: `rem_delete:${id}`, style: 'secondary' }] };
 }
 
-export function reminderDueCard({ id, text }) {
-  return { kind: 'reminder_due', title: `⏰ ${text}`, rows: [], actions: [
+export function reminderDueCard({ id, text, season_name }) {
+  return { kind: 'reminder_due', title: `⏰ ${text}`, subtitle:season_name, rows: season_name?[['ฤดู',season_name]]:[], actions: [
     { label: 'ทำแล้ว', data: `rem_done:${id}`, style: 'primary' },
     { label: 'เลื่อน 1 ชม.', data: `rem_snooze:${id}`, style: 'secondary' },
   ] };
 }
 
-export function extractionCard({ id, doc_type, fields: f }, { retype } = {}) {
+export function extractionCard({ id, doc_type, fields: f,season_name }, { retype } = {}) {
   const rows = doc_type === 'job_post'
     ? [['บริษัท', f.company], ['ตำแหน่ง', f.role], f.deadline ? ['ปิดรับ', thDate(f.deadline)] : null, f.allowance ? ['ค่าตอบแทน', f.allowance] : null, f.documents?.length ? ['ต้องใช้', f.documents.join(', ')] : null]
     : Object.entries(f).filter(([, v]) => v !== null && v !== '' && !(Array.isArray(v) && !v.length)).map(([k, v]) => [k, Array.isArray(v) ? v.map(x => (typeof x === 'object' ? `${thDate(x.date) || '—'} ${x.task || ''}` : x)).join(', ') : thDate(String(v))]);
-  return { kind: 'extraction', title: doc_type === 'job_post' ? 'อ่านโพสต์ประกาศงานแล้ว' : 'อ่านเอกสารแล้ว', truth: 'AI_EXTRACTED', rows: rows.filter(Boolean).slice(0, 6), actions: [
+  return { kind: 'extraction', title: doc_type === 'job_post' ? 'อ่านโพสต์ประกาศงานแล้ว' : 'อ่านเอกสารแล้ว', truth: 'AI_EXTRACTED', subtitle:season_name, rows: [...(season_name?[['ฤดู',season_name]]:[]),...rows.filter(Boolean).slice(0, 6)], actions: [
     { label: '✅ ยืนยันบันทึก', data: `ext_confirm:${id}`, style: 'primary' },
     { label: '✖ ไม่ใช่', data: `ext_discard:${id}`, style: 'secondary' },
     ...(retype ? [{ label: 'เอกสารชนิดอื่น', data: retype, style: 'secondary' }] : []),
@@ -69,4 +69,18 @@ export function todayCard(o, now = Date.now()) {
   const next = o.university_checklist.find(t => !t.done);
   if (next) rows.push(['🎓 ขั้นต่อไป', next.task]);
   return { kind: 'summary', title: '🏠 วันนี้ต้องทำอะไร', rows, actions: [] };
+}
+
+export function proposalCard(p) {
+ const f=p.payload.after||p.payload;
+ if(!p.kind.startsWith('milestone')){
+  const labels={preferred_name:'ชื่อที่อยากให้เรียก',university:'มหาวิทยาลัย',faculty:'คณะ',major:'สาขา',study_year:'ชั้นปี',career_interests:'สายงานที่สนใจ',name:'ชื่อฤดู',type:'ประเภท',other_type:'ประเภทอื่น',hours:'ชั่วโมง',weeks:'สัปดาห์',source:'แหล่งที่มา',start_date:'เริ่มฝึกงาน',end_date:'สิ้นสุดฝึกงาน'};
+  const flatten=o=>Object.entries(o||{}).flatMap(([k,v])=>['education','details'].includes(k)?Object.entries(v||{}):[[k,v]]).filter(([k])=>labels[k]);
+  const old=Object.fromEntries(flatten(p.payload.before));
+  const show=v=>Array.isArray(v)?v.join(', '):String(v??'ยังไม่ระบุ');
+  return {kind:'proposal',title:'ตรวจข้อมูลก่อนยืนยัน',subtitle:p.season_name,truth:'USER_REPORTED',rows:[['ฤดูต้นทาง',p.season_name],...flatten(f).filter(([k,v])=>JSON.stringify(old[k])!==JSON.stringify(v)).map(([k,v])=>[labels[k],p.payload.before?show(old[k])+' → '+show(v):show(v)])].slice(0,15),actions:[{label:'ยืนยัน',data:`proposal_confirm:${p.id}`,style:'primary'},{label:'ไม่บันทึก',data:`proposal_discard:${p.id}`,style:'secondary'}]};
+ }
+ return {kind:'proposal',title:p.kind==='milestone_edit'?'ตรวจวันและการเตือนใหม่':'ตั้งการเตือนวันสำคัญ',subtitle:p.season_name,truth:'USER_REPORTED',
+ rows:[['ฤดู',p.season_name],['เรื่อง',f.title||'วันสำคัญ'],['วันที่',f.date||p.payload.anchor||'ยังไม่ทราบ'],...(f.end_date?[['ถึง',f.end_date],['นับเตือนจาก','วันสิ้นสุด']]:[]),...(p.payload.reminders||[]).map(r=>['เตือน',r.due_at?thDateTime(r.due_at):'ยกเลิกรายการที่ยังไม่ส่ง'])],
+ actions:[{label:'ยืนยัน',data:`proposal_confirm:${p.id}`,style:'primary'},{label:'ไม่บันทึก',data:`proposal_discard:${p.id}`,style:'secondary'}]};
 }

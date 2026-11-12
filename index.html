@@ -92,6 +92,8 @@ aside{display:flex;flex-direction:column}.navfoot{margin-top:auto;border-top:1px
 @media (max-width:900px){.dcols{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.dic{transition:none}}
 </style>
+<link rel="stylesheet" href="profile-ui.css?v=20261113-dialog">
+<script src="profile-ui.js?v=20261113-dialog"></script>
 </head>
 <body>
 <div id="login"><div class="box">
@@ -115,6 +117,7 @@ aside{display:flex;flex-direction:column}.navfoot{margin-top:auto;border-top:1px
     <a data-s="tracker">📋 ติดตามการสมัคร <span class="badge" id="savedCount" title="ตำแหน่งที่บันทึกไว้">0</span></a>
     <a data-s="docs">📁 เอกสาร</a>
     <a data-s="chat">💬 พี่ฝึกงาน</a>
+    <a data-s="onboard">👤 โปรไฟล์ & ฤดูฝึกงาน</a>
     <a data-s="discover">🔎 ค้นหาฝึกงาน</a>
   </nav>
   <nav class="navfoot">
@@ -130,9 +133,9 @@ aside{display:flex;flex-direction:column}.navfoot{margin-top:auto;border-top:1px
   <div class="dtop">
     <div><h1>สวัสดี 👋</h1><p class="sub" style="margin:0">นี่คือสิ่งที่เกิดขึ้นในฤดูฝึกงานของคุณวันนี้</p></div>
     <div class="dicons">
-      <button class="dic" aria-label="ค้นหาฝึกงาน" title="ค้นหาฝึกงาน" onclick="go('discover')">🔍</button>
-      <button class="dic" aria-label="ถามพี่ฝึกงาน" title="ถามพี่ฝึกงาน" onclick="go('chat')">💬</button>
-      <button class="dic" aria-label="การแจ้งเตือน" title="การแจ้งเตือน" onclick="go('notif')">🔔<span class="ddot" id="bellDot" hidden></span></button>
+      <button class="dic" aria-label="ค้นหาฝึกงาน" title="ค้นหาฝึกงาน" onclick="go('discover')">🔍 ค้นหาฝึกงาน</button>
+      <button class="dic" aria-label="ถามพี่ฝึกงาน" title="ถามพี่ฝึกงาน" onclick="go('chat')">💬 ถามพี่ฝึกงาน</button>
+      <button class="dic" aria-label="การแจ้งเตือน" title="การแจ้งเตือน" onclick="go('notif')">🔔 การแจ้งเตือน<span class="ddot" id="bellDot" hidden></span></button>
     </div>
   </div>
   <div class="dcols">
@@ -141,7 +144,7 @@ aside{display:flex;flex-direction:column}.navfoot{margin-top:auto;border-top:1px
       <div class="card dcard"><div class="dhd"><h2>เร็ว ๆ นี้</h2><a class="dlink" onclick="go('notif')">＋ ตั้งเตือน ›</a></div><div id="upcoming"></div></div>
     </div>
     <div class="dstack">
-      <div class="card dcard"><div class="dhd"><h2>โปรไฟล์ของฉัน</h2><a class="dlink" onclick="go('notif')">ตั้งค่า ›</a></div><div class="dpad" id="profile"></div></div>
+      <div class="card dcard"><div class="dhd"><h2>โปรไฟล์ของฉัน</h2><a class="dlink" onclick="go('onboard')">ตั้งค่า ›</a></div><div class="dpad" id="profile"></div></div>
       <div class="card dcard"><div class="dhd"><h2>เริ่มฝึกงาน</h2><a class="dlink" onclick="go('uni')">ดูขั้นตอน ›</a></div>
         <div class="dpad"><div class="dm" id="phaseTxt"></div><div class="dsteps" id="journey"></div><div class="dm" id="startUni" style="margin-top:12px"></div></div></div>
     </div>
@@ -252,21 +255,10 @@ aside{display:flex;flex-direction:column}.navfoot{margin-top:auto;border-top:1px
   </div>
 </section>
 <!-- ONBOARDING -->
-<section class="screen" id="onboard"><div class="onb card">
-  <div class="steps"><i class="on"></i><i class="on"></i><i></i></div>
-  <h1>ตั้งค่าฤดูฝึกงานของคุณ</h1><p class="sub">เราจะสร้างแผนและเช็กลิสต์ตามเงื่อนไขของคณะคุณ</p>
-  <div class="note" style="margin:0 0 8px">หน้าตัวอย่าง: ตัวเลือกในหน้านี้ยังไม่ถูกบันทึก</div>
-  <label>มหาวิทยาลัย / คณะ</label><select><option>มหาวิทยาลัย X · คณะวิทยาศาสตร์ · สาขาวิทยาการข้อมูล</option></select>
-  <label>ประเภท</label><div class="pick"><span class="on">ฝึกงานภาคบังคับ (≥ 240 ชม.)</span><span>สหกิจศึกษา (16 สัปดาห์)</span><span>สมัครใจ</span></div>
-  <label>คณะต้องการเอกสารตอบรับภายใน</label><input type="date" value="2027-01-31"><small style="color:var(--ok)">✔ ดึงจากคู่มือคณะให้อัตโนมัติ (แก้ได้) · หรือ <a href="#">อัปโหลดคู่มือ PDF ให้ระบบอ่าน</a></small>
-  <label>สาขา / สายงาน</label><div class="pick"><span class="on">Data</span><span>Software</span><span>UX/UI</span><span>Marketing</span><span>Business</span></div>
-  <label>รูปแบบการทำงาน</label><div class="pick"><span class="on">Onsite</span><span class="on">Hybrid</span><span>Remote</span></div>
-  <label>พื้นที่</label><select><option>กรุงเทพฯ และปริมณฑล</option><option>เชียงใหม่</option></select>
-  <label>ช่วงฝึกงาน</label><select><option>มี.ค. – พ.ค. 2570</option><option>มิ.ย. – ส.ค. 2570</option></select>
-  <div class="row" style="margin-top:20px;justify-content:space-between"><a class="btn ghost" onclick="go('dash')">ข้าม</a><button class="btn" onclick="go('discover')">ดูประกาศที่เหมาะกับฉัน →</button></div>
-</div></section>
+<section class="screen" id="onboard"><div id="profileSetup"></div></section>
 
 <!-- PIPELINE & ADMIN -->
+<dialog id="profileDialog"></dialog>
 </main>
 </div>
 
@@ -295,7 +287,7 @@ const jobs=[
  {id:4,role:'Marketing Data Intern',co:'บริษัท D (Media)',loc:'นนทบุรี',mode:'Hybrid',pay:'10,000/เดือน',close:'2026-11-15',src:'InternMatch Direct',checked:'10 พ.ย.',via:'im',skills:['GA4','Excel']},
  {id:5,role:'Product Analyst Intern',co:'บริษัท E (Startup)',loc:'กรุงเทพฯ',mode:'Onsite',pay:'13,000/เดือน',close:'2026-10-30',src:'careers.e.io',checked:'1 พ.ย.',via:'ext',skills:['SQL','Mixpanel'],stale:true},
 ];
-const saved=new Set();
+const saved=new Set(),savedByContext=new Map();let savedContext=null;
 const STAGES=['Saved','Applied','Interview','Offer','Closed'];
 const TH={Saved:'บันทึกไว้',Applied:'สมัครแล้ว',Interview:'สัมภาษณ์',Offer:'ได้รับข้อเสนอ',Closed:'ปิด/ไม่ผ่าน'};
 let apps=[];const reminders=[];let serverState=null;
@@ -306,23 +298,23 @@ const getToken=()=>{try{return localStorage.getItem(TOKEN_KEY)}catch(e){return n
 const setToken=t=>{try{t?localStorage.setItem(TOKEN_KEY,t):localStorage.removeItem(TOKEN_KEY)}catch(e){}};
 async function api(path,opts={}){
  const tk=getToken();
- const h={...(opts.body&&!(opts.body instanceof FormData)?{'Content-Type':'application/json'}:{}),...(tk?{Authorization:'Bearer '+tk}:{}),...(opts.headers||{})};
+ const h={...(opts.body&&!(opts.body instanceof FormData)?{'Content-Type':'application/json'}:{}),...(tk?{Authorization:'Bearer '+tk}:{}),...(serverState?{'X-Season-Id':serverState.selected_season.id,'X-Selection-Version':String(serverState.selection_version)}:{}),...(opts.headers||{})};
  let r,d={};try{r=await fetch(API+path,{credentials:'include',...opts,headers:h});}catch(e){return{ok:false,status:0,data:{error:'network'}};}
  try{d=await r.json();}catch(e){}
  if(r.status===401&&!path.startsWith('/api/auth/')){setToken(null);showLogin();}
  return{ok:r.ok,status:r.status,data:d};}
-const ERRTH={duplicate:'มีบริษัทนี้อยู่แล้ว',system_verified:'ใบสมัครนี้ระบบยืนยัน แก้เองไม่ได้',too_large:'ไฟล์ใหญ่เกิน 10MB',extract_failed:'อ่านเอกสารไม่สำเร็จ ลองใหม่อีกครั้ง',network:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้',already_confirmed:'บันทึกไปแล้ว',missing_company:'อ่านชื่อบริษัทไม่เจอ เพิ่มใบสมัครเองได้ที่หน้าติดตามการสมัคร',unauthorized:'กรุณาเข้าสู่ระบบ'};
-const errMsg=r=>ERRTH[r.data&&r.data.error]||(r.data&&r.data.error)||('เกิดข้อผิดพลาด ('+r.status+')');
+const ERRTH={conflict:'ข้อมูลเปลี่ยนจากอีกช่องทาง กรุณาโหลดข้อมูลล่าสุดก่อนบันทึก ร่างที่กรอกยังอยู่',bad_request:'ตรวจข้อมูลที่กรอกอีกครั้ง',duplicate:'มีบริษัทนี้อยู่แล้ว',system_verified:'ใบสมัครนี้ระบบยืนยัน แก้เองไม่ได้',too_large:'ไฟล์ใหญ่เกิน 10MB',extract_failed:'อ่านเอกสารไม่สำเร็จ ลองใหม่อีกครั้ง',network:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้',already_confirmed:'บันทึกไปแล้ว',missing_company:'อ่านชื่อบริษัทไม่เจอ เพิ่มใบสมัครเองได้ที่หน้าติดตามการสมัคร',unauthorized:'กรุณาเข้าสู่ระบบ'};
+const errMsg=r=>ERRTH[r.data&&r.data.error]||(r.data&&(r.data.reply||r.data.error))||('เกิดข้อผิดพลาด ('+r.status+')');
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),3200);}
 const daysSince=iso=>Math.max(0,Math.round((Date.now()-Date.parse(iso))/864e5));
-function applyState(s){serverState=s;
+function applyState(s){const contextKey=s.user.email+':'+s.selected_season.id;if(contextKey!==savedContext){if(savedContext)savedByContext.set(savedContext,[...saved]);saved.clear();(savedByContext.get(contextKey)||[]).forEach(v=>saved.add(v));savedContext=contextKey;}serverState=s;
  apps.length=0;s.applications.forEach(a=>apps.push({id:a.id,co:a.company,role:a.role,st:a.status,verified:a.verified_by_system,truth:a.truth_level,url:a.url,ev:a.history,next:a.next_step||'—',upd:daysSince(a.updated_at)}));
  uni.length=0;s.university_checklist.forEach(t=>uni.push({id:t.id,t:t.task,d:t.detail||'',done:t.done}));
  myDocs.length=0;extraDocs=[];s.my_documents.forEach(d=>{if(d.kind==='my_doc')myDocs.push({id:d.id,k:d.fields.k,i:ICONS[d.fields.k]||'📄',t:d.name,v:d.fields.version||'—',s:d.status,n:d.note||''});else extraDocs.push(d);});
  reminders.length=0;s.reminders.forEach(r=>reminders.push(r));}
-async function loadState(){const r=await api('/api/state');if(!r.ok)return r.status||0;$('#login').classList.remove('show');applyState(r.data);render();renderChat();renderBanner();return true;}
+async function loadState(){const r=await api('/api/state');if(!r.ok)return r.status||0;$('#login').classList.remove('show');applyState(r.data);render();renderChat();renderBanner();renderProfileUI();return true;}
 function renderBanner(){const b=$('#bar');if(!serverState||!b)return;const u=serverState.user,un=serverState.unseen_reminders||[];
- b.innerHTML=`<div class="barin"><span>🌐 LINE ใช้ไม่ได้? ทำทุกอย่างที่นี่ได้เหมือนกัน</span><span style="flex:1"></span><small>${esc(u.email)} · ${u.line_linked?'💚 ผูก LINE แล้ว':'ยังไม่ผูก LINE'}</small><a onclick="logout()" style="cursor:pointer;text-decoration:underline">ออกจากระบบ</a></div>`+un.map(r=>`<div class="barrem">⏰ ${esc(r.text)} <a onclick="seenRem('${r.id}')" style="cursor:pointer;text-decoration:underline">รับทราบ</a> · <a onclick="cardAct('rem_snooze:${r.id}')" style="cursor:pointer;text-decoration:underline">เลื่อน 1 ชม.</a></div>`).join('');}
+ b.innerHTML=`<div class="barin"><label>ฤดูที่กำลังดู <select id="activeSeason" onchange="chooseSeason(this.value)" aria-label="ฤดูที่กำลังดู"></select></label><span style="flex:1"></span><small>${esc(u.email)} · ${u.line_linked?'💚 ผูก LINE แล้ว':'ยังไม่ผูก LINE'}</small><a onclick="logout()" style="cursor:pointer;text-decoration:underline">ออกจากระบบ</a></div>`+un.map(r=>`<div class="barrem">⏰ ${esc(r.season_name||'ฤดูฝึกงาน')}: ${esc(r.text)} ${r.season_id?`<a onclick="openReminderOrigin('${r.season_id}','${r.milestone_id||''}')" style="cursor:pointer;text-decoration:underline">เปิดรายการ</a> · `:''}<a onclick="seenRem('${r.id}')" style="cursor:pointer;text-decoration:underline">รับทราบ</a> · <a onclick="cardAct('rem_snooze:${r.id}')" style="cursor:pointer;text-decoration:underline">เลื่อน 1 ชม.</a></div>`).join('');}
 async function seenRem(id){await api('/api/reminders/'+id+'/seen',{method:'POST'});await loadState();}
 function showLogin(){$('#boot').classList.remove('show');$('#login').classList.add('show');}
 async function boot(){$('#bootMsg').textContent='กำลังโหลดข้อมูลของคุณ…';$('#bootRetry').style.display='none';$('#boot').classList.add('show');
@@ -344,7 +336,7 @@ const days=d=>Math.round((new Date(d)-today)/864e5);
 const fmt=d=>new Date(d).toLocaleDateString('th-TH',{day:'numeric',month:'short'});
 
 // เมนูหลัก 5 หน้า + ตั้งค่า แต่ละหน้ารวมหลาย section; go('ocr') ฯลฯ ยังใช้ได้ จะเปิดหน้าที่รวมไว้แล้วเลื่อนไปที่ section นั้น
-const GROUPS={dash:['dash'],tracker:['tracker','saved'],docs:['uni','docs'],chat:['chat','ocr'],discover:['discover'],notif:['notif','onboard']};
+const GROUPS={dash:['dash'],tracker:['tracker','saved'],docs:['uni','docs'],chat:['chat','ocr'],discover:['discover'],notif:['notif'],onboard:['onboard']};
 const GROUP_OF={};Object.entries(GROUPS).forEach(([g,l])=>l.forEach(s=>GROUP_OF[s]=g));
 function go(s){const g=GROUP_OF[s]||s,show=GROUPS[g]||[s];
  document.querySelectorAll('.screen').forEach(e=>e.classList.toggle('on',show.includes(e.id)));
@@ -386,7 +378,7 @@ async function mutate(fn,okMsg){const r=await fn();if(!r.ok)toast(errMsg(r));els
 function apply(id,v){const j=jobs.find(x=>x.id===id);saved.delete(id);
  mutate(()=>api('/api/applications',{method:'POST',body:JSON.stringify({company:j.co.split(' (')[0],role:j.role,status:'Applied',url:j.src,next_step:'รอผลพิจารณา'})}),'บันทึกใบสมัครแล้ว');close_('mDetail');go('tracker');}
 function openAdd(){$('#mAdd').classList.add('show')}
-async function addExt(){await mutate(()=>api('/api/applications',{method:'POST',body:JSON.stringify({company:$('#aCo').value||'บริษัทใหม่',role:$('#aRole').value||'Intern',status:$('#aStatus').value,url:$('#aUrl').value})}));close_('mAdd');go('tracker');}
+async function addExt(){if(!$('#aCo').value.trim())return toast('กรอกชื่อบริษัทก่อน');const result=await mutate(()=>api('/api/applications',{method:'POST',body:JSON.stringify({company:$('#aCo').value||'บริษัทใหม่',role:$('#aRole').value||'Intern',status:$('#aStatus').value,url:$('#aUrl').value})}));if(result.ok){close_('mAdd');go('tracker');}}
 async function setStatus(i,st){const a=apps[i];await mutate(()=>api('/api/applications/'+a.id,{method:'PATCH',body:JSON.stringify({status:st})}));}
 async function move(i,d){const a=apps[i],k=STAGES.indexOf(a.st)+d;if(k<0||k>=STAGES.length)return;await setStatus(i,STAGES[k]);}
 async function toggleTask(i,done){await mutate(()=>api('/api/tasks/'+uni[i].id,{method:'PATCH',body:JSON.stringify({done})}));}
@@ -424,7 +416,7 @@ function renderDash(){const u=serverState?serverState.user:null,un=serverState?s
  // โปรไฟล์ + Alert
  const parts=[un.length&&`เตือนยังไม่อ่าน ${un.length}`,staleApps.length&&`ใบสมัครไม่อัปเดต ${staleApps.length}`,closing.length&&`ปิดรับใน 7 วัน ${closing.length}`].filter(Boolean),n=un.length+staleApps.length+closing.length;
  $('#bellDot').hidden=!n;
- if(u)$('#profile').innerHTML=`<div class="dwho"><div class="dav">${esc(u.email.charAt(0).toUpperCase())}</div><div style="min-width:0"><b>${esc(u.email)}</b>${u.line_linked?'<span class="chip ok">💚 ผูก LINE แล้ว</span>':'<span class="chip warn">ยังไม่ผูก LINE</span>'}</div></div>`
+ if(u)$('#profile').innerHTML=`<div class="dwho"><div class="dav">${esc(u.email.charAt(0).toUpperCase())}</div><div style="min-width:0"><b>${esc(serverState.profile.preferred_name||u.email)}</b>${u.line_linked?'<span class="chip ok">💚 ผูก LINE แล้ว</span>':'<span class="chip warn">ยังไม่ผูก LINE</span>'}</div></div>`
   +(n?`<div class="dalert"><span style="font-size:22px">⚠️</span><div><span class="n">${n}</span> <b>เรื่องต้องดู</b><br><span class="dm">${parts.join(' · ')}</span></div></div>`:'<div class="dalert clear"><span style="font-size:22px">✅</span><div><b>ไม่มีเรื่องด่วน</b><br><span class="dm">ไม่มีเตือนค้างหรือใบสมัครที่ต้องตาม</span></div></div>');
  // เริ่มฝึกงาน
  const cur=apps.some(a=>a.st==='Offer')?3:apps.some(a=>a.st==='Interview')?2:apps.some(a=>a.st==='Applied')?1:0;

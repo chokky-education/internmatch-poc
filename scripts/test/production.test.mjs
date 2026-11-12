@@ -24,9 +24,11 @@ async function liveFixture(t, { staleCommit = false, staleAsset = false, brokenA
       res.setHeader('Access-Control-Allow-Credentials', 'true');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
     }
-    if (path === '/app/release.json') return json({ commit: staleCommit ? 'b'.repeat(40) : commit, files: { 'index.html': hash(html), 'config.js': hash(config) } });
+    if (path === '/app/release.json') return json({ commit: staleCommit ? 'b'.repeat(40) : commit, files: { 'index.html': hash(html), 'config.js': hash(config), 'profile-ui.js':hash('profile script'),'profile-ui.css':hash('profile style') } });
     if (path === '/app/') return res.end(staleAsset ? 'old page' : html);
     if (path === '/app/config.js') return res.end(config);
+    if(path==='/app/profile-ui.js')return res.end('profile script');
+    if(path==='/app/profile-ui.css')return res.end('profile style');
     if (path === '/api/health') return json({ ok: true });
     if (path === '/api/state' && req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
     if (path === '/api/me' || path === '/api/state') return json({ error: 'unauthorized' }, 401);
@@ -57,9 +59,11 @@ test('Pages bundle includes only public assets and a revision manifest', t => {
   writeFileSync(join(root, 'scripts/build-pages.mjs'), readFileSync(new URL('../build-pages.mjs', import.meta.url)));
   writeFileSync(join(root, 'index.html'), '<title>InternMatch</title>');
   writeFileSync(join(root, 'config.js'), 'window.IM_API="https://example.test";');
+  writeFileSync(join(root,'profile-ui.js'),'profile script');
+  writeFileSync(join(root,'profile-ui.css'),'profile style');
   writeFileSync(join(root, 'worker/.dev.vars'), 'must never be published');
   execFileSync(process.execPath, ['scripts/build-pages.mjs', commit], { cwd: root });
-  assert.deepEqual(readdirSync(join(root, '.pages')).sort(), ['config.js', 'index.html', 'release.json']);
+  assert.deepEqual(readdirSync(join(root, '.pages')).sort(), ['config.js', 'index.html','profile-ui.css','profile-ui.js', 'release.json']);
   const release = JSON.parse(readFileSync(join(root, '.pages/release.json')));
   assert.equal(release.commit, commit);
   assert.equal(release.files['index.html'], hash('<title>InternMatch</title>'));

@@ -8,5 +8,7 @@ worker/.dev.vars
 
 .pages/
 
+# Local UAT and browser artifacts
 .playwright-cli/
-output/playwright/
+.wrangler/
+output/

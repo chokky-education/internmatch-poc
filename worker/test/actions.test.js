@@ -59,7 +59,7 @@ describe('runCardAction', () => {
     expect(Date.parse((await env.DB.prepare('SELECT due_at FROM reminders WHERE id=?').bind(r2.id).first()).due_at)).toBeGreaterThan(Date.now() + 59 * 60000);
   });
   it('ext_confirm / legacy confirm create the application; ext_discard discards', async () => {
-    const mk = async id => env.DB.prepare("INSERT INTO extractions (id,user_id,doc_type,fields_json,status,channel,created_at) VALUES (?,?,'job_post',?, 'pending','line',?)").bind(id, U, JSON.stringify({ company: 'ไทยดาต้า', role: 'Intern' }), new Date().toISOString()).run();
+    const mk = async id => env.DB.prepare("INSERT INTO extractions (id,user_id,season_id,doc_type,fields_json,status,channel,created_at) VALUES (?,?,(SELECT selected_season_id FROM users WHERE id='user-act'),'job_post',?, 'pending','line',?)").bind(id, U, JSON.stringify({ company: 'ไทยดาต้า', role: 'Intern' }), new Date().toISOString()).run();
     await mk('e1'); await mk('e2');
     expect((await runCardAction(env, U, 'line', 'confirm:e1')).ok).toBe(true);
     expect((await env.DB.prepare("SELECT truth_level FROM applications WHERE company='ไทยดาต้า'").first()).truth_level).toBe('AI_EXTRACTED');
@@ -67,7 +67,7 @@ describe('runCardAction', () => {
     expect((await runCardAction(env, U, 'line', 'ext_discard:e2')).reply).toBe('โอเค ไม่บันทึกนะ');
   });
   it('ext_discard after confirm says it is already on the board, keeps the application and writes no messages', async () => {
-    await env.DB.prepare("INSERT INTO extractions (id,user_id,doc_type,fields_json,status,channel,created_at) VALUES ('e3',?,'job_post',?,'pending','line',?)").bind(U, JSON.stringify({ company: 'ไทยดาต้า', role: 'Intern' }), new Date().toISOString()).run();
+    await env.DB.prepare("INSERT INTO extractions (id,user_id,season_id,doc_type,fields_json,status,channel,created_at) VALUES ('e3',?,(SELECT selected_season_id FROM users WHERE id='user-act'),'job_post',?,'pending','line',?)").bind(U, JSON.stringify({ company: 'ไทยดาต้า', role: 'Intern' }), new Date().toISOString()).run();
     expect((await runCardAction(env, U, 'line', 'ext_confirm:e3')).ok).toBe(true);
     const before = (await env.DB.prepare('SELECT count(*) c FROM messages').first()).c;
     const r = await runCardAction(env, U, 'line', 'ext_discard:e3');
@@ -77,7 +77,7 @@ describe('runCardAction', () => {
     expect((await env.DB.prepare('SELECT count(*) c FROM messages').first()).c).toBe(before);
   });
   it('ext_discard twice on a pending extraction is fine, and an unknown id is not found', async () => {
-    await env.DB.prepare("INSERT INTO extractions (id,user_id,doc_type,fields_json,status,channel,created_at) VALUES ('e4',?,'job_post','{}','pending','line',?)").bind(U, new Date().toISOString()).run();
+    await env.DB.prepare("INSERT INTO extractions (id,user_id,season_id,doc_type,fields_json,status,channel,created_at) VALUES ('e4',?,(SELECT selected_season_id FROM users WHERE id='user-act'),'job_post','{}','pending','line',?)").bind(U, new Date().toISOString()).run();
     expect((await runCardAction(env, U, 'line', 'ext_discard:e4')).ok).toBe(true);
     expect((await runCardAction(env, U, 'line', 'ext_discard:e4')).ok).toBe(true);
     expect(await runCardAction(env, U, 'line', 'ext_discard:nope')).toMatchObject({ ok: false, reply: 'รายการนี้ไม่มีแล้วนะ' });
