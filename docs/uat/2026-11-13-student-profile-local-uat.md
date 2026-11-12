@@ -77,3 +77,13 @@ Log เต็มอยู่ในเครื่องที่ `output/uat/bro
 ![Desktop](assets/profile-desktop.png)
 
 ![Mobile](assets/profile-mobile.png)
+
+## Feedback ผู้ใช้รอบ 1: จัด layout หน้าต่างวันสำคัญ
+
+ปรับป้ายชื่อให้อยู่เหนือช่องกรอก ช่องเรื่อง/แหล่งที่มาเต็มแถว วันที่สองคอลัมน์บน desktop และคอลัมน์เดียวบนมือถือ แยก header พร้อมปุ่มปิด และ footer ยกเลิก/บันทึกที่จัดกลุ่มเดียวกัน ใช้รูปแบบเดียวกันกับหน้าต่างสร้างฤดูและยืนยันเตือน
+
+ตรวจ browser ที่ 1169×672, 390×844 และ 320×844: ช่องเรื่องเต็มพื้นที่ฟอร์ม ไม่มีแนวนอนล้น, focus/Tab/Escape ผ่าน และปุ่ม submit ยังคงอยู่ใน form เดิม ตรวจหน้าต่างสร้างฤดูและข้อเสนอเตือนโดยไม่เขียนข้อมูลเพิ่ม Backend suite ยังผ่าน 136/136 และ syntax ผ่าน รอผู้ใช้ตรวจ layout ฉบับแก้ก่อนปิด UAT
+
+![Milestone dialog desktop](assets/milestone-dialog-desktop.png)
+
+![Milestone dialog mobile](assets/milestone-dialog-mobile.png)
