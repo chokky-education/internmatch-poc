@@ -75,7 +75,7 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 | `GLOSSARY.md` | Profile/season domain vocabulary |
 | `docs/uat/2026-11-13-student-profile-local-uat.md` | Approved local UAT and layout feedback evidence |
 | `docs/profile-release.md` | Reviewed backup, maintenance, migration, smoke and recovery procedure |
-| `scripts/release/profile-production.mjs` | Guarded remote fingerprint and short-lived authenticated production smoke |
+| `scripts/release/profile-production.mjs`, `scripts/release/d1-query.mjs` | Guarded remote fingerprint and short-lived authenticated production smoke |
 | `scripts/uat/` | Isolated local test harness; never published |
 | `docs/test-round-1.csv` | Manual test cases, round 1 |
 | `docs/agents/*.md` | Issue tracker (GitHub Issues), triage labels, domain-doc conventions |
