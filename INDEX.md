@@ -71,7 +71,12 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 | `docs/agents/*.md` | Issue tracker (GitHub Issues), triage labels, domain-doc conventions |
 | `scripts/index.mjs` | The local search index CLI |
 | `scripts/check-docs.mjs` | Guardrails run by CI and locally: INDEX covers `worker/src`, pointer files stay pointers, ADR numbering, secret scan, code change ⇒ STATUS change |
-| `.github/workflows/ci.yml` | CI on every PR and push to `main`: check-docs, `index.html` syntax, index build, `vitest` |
+| `.github/workflows/ci.yml` | Required CI; Pages deploy after main checks pass, followed by live verification |
+| `.github/main-protection.json` | Versioned main branch policy, including administrators |
+| `docs/release-workflow.md` | Agent-owned PR → CI → merge → deploy → production verification, including config/secrets |
+| `scripts/build-pages.mjs` | Publish only public assets with a commit/hash manifest |
+| `scripts/verify-production.mjs` | Safe live web/API verification for the merged revision |
+| `scripts/test/*.test.mjs` | Regression tests for guards, index upgrade, artifact and production checks |
 | `CODING_STANDARDS.md` | Judgement-call rules for reviewing a diff (ADRs, logic in Worker, truth levels, honest stubs) |
 | `docs/agent-kickoff.md` | Copy-paste first messages for starting, continuing or reviewing with any agent |
 

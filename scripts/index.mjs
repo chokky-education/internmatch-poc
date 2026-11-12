@@ -7,7 +7,7 @@ import { performance } from 'node:perf_hooks';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const STORE = join(ROOT, '.local-index');
-const VERSION = '1';
+const VERSION = '2';
 const extensions = new Set(['.md','.html','.htm','.js','.mjs','.json','.css','.txt','.sql','.toml','.csv']);
 const ignoredDirs = new Set(['node_modules','.git','.local-index','.cursor','.vscode','dist','build']);
 const ignoredFiles = new Set(['package-lock.json','pnpm-lock.yaml']);

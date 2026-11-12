@@ -10,7 +10,7 @@
 ## 1. ค้นหาบริบทก่อนเริ่มทำงาน (Find Context First)
 
 1. อ่าน `docs/STATUS.md` ก่อน: งานอยู่ตรงไหน, อะไรค้างอยู่, ทำอะไรต่อ แล้วอ่าน `INDEX.md` เพื่อดูแผนผังไฟล์และสถาปัตยกรรมภาพรวม
-2. **ค้นหาด้วยคำสั่ง Index ก่อนอ่านไฟล์ดิบเสมอ** (ต้องใช้ Node 22.5+ เพราะใช้ `node:sqlite` ถ้ารันไม่ได้ให้ใช้ `grep -rn` แทน):
+2. **ค้นหาด้วยคำสั่ง Index ก่อนอ่านไฟล์ดิบเสมอ** (ต้องใช้ Node 24+ เพราะใช้ `node:sqlite` ถ้ารันไม่ได้ให้ใช้ `rg` แทน):
    - ค้นหาตามเนื้อหา: `node scripts/index.mjs search "คำค้น" [--kind doc|spec|code]`
    - ค้นหารายชื่อไฟล์: `node scripts/index.mjs files "ชื่อไฟล์" [--path src/]`
    - เปิดดูเนื้อหาเฉพาะส่วน: `node scripts/index.mjs show <chunk-id> [--around "คำค้น"] [--context 3]`
@@ -69,22 +69,19 @@
 
 ---
 
-## 4. ขั้นตอนก่อนรายงานผลงานสำเร็จ (Before Reporting Success)
+## 4. ส่งงานจนตรวจระบบจริงเสร็จ (Required release workflow)
 
-เมื่อทำการแก้ไขหรือพัฒนาฟีเจอร์ใหม่เสร็จสิ้น ให้ปฏิบัติตามขั้นตอนต่อไปนี้เสมอ (CI `.github/workflows/ci.yml` ตรวจข้อ 0-2 ซ้ำทุก PR ถ้าไม่ผ่าน merge ไม่ได้):
-0. **รันเทสต์ backend:** `cd worker && npm ci && npx vitest run` (ต้องผ่านทั้งหมด)
-1. **ตรวจ Syntax และกฎเอกสาร:**  
-   `node -e "const h=require('fs').readFileSync('index.html','utf8');[...h.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)].forEach(m=>new Function(m[1]));console.log('OK')"`  
-   `node scripts/check-docs.mjs --base origin/main` (INDEX ครบ, ไฟล์ชี้ทางยังเป็นไฟล์ชี้ทาง, ADR เรียงเลข, ไม่มี secret, แก้โค้ดแล้วต้องแก้ STATUS)
-2. **อัปเดต Index และ Handoff:**  
-   - ถ้าเพิ่ม/ย้าย/ลบไฟล์หรือโมดูล ให้แก้ตาราง `INDEX.md` ด้วยมือ (สคริปต์ไม่เขียนทับไฟล์นี้)  
-   - เขียน `docs/STATUS.md` ส่วน Now / In flight / Next ใหม่ และเพิ่ม 1 บรรทัดใน Log เพื่อให้ Agent ตัวถัดไปทำต่อได้ทันที
-3. **ส่งงานผ่าน Pull Request เท่านั้น ห้าม push เข้า `main` ตรง:**  
-   ทำงานบน branch ของตัวเอง → `git push -u origin <branch>` → `gh pr create` → รอ CI เขียว → เจ้าของโปรเจกต์เป็นคน merge
-4. **ตรวจสอบการ Deploy:**  
-   หลัง merge ระบบจะ Deploy เว็บขึ้น GitHub Pages อัตโนมัติภายใน 30-45 วินาที ส่วน Worker ต้อง `cd worker && npx wrangler deploy` เอง (ถามเจ้าของก่อน)
+**ทุกงานที่เปลี่ยน repo หรือ production ใช้ลำดับ PR → CI → merge → deploy → ตรวจระบบจริง** รวมเอกสาร, config, secrets และการแก้ข้อมูล ไม่มีการ push เข้า `main` ตรงหรือใช้ admin ข้ามกฎ
 
-รีวิวโค้ด (คนหรือ Agent) ให้ตรวจ diff ตาม `CODING_STANDARDS.md`
+1. **เตรียม:** อ่าน [docs/release-workflow.md](docs/release-workflow.md) ก่อนเปลี่ยนไฟล์/ตั้งค่าระบบจริง เช็กสถานะ Git และ PR ปัจจุบัน ใช้ branch `codex/…` หรือ branch ของ PR ที่รับช่วง เก็บงานอื่นของผู้ใช้ไว้ตามเดิม
+2. **แก้และตรวจ:** อัปเดต `docs/STATUS.md` ตามสิ่งที่ทำจริงและ `INDEX.md` เมื่อแผนผังเปลี่ยน รัน backend tests, syntax, guardrails, release-tool tests และ index ตามคำสั่งใน workflow รีวิว diff ตาม `CODING_STANDARDS.md` และแก้ประเด็นที่พบ
+3. **PR → CI:** push เฉพาะ branch งาน → สร้างหรืออัปเดต PR → รอ required check ชื่อ `check` ของ GitHub Actions ผ่านบน revision ล่าสุด ถ้า base เปลี่ยนให้อัปเดต branch และรันใหม่
+4. **Merge:** เมื่อทำงานที่ผู้ใช้อนุมัติครบและ CI ผ่าน ให้ Agent merge PR เองตาม runbook ผู้ใช้อนุมัติขั้นตอนประจำนี้ไว้แล้ว ไม่หยุดรอให้ผู้ใช้ merge หรือยืนยัน deploy ซ้ำ ถ้าผู้ใช้สั่งให้ส่งแค่ draft/รีวิว ให้รักษาขอบเขตนั้น
+5. **Deploy:** ตามงานของ merged commit จนจบ CI บน `main` ต้องผ่านก่อน Pages deploy; Agent รับผิดชอบ deploy Worker/DB/secret ที่ PR ต้องใช้จาก merged checkout ด้วยเครื่องมือที่ล็อกอินไว้ ดูเงื่อนไขแต่ละชนิดใน runbook
+6. **ตรวจระบบจริง:** ยืนยัน Pages เป็น merged SHA และเนื้อหาตรง artifact, รัน production smoke, ตรวจ release/version ของ Worker ถ้าเปลี่ยน และตรวจ flow ที่แก้จริงทั้งเว็บ/LINE ตามผลกระทบ เก็บหลักฐานและข้อจำกัดในรายงานงาน อย่าใช้แค่ health endpoint แทนการตรวจฟีเจอร์
+7. **ปิดงาน:** รายงาน PR, merged SHA, CI, deploy และผลตรวจจริงอย่างแยกกัน งานยังไม่เสร็จถ้า CI/deploy/verification ล้มเหลว ให้ตามแก้ต่อ หากขาดสิทธิ์/OTP/credential ที่จำเป็น ให้ระบุสิ่งที่ขาดและขอเฉพาะส่วนนั้น
+
+ค่าลับไม่อยู่ใน Git: PR ของงาน secrets/ข้อมูลจริงต้องมีแผนที่ไม่เปิดเผยค่า เป้าหมาย ผลที่คาด วิธีตรวจ และวิธีย้อนกลับ ผ่าน CI/merge ก่อนใช้ค่าจริง ห้ามเดา LINE ID, เปิดสิทธิ์เพิ่ม หรือเปลี่ยน API key นอกขอบเขตที่ผู้ใช้อนุมัติ
 
 ---
 
