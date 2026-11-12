@@ -11,7 +11,7 @@ const out = join(root, '.pages');
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out);
 const files = {};
-for (const name of ['index.html', 'config.js']) {
+for (const name of ['index.html', 'config.js', 'profile-ui.js', 'profile-ui.css']) {
   const bytes = readFileSync(join(root, name));
   files[name] = createHash('sha256').update(bytes).digest('hex');
   writeFileSync(join(out, name), bytes);

@@ -26,7 +26,8 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 
 | Path | What it is |
 | --- | --- |
-| `index.html` | Whole web app (single file). 5 menu pages + settings, grouped by `GROUPS`; `go('<screen id>')` scrolls to a section. Chat drawer `#aiFab`, `renderCard()` |
+| `index.html` | Web app shell. 6 menu pages + settings, grouped by `GROUPS`; `go('<screen id>')` scrolls to a section. Chat drawer `#aiFab`, `renderCard()` |
+| `profile-ui.js`, `profile-ui.css` | Guided profile/season forms and milestone dialogs |
 | `config.js` | Worker API base URL for the web page |
 
 ### Backend: `worker/` (Cloudflare Worker `internmatch-api`)
@@ -48,8 +49,12 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 | `worker/src/auth.js` | Email + OTP login, sessions, `ALLOWED_EMAILS` gate, LINE linking |
 | `worker/src/email.js` | OTP email via Brevo |
 | `worker/src/reminders.js` | Cron: push due reminders on LINE, fall back to web banner |
+| `worker/src/seasons.js` | Account-owned season context, profile/season changes and versions |
+| `worker/src/milestones.js` | Milestones and atomic reminder confirmation/rescheduling |
+| `worker/src/profile-proposals.js` | Confirmed profile/season assistant changes |
+| `worker/src/maintenance.js` | Temporary release entry: 503 for writers, Cron paused during D1 upgrade |
 | `worker/src/http.js` | JSON/CORS helpers |
-| `worker/migrations/*.sql` | D1 schema (`0001_init`, `0002_message_cards`) |
+| `worker/migrations/*.sql` | D1 schema (`0001_init`, `0002_message_cards`, `0003_student_seasons`) |
 | `worker/test/*.test.js` | Vitest suite (`cd worker && npx vitest run`), one file per module |
 | `worker/scripts/richmenu.mjs`, `worker/richmenu/` | LINE rich menu builder and images |
 | `worker/wrangler.toml` | Worker config, D1 binding, cron, model vars (secrets are NOT here) |
@@ -67,6 +72,11 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 | `docs/superpowers/specs/2026-11-11-line-primary-web-fallback-design.md` | Design of the LINE-primary / web-fallback architecture |
 | `docs/superpowers/plans/2026-11-11-line-primary-web-fallback.md` | Implementation plan for the above |
 | `docs/line-setup.md` | How to set up LINE OA, secrets, deploy |
+| `GLOSSARY.md` | Profile/season domain vocabulary |
+| `docs/uat/2026-11-13-student-profile-local-uat.md` | Approved local UAT and layout feedback evidence |
+| `docs/profile-release.md` | Reviewed backup, maintenance, migration, smoke and recovery procedure |
+| `scripts/release/profile-production.mjs` | Guarded remote fingerprint and short-lived authenticated production smoke |
+| `scripts/uat/` | Isolated local test harness; never published |
 | `docs/test-round-1.csv` | Manual test cases, round 1 |
 | `docs/agents/*.md` | Issue tracker (GitHub Issues), triage labels, domain-doc conventions |
 | `scripts/index.mjs` | The local search index CLI |

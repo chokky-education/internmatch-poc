@@ -12,12 +12,12 @@ export async function verifyProduction({ webUrl, apiUrl, commit }) {
   assert(releaseResponse.ok, 'web release manifest reachable');
   const release = await releaseResponse.json();
   assert(release.commit === commit, 'web revision matches merged commit');
-  for (const name of ['index.html', 'config.js']) {
+  for (const name of ['index.html', 'config.js', 'profile-ui.js', 'profile-ui.css']) {
     const response = await request(web(name === 'index.html' ? '' : name));
     const body = await response.text();
     assert(response.ok && createHash('sha256').update(body).digest('hex') === release.files?.[name], `deployed ${name} matches artifact`);
     if (name === 'index.html') assert(body.includes('id="login"') && body.includes('config.js'), 'web login shell exists');
-    else assert(body.includes(apiUrl.replace(/\/$/, '')), 'web config points to production API');
+    else if(name==='config.js') assert(body.includes(apiUrl.replace(/\/$/, '')), 'web config points to production API');
   }
   const health = await request(apiUrl + '/api/health', { headers: { Origin: origin } });
   assert(health.ok && (await health.json()).ok === true, 'API health responds');
