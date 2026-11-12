@@ -78,4 +78,10 @@ npx wrangler deploy        # ได้ URL https://internmatch-api.<account>.wor
 - **Verify webhook ไม่ผ่าน:** เช็ก `LINE_CHANNEL_SECRET` ว่าตรงกับ channel เดียวกับ token
 - **เปลี่ยน/หมุน key:** ทำ PR แผนที่ไม่เปิดเผยค่า ผ่าน CI และ merge ก่อน แล้วใช้ `wrangler secret put <ชื่อ>` (คำสั่งนี้ deploy ทันที) และตรวจจริงตาม [release workflow](release-workflow.md) ไม่เก็บค่าจริงใน Git
 - **ทดสอบในเครื่อง:** สร้าง `worker/.dev.vars` (git ignore แล้ว) ใส่ `ชื่อ=ค่า` บรรทัดละตัว แล้ว `npx wrangler dev`
-- **ข้ามล็อกอินตอนทดสอบในเครื่อง:** เพิ่ม `LOCAL_DEV_LOGIN=true` ใน `worker/.dev.vars` แล้วรัน `npx wrangler dev --port 8787 --var WEB_ORIGIN:http://localhost:8000` หน้า localhost จะใช้บัญชี `local-dev@example.test` อัตโนมัติ พร้อมเช็กลิสต์ตั้งต้น ข้อมูลที่แก้จะเก็บใน D1 ของเครื่อง บัญชีจริงที่มี session อยู่แล้วจะยังใช้บัญชีเดิม ลบค่านี้หรือเปลี่ยนเป็น `false` เพื่อกลับไปใช้ OTP โหมดนี้ทำงานเฉพาะ hostname `localhost`, `127.0.0.1` และ `[::1]` ไม่ต้องตั้งค่านี้บน production
+- **ข้ามล็อกอินตอนทดสอบในเครื่อง:** เพิ่ม `LOCAL_DEV_LOGIN=true` ใน `worker/.dev.vars` แล้วรัน `npx wrangler dev --port 8787 --var WEB_ORIGIN:http://localhost:8787` หน้า localhost จะใช้บัญชี `local-dev@example.test` อัตโนมัติ พร้อมเช็กลิสต์ตั้งต้น ข้อมูลที่แก้จะเก็บใน D1 ของเครื่อง บัญชีจริงที่มี session อยู่แล้วจะยังใช้บัญชีเดิม ลบค่านี้หรือเปลี่ยนเป็น `false` เพื่อกลับไปใช้ OTP โหมดนี้ทำงานเฉพาะ hostname `localhost`, `127.0.0.1` และ `[::1]` ไม่ต้องตั้งค่านี้บน production
+
+## เว็บและ session หลังแก้ความปลอดภัย
+
+เปิดเว็บที่ `https://internmatch-api.entrace-space.workers.dev/` ลิงก์ GitHub Pages เดิมลบ token รุ่นเก่าแล้วพามาที่นี่ เว็บกับ API ใช้ origin เดียวกันและคุกกี้ HttpOnly ไม่เก็บ session ใน localStorage เมื่อ cutover ต้องล็อกอินใหม่หนึ่งครั้ง ข้อมูลฝึกงานและการผูก LINE เดิมคงอยู่ ดู [ADR 0005](adr/0005-same-origin-cookie-sessions.md) และ [แผนปล่อย](releases/2026-11-13-session-security.md)
+
+`wrangler dev` เสิร์ฟหน้าเว็บด้วย เปิด `http://localhost:8787/` โดยตั้ง `WEB_ORIGIN` ให้ตรง origin นี้ ไม่เปิดเว็บผ่าน server พอร์ต 8000 แยกอีกตัว ทุก release ต้อง deploy Worker/asset manifest จาก merged SHA หลัง check ผ่าน ก่อนที่ CI จะเผยแพร่ Pages launcher

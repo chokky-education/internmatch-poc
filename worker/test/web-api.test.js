@@ -1,14 +1,16 @@
 import { context } from '../src/seasons.js';
 import { env, SELF } from 'cloudflare:test';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createSession } from '../src/auth.js';
 import { getOverview } from '../src/store.js';
 import { seedDemo } from './fixtures.js';
 import { runAssistant } from '../src/assistant.js';
 
-const U = 'user-w', COOKIE = 'im_session=abcdef0123456789';
+const U = 'user-w';
+let COOKIE;
 let realFetch, geminiQueue, paxaBody;
 const text = t => ({ candidates: [{ content: { role: 'model', parts: [{ text: t }] } }] });
-const api = async (path, init = {}) => SELF.fetch('https://x.test' + path, { ...init, headers: { Cookie: COOKIE, 'X-Season-Id':(await context(env,U)).season.id,'X-Selection-Version':String((await context(env,U)).selection_version), ...(init.headers || {}) } });
+const api = async (path, init = {}) => SELF.fetch('https://x.test' + path, { ...init, headers: { Origin: 'https://x.test', Cookie: COOKIE, 'X-Season-Id':(await context(env,U)).season.id,'X-Selection-Version':String((await context(env,U)).selection_version), ...(init.headers || {}) } });
 const post = (path, body) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 const patch = (path, body) => api(path, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
@@ -16,7 +18,7 @@ beforeEach(async () => {
   await env.DB.exec('DELETE FROM users; DELETE FROM sessions; DELETE FROM applications; DELETE FROM tasks; DELETE FROM documents; DELETE FROM reminders; DELETE FROM messages; DELETE FROM extractions; DELETE FROM audit_log;');
   env.GEMINI_API_KEY = 'g'; env.PAXA_API_KEY = 'p';
   await env.DB.prepare('INSERT INTO users (id,email,created_at) VALUES (?,?,?)').bind(U, 'ton@example.com', new Date().toISOString()).run();
-  await env.DB.prepare('INSERT INTO sessions (token,user_id,expires_at) VALUES (?,?,?)').bind('abcdef0123456789', U, new Date(Date.now() + 1e9).toISOString()).run();
+  COOKIE = '__Host-im_session=' + await createSession(env, U);
   await seedDemo(env, U);
   geminiQueue = []; paxaBody = { status: 'complete', fields: { company: 'ไทยดาต้า', role: 'Intern' } };
   realFetch = globalThis.fetch;

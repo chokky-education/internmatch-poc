@@ -53,7 +53,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: check
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
       pages: write
@@ -67,6 +67,13 @@ jobs:
         with:
           node-version: 24
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - name: Wait for the same-origin Worker release before publishing its launcher
+        run: |
+          for attempt in $(seq 1 60); do
+            if node scripts/verify-production.mjs "$GITHUB_SHA" --app-only; then exit 0; fi
+            sleep 10
+          done
+          exit 1
       - name: Build public files with merged revision
         run: node scripts/build-pages.mjs "$GITHUB_SHA"
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3

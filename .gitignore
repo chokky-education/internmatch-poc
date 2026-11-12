@@ -7,6 +7,7 @@ worker/.wrangler/
 worker/.dev.vars
 
 .pages/
+.app/
 
 # Local UAT and browser artifacts
 .playwright-cli/

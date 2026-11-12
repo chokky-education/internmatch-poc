@@ -6,6 +6,8 @@ _Last updated: 2026-11-13_
 
 ## Now (what is true today)
 
+- **Security release candidate:** owner authorized stored-XSS and token fixes. Output encoding now covers board/document/task text, OCR labels, profile attributes and drawer text. The same app/API move to the existing Worker origin; Pages becomes a legacy-credential cleanup launcher. Cookie-only hashed sessions reject old raw credentials and untrusted web mutations; LINE authentication/data links stay separate. ADR 0005 and `docs/releases/2026-11-13-session-security.md` record rollout/revocation and synthetic/owner-account verification. Local checks passed 143 Worker tests, 19 tooling/renderer tests and the existing local browser UAT (profile/season/LINE/OCR/reminder isolation, responsive UI and zero page errors). The dedicated real-browser XSS/cookie check also passed. Final PR/CI/deploy results are reported with this task; production success is not asserted by this pre-release commit.
+
 - **Shipped profile/seasons:** PR #8 merged as `94d72cd`; release-verifier repair PR #9 merged as `0eec60a`. The owner accepted Local UAT and the revised milestone dialog. Guided forms now persist through shared Worker/D1 services; education snapshots, multi-season isolation, milestone proposals/rescheduling and original-target confirmations are implemented.
 - **Production Worker/D1 verified:** normal Worker version `36bc7368-e2de-4634-8521-fd91122555f3` is active at 100%, annotated with merged runtime SHA `0eec60a5defea032841138351c22e2d4a520858e`. Migration 0003 applied once; all original fields in 11 legacy tables matched before/after fingerprints, and all migrated season owners/selections validated. A private backup was exported and independently restored/compared locally before migration.
 - **Live feature verification:** authenticated production API smoke passed blank profile, snapshot education, season isolation, milestone confirmation/replay and atomic rescheduling. The short-lived smoke identity and its records were removed; no OTP/LINE/AI test messages were sent. Web revision and four asset hashes plus 16 baseline API/auth/CORS/signature checks passed for `0eec60a`. See `docs/releases/2026-11-13-profile.md`.
@@ -28,6 +30,8 @@ _Last updated: 2026-11-13_
 
 ## Next (suggested, not yet agreed with the owner)
 
+- Finish the authorized security release through current-head PR CI, merge, Worker-before-Pages deploy, legacy session expiry and real feature checks. Do not merge the separate UAT/research/chat-animation PRs as part of this work.
+
 1. Continue only work the owner has authorized. PR #2 and PR #5 are separate open work; review them when requested.
 2. Deploy the latest merged Worker if `f1a0843` (unconfirmed milestones in shared assistant overview) has not yet been rolled out to Cloudflare, and re-run live production verification (`verify-production.mjs` + safe feature smoke).
 3. Replace sample job listings with a real source, keeping "รายงานข้อมูลผิด" and source links. Faculty checklist remains generic.
@@ -39,6 +43,8 @@ _Last updated: 2026-11-13_
 - `go('<screen id>')` still works for every old screen id: it opens the grouped page and scrolls (see `GROUPS` in `index.html`).
 
 ## Log
+
+- 2026-11-13: Built the authorized XSS/cookie-session candidate in an isolated worktree, reproduced seven pre-fix boundary failures, added regression coverage and a reviewed same-origin rollout/verification plan. Existing pending user work was preserved.
 
 - 2026-11-12: Completed PR #4 bootstrap: verified required PR/strict CI for admins, Actions-based Pages publishing, successful merged CI/deploy, 14 live baseline checks and desktop/mobile login-shell browser checks. Corrected the protection API’s mutually exclusive request fields and added regression guards for that request and for generated/nested checkout search pollution; no user data or Worker code changed.
 - 2026-11-12: Reviewed PR #4 against the owner’s complete-release requirement. Fixed cached index classification and secret scan coverage, added ten tooling regression checks, CI-gated public-only Pages artifacts with a revision manifest and live verification, and an auditable branch policy/runbook. No app runtime behavior changed.

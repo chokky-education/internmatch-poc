@@ -1,15 +1,17 @@
 import { env, SELF } from 'cloudflare:test';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createSession } from '../src/auth.js';
 import { addReminder } from '../src/store.js';
 import { sendDueReminders } from '../src/reminders.js';
 
 const U = 'user-r', LU = 'Uremind';
+let cookie;
 let pushes, pushOk, realFetch, flexRejected = false;
 
 beforeEach(async () => {
   await env.DB.exec('DELETE FROM users; DELETE FROM sessions; DELETE FROM reminders; DELETE FROM audit_log;');
   await env.DB.prepare('INSERT INTO users (id,email,line_user_id,created_at) VALUES (?,?,?,?)').bind(U, 'ton@example.com', LU, new Date().toISOString()).run();
-  await env.DB.prepare('INSERT INTO sessions (token,user_id,expires_at) VALUES (?,?,?)').bind('abcdef0123456789', U, new Date(Date.now() + 1e9).toISOString()).run();
+  cookie = '__Host-im_session=' + await createSession(env, U);
   pushes = []; pushOk = true; flexRejected = false; realFetch = globalThis.fetch;
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (u, init) => {
     if (String(u).includes('api.line.me/v2/bot/message/push')) { const b = JSON.parse(init.body); pushes.push(b); return new Response('{}', { status: !pushOk || (flexRejected && JSON.stringify(b).includes('"flex"')) ? 400 : 200 }); }
@@ -67,7 +69,7 @@ describe('sendDueReminders', () => {
     await env.DB.prepare("INSERT INTO reminders (id,user_id,text,due_at) VALUES ('rf',?,?,?)").bind(U, 'ส่งเอกสาร', new Date(Date.now() - 60000).toISOString()).run();
     expect(await sendDueReminders(env, new Date())).toEqual({ sent: 0, failed: 1 });
     expect((await row('rf')).delivery).toBe('failed');
-    const s = await (await SELF.fetch('https://x.test/api/state', { headers: { Cookie: 'im_session=abcdef0123456789' } })).json();
+    const s = await (await SELF.fetch('https://x.test/api/state', { headers: { Cookie: cookie } })).json();
     expect(s.unseen_reminders.map(r => r.id)).toEqual(['rf']);
   });
   it('a user without a linked LINE account gets failed delivery (web shows it) and no push', async () => {

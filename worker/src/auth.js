@@ -51,24 +51,25 @@ export async function verifyOtp(env, emailRaw, code) {
 
 export async function createSession(env, userId) {
   const token = randHex(32);
-  await env.DB.prepare('INSERT INTO sessions (token,user_id,expires_at) VALUES (?,?,?)').bind(token, userId, new Date(Date.now() + SESSION_MS).toISOString()).run();
+  await env.DB.prepare('INSERT INTO sessions (token,user_id,expires_at) VALUES (?,?,?)').bind(await sessionKey(token), userId, new Date(Date.now() + SESSION_MS).toISOString()).run();
   return token;
 }
-export const sessionCookie = token => `im_session=${token}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${SESSION_MS / 1000}`;
+export const sessionCookie = token => `__Host-im_session=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${token ? SESSION_MS / 1000 : 0}`;
+// The namespace makes legacy raw sessions unusable, even in the new cookie.
+// D1 stores only this one-way digest of each newly issued credential.
+const sessionKey = async token => 'v2:' + await sha256(token);
 
-// iPhone browsers (Safari, Chrome, LINE) drop the cookie because the web and the Worker are on different sites,
-// so the web also sends the same session token as a Bearer header. Either one is accepted.
 function sessionToken(req) {
-  const b = /^Bearer ([a-f0-9]{64})$/.exec(req.headers.get('Authorization') || '');
-  if (b) return b[1];
-  const m = /(?:^|;\s*)im_session=([a-f0-9]+)/.exec(req.headers.get('Cookie') || '');
-  return m ? m[1] : null;
+  const values = (req.headers.get('Cookie') || '').split(';').map(s => s.trim()).filter(s => s.startsWith('__Host-im_session='));
+  if (values.length !== 1) return null;
+  const token = values[0].slice('__Host-im_session='.length);
+  return /^[a-f0-9]{64}$/.test(token) ? token : null;
 }
 
 export async function requireUser(req, env) {
   const token = sessionToken(req);
   if (token) {
-    const user = await env.DB.prepare('SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.expires_at > ?').bind(token, new Date().toISOString()).first();
+    const user = await env.DB.prepare('SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.expires_at > ?').bind(await sessionKey(token), new Date().toISOString()).first();
     if (user) return user;
   }
   // Opt-in only in .dev.vars, and never valid on a deployed Worker hostname.
@@ -81,5 +82,5 @@ export async function requireUser(req, env) {
 }
 export async function destroySession(req, env) {
   const token = sessionToken(req);
-  if (token) await env.DB.prepare('DELETE FROM sessions WHERE token=?').bind(token).run();
+  if (token) await env.DB.prepare('DELETE FROM sessions WHERE token=?').bind(await sessionKey(token)).run();
 }
