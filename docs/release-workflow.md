@@ -24,7 +24,7 @@ CI repeats these checks, including the local tooling regression tests. Secret sc
 
 1. Commit only this task's files; push the task branch. Create/update a PR with the problem, final behavior, validation, operational steps and verification limits. Use `--body-file` for a multiline body.
 2. Review the final diff; fix substantive findings. Run `gh pr checks <number> --watch --fail-fast` and verify `check` passed for the latest head. An older run is not evidence for new commits.
-3. Required policy is stored in `.github/main-protection.json`: PRs, up-to-date required `check` from GitHub Actions (app 15368), resolved conversations, no force push/deletion, including administrators. Zero mandatory human approvals lets an authorized agent merge after review and CI; it does not waive review.
+3. Required policy is stored in `.github/main-protection.json`: PRs, up-to-date required `check` from GitHub Actions (app 15368), resolved conversations, no force push/deletion, including administrators. Zero mandatory human approvals lets an authorized agent merge after review and CI; it does not waive review. Use the app-bound `checks` field only; GitHub rejects a payload that also includes the legacy `contexts` field.
 4. Merge with `gh pr merge <number> --merge --match-head-commit <reviewed-head-sha>`. Never use `--admin`, disable protection or push to `main` to finish a task. If the base changes, bring it into the branch and repeat checks.
 5. Fetch the merged SHA from the PR and use a clean checkout of that exact commit for release commands. Unmerged local code must not reach production.
 

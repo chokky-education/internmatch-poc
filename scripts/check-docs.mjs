@@ -40,6 +40,12 @@ adrs.forEach((f, i) => {
   if (!f.startsWith(want + '-')) fail(`docs/adr/${f} breaks the numbering (expected ${want}-…)`, 'renumber ADRs sequentially with no gaps or duplicates');
 });
 
+// GitHub accepts either legacy contexts or app-bound checks, never both.
+if (existsSync(join(ROOT, '.github/main-protection.json'))) {
+  const checks = JSON.parse(read('.github/main-protection.json')).required_status_checks;
+  if (checks && 'contexts' in checks && 'checks' in checks) fail('branch protection contexts and checks are mutually exclusive', 'keep only app-bound checks in .github/main-protection.json');
+}
+
 // 4. No secrets in files that ship to the browser or sit in git.
 const SECRET = [
   [/AIza[0-9A-Za-z_-]{30,}/, 'Google API key'],

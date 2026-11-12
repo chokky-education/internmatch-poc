@@ -28,5 +28,7 @@
 - [x] Reproduce index/guard failures with `scripts/test/guardrails.test.mjs`; fix cache version, recursive text enumeration and pre-commit diff checking. All five tests pass.
 - [x] Add `scripts/build-pages.mjs`, `scripts/verify-production.mjs` and five local HTTP/artifact tests. Stale SHA/assets and broken OTP routes fail verification.
 - [x] Align AGENTS, kickoff, setup, INDEX and STATUS; version the main protection policy and gate Pages deploy on CI.
-- [ ] Run full local checks, review the resulting diff and push updates to PR #4. Wait for current CI success; merge only that head.
-- [ ] Apply and read back repository protection/Pages settings, follow merged CI through deployment, run live smoke and browser checks, and record evidence in the PR/task report.
+- [x] Run full local checks, review the resulting diff and push updates to PR #4. Wait for current CI success; merge only that head.
+- [x] Apply and read back repository protection/Pages settings, follow merged CI through deployment, run live smoke and browser checks, and record evidence in the PR/task report.
+
+Bootstrap evidence: PR #4 merged `b69b77f15b027a19933296673508de35af226c77`; CI run `43204001491` passed required checks and Pages deploy, standalone production smoke passed 14 checks. The protection request needs only app-bound `checks` (the API rejects a second `contexts` field); a follow-up versions that corrected shape and its regression guard.

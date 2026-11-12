@@ -70,3 +70,27 @@ test('index upgrade rebuilds unchanged specs that were previously classified as 
   assert.match(output, /docs\/superpowers\/specs\/example.md/);
   assert.equal(readFileSync(join(root, 'INDEX.md'), 'utf8'), '# Hand-maintained map');
 });
+
+test('branch protection request rejects mutually exclusive legacy contexts and app-bound checks', t => {
+  const f = fixture(t);
+  const policy = { required_status_checks: { strict: true, contexts: [], checks: [{ context: 'check', app_id: 15368 }] } };
+  f.put('.github/main-protection.json', JSON.stringify(policy));
+  const r = f.check(); assert.equal(r.status, 1); assert.match(r.stderr, /mutually exclusive/);
+  delete policy.required_status_checks.contexts;
+  f.put('.github/main-protection.json', JSON.stringify(policy));
+  assert.equal(f.check().status, 0);
+});
+
+test('generated Pages artifacts and nested harness worktrees do not pollute project search', t => {
+  const root = mkdtempSync(join(tmpdir(), 'internmatch-index-scope-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  for (const folder of ['scripts', '.pages', '.claude/worktrees/other']) mkdirSync(join(root, folder), { recursive: true });
+  writeFileSync(join(root, 'scripts/index.mjs'), readFileSync(new URL('../index.mjs', import.meta.url)));
+  writeFileSync(join(root, 'INDEX.md'), '# Actual project');
+  writeFileSync(join(root, '.pages/index.html'), 'generatedartifactneedle');
+  writeFileSync(join(root, '.claude/worktrees/other/README.md'), 'nestedcheckoutneedle');
+  for (const word of ['generatedartifactneedle', 'nestedcheckoutneedle']) {
+    const out = execFileSync(process.execPath, ['scripts/index.mjs', 'search', word], { cwd: root, encoding: 'utf8' });
+    assert.match(out, /ไม่พบผลลัพธ์/);
+  }
+});
