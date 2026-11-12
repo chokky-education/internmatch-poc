@@ -68,3 +68,10 @@ test('Pages bundle includes only public assets and a revision manifest', t => {
   assert.equal(release.commit, commit);
   assert.equal(release.files['index.html'], hash('<title>InternMatch</title>'));
 });
+
+ test('D1 read commands preserve result JSON; file writes accept import progress without exposing SQL',async()=>{
+ const {executeD1}=await import('../release/d1-query.mjs');
+ for(const sql of ['SELECT COUNT(*) n FROM users','PRAGMA table_info(users)']){const result=executeD1(sql,'private.sql',{run:(_,args)=>{assert.ok(args.includes('--command'));assert.equal(args.at(-1),sql);return '[{"results":[{"n":4}]}]';}});assert.equal(result[0].results[0].n,4);}
+ assert.deepEqual(executeD1('INSERT INTO users VALUES (...)','private.sql',{run:(_,args)=>{assert.ok(args.includes('--file'));assert.equal(args.at(-1),'private.sql');return '├ Checking import progress\nImport complete';}}),[]);
+ assert.throws(()=>executeD1('DELETE FROM users WHERE id=fixture','private.sql',{run:()=>{throw Error('import failed');}}),/import failed/);
+});

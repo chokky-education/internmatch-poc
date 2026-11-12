@@ -6,6 +6,7 @@ _Last updated: 2026-11-13_
 
 ## Now (what is true today)
 
+- **Release operation in progress:** PR #8 merged as `94d72cd` and its required main check passed. Maintenance Worker is active; private D1 export succeeded. Migration 0003 has not been applied yet. The fingerprint helper must use D1 `--command` for SELECT/PRAGMA rather than the import-oriented `--file`; this patch fixes that adapter with regression coverage before migration resumes.
 - **Profile release candidate:** Guided profile/seasons/milestones implemented and Local UAT approved by owner, including the dialog layout revision. 136 backend tests and browser UAT passed before release integration. Feature remains on its branch until PR/CI/merge. Production migration and Worker deployment are pending; follow `docs/profile-release.md`.
 
 - **Shipped on `main`:** LINE-primary / web-fallback backend in `worker/` (auth by email + OTP, Gemini assistant, Paxa OCR with confirm step, cards + `runCardAction`, cron reminders with web-banner fallback). Web app reworked into a 2-column dashboard home and a 5-item menu (commit `71d1cdb`).
@@ -49,3 +50,5 @@ _Last updated: 2026-11-13_
 - 2026-11-12: Index made hand-maintained (script no longer overwrites `INDEX.md`), now covers `worker/`, `.sql`, `.toml`, `.csv`. Added this file.
 
 - 2026-11-13: Owner accepted Local UAT and authorized PR/CI/merge/deploy. Integrated current release tooling, expanded the public asset manifest for profile JS/CSS, and added a temporary maintenance entry plus reviewed migration/production smoke procedure. Production operations are not yet complete at this commit.
+
+- 2026-11-13: Production export succeeded under maintenance; release fingerprinting stopped before migration because Wrangler file execution returns import progress, not result rows. Corrected the helper read/write adapter and added a regression; no production user data changed.
