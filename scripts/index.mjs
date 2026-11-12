@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { readdirSync, readFileSync, statSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve, relative, dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
