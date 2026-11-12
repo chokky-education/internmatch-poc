@@ -9,7 +9,7 @@ const fc = (name, args) => ({ candidates: [{ content: { role: 'model', parts: [{
 const text = t => ({ candidates: [{ content: { role: 'model', parts: [{ text: t }] } }] });
 
 beforeEach(async () => {
-  await env.DB.exec('DELETE FROM users; DELETE FROM applications; DELETE FROM tasks; DELETE FROM documents; DELETE FROM reminders; DELETE FROM audit_log; DELETE FROM messages;');
+  await env.DB.exec('DELETE FROM users; DELETE FROM seasons; DELETE FROM milestones; DELETE FROM pending_actions; DELETE FROM applications; DELETE FROM tasks; DELETE FROM documents; DELETE FROM reminders; DELETE FROM audit_log; DELETE FROM messages;');
   env.GEMINI_API_KEY = 'g-key';
   await env.DB.prepare('INSERT INTO users (id,email,created_at) VALUES (?,?,?)').bind(U, 'ton@example.com', new Date().toISOString()).run();
   await seedDemo(env, U);
@@ -138,4 +138,24 @@ it('never lets a model document flag bypass OCR confirmation',async()=>{
  expect(await apps()).toHaveLength(0);
  const response=geminiBodies[1].contents.at(-1).parts[0].functionResponse.response;
  expect(response.error).toBe('confirmation_required');
+});
+
+it('get_overview surfaces unconfirmed milestones only for the selected internship season', async () => {
+  const { context, createSeason, selectSeason } = await import('../src/seasons.js');
+  const { saveMilestone } = await import('../src/milestones.js');
+  const selectedId = (await context(env, U)).season.id;
+  await saveMilestone(env, U, { title: 'ส่งใบตอบรับคณะ', date: '2099-03-20' }, 'web');
+  const other = await createSeason(env, U, { name: 'สหกิจศึกษา' }, 'web');
+  await selectSeason(env, U, other.season.id, 0, 'web');
+  await saveMilestone(env, U, { title: 'กำหนดการฤดูอื่น', date: '2099-05-01' }, 'web');
+  await selectSeason(env, U, selectedId, 1, 'web');
+
+  queue = [fc('get_overview', {}), text('มีวันสำคัญส่งใบตอบรับคณะ 20 มี.ค. 2099')];
+  const r = await runAssistant(env, U, 'line', 'ช่วงนี้มีกำหนดการอะไรบ้าง');
+  expect(r.ok).toBe(true);
+  const overview = geminiBodies[1].contents.at(-1).parts[0].functionResponse.response;
+  expect(overview.milestones.map(m => ({ title: m.title, date: m.date, truth_level: m.truth_level }))).toEqual([
+    { title: 'ส่งใบตอบรับคณะ', date: '2099-03-20', truth_level: 'USER_REPORTED' },
+  ]);
+  expect(overview.reminders).toEqual([]);
 });
