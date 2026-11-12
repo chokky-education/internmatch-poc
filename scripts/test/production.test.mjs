@@ -75,3 +75,9 @@ test('Pages bundle includes only public assets and a revision manifest', t => {
  assert.deepEqual(executeD1('INSERT INTO users VALUES (...)','private.sql',{run:(_,args)=>{assert.ok(args.includes('--file'));assert.equal(args.at(-1),'private.sql');return '├ Checking import progress\nImport complete';}}),[]);
  assert.throws(()=>executeD1('DELETE FROM users WHERE id=fixture','private.sql',{run:()=>{throw Error('import failed');}}),/import failed/);
 });
+
+test('Pages reruns upload and select an artifact unique to that attempt',()=>{
+ const workflow=readFileSync(new URL('../../.github/workflows/ci.yml',import.meta.url),'utf8');
+ assert.match(workflow,/^\s+name: github-pages-\$\{\{ github\.run_attempt \}\}$/m);
+ assert.match(workflow,/^\s+artifact_name: github-pages-\$\{\{ github\.run_attempt \}\}$/m);
+});

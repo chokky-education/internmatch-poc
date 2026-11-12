@@ -24,13 +24,15 @@ export async function seedUser(env, userId) {
 export async function getOverview(env, userId) {
   const seasonId = await scope(env, userId);
   const q = (sql) => env.DB.prepare(sql).bind(userId, seasonId).all().then(r => r.results);
-  const [apps, tasks, docs, rems] = await Promise.all([
+  const [apps, tasks, docs, rems, milestones] = await Promise.all([
     q('SELECT * FROM applications WHERE user_id=? AND season_id=? ORDER BY updated_at DESC, rowid DESC'),
     q('SELECT * FROM tasks WHERE user_id=? AND season_id=? ORDER BY sort'),
     q("SELECT * FROM documents WHERE user_id=? AND season_id=? ORDER BY created_at, rowid"),
     q('SELECT * FROM reminders WHERE user_id=? AND season_id=? ORDER BY due_at'),
+    q('SELECT * FROM milestones WHERE user_id=? AND season_id=? ORDER BY date IS NULL,date,created_at'),
   ]);
   return {
+    milestones,
     applications: apps.map(a => ({ id: a.id, company: a.company, role: a.role, status: a.status, next_step: a.next_step, url: a.url, truth_level: a.truth_level, verified_by_system: a.truth_level === 'SYSTEM_VERIFIED', history: JSON.parse(a.history_json), updated_at: a.updated_at })),
     university_checklist: tasks.map(t => ({ id: t.id, task: t.title, detail: t.detail, done: !!t.done, truth_level: t.truth_level })),
     my_documents: docs.map(d => ({ id: d.id, kind: d.kind, name: d.title, status: d.status, note: d.note, fields: JSON.parse(d.fields_json), truth_level: d.truth_level })),
