@@ -1,3 +1,4 @@
+import {executeD1} from './d1-query.mjs';
 // Reviewed production verification: private D1 inputs, no OTP/LINE/AI calls.
 import {execFileSync} from 'node:child_process';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
@@ -11,7 +12,7 @@ const literal=v=>"'"+String(v).replaceAll("'","''")+"'";
 let sequence=0;
 function query(sql){
  const file=resolve(privateDir,`query-${Date.now()}-${++sequence}.sql`);writeFileSync(file,sql,{mode:0o600});
- try{return JSON.parse(execFileSync('npx',['wrangler','d1','execute','internmatch','--remote','--json','--file',file],{cwd:resolve(root,'worker'),encoding:'utf8',maxBuffer:32*1024*1024,stdio:['ignore','pipe','pipe']}));}
+ try{return executeD1(sql,file,{cwd:resolve(root,'worker')});}
  catch(e){writeFileSync(resolve(privateDir,'last-query-error.log'),String(e.stderr||e.message),{mode:0o600});throw Error('D1 operation failed; diagnostic saved privately');}
 }
 const tables=['users','sessions','otps','applications','tasks','documents','reminders','messages','extractions','audit_log','line_events'];
