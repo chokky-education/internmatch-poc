@@ -18,7 +18,8 @@ export default {
       const { email, code } = await readJson(req);
       const r = await verifyOtp(env, email, code);
       if (!r.ok) return J(r, r.error === 'locked' ? 429 : 401);
-      return J({ ok: true, email: r.user.email }, 200, { 'Set-Cookie': sessionCookie(await createSession(env, r.user.id)) });
+      const token = await createSession(env, r.user.id);
+      return J({ ok: true, email: r.user.email, token }, 200, { 'Set-Cookie': sessionCookie(token) });
     }
     if (p === '/api/auth/logout' && req.method === 'POST') {
       await destroySession(req, env);

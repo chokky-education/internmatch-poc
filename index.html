@@ -300,11 +300,16 @@ const STAGES=['Saved','Applied','Interview','Offer','Closed'];
 const TH={Saved:'บันทึกไว้',Applied:'สมัครแล้ว',Interview:'สัมภาษณ์',Offer:'ได้รับข้อเสนอ',Closed:'ปิด/ไม่ผ่าน'};
 let apps=[];const reminders=[];let serverState=null;
 const API=window.IM_API||'';
+// iPhone browsers drop the cross-site session cookie, so the session token is also kept here and sent as a header.
+const TOKEN_KEY='im_token';
+const getToken=()=>{try{return localStorage.getItem(TOKEN_KEY)}catch(e){return null}};
+const setToken=t=>{try{t?localStorage.setItem(TOKEN_KEY,t):localStorage.removeItem(TOKEN_KEY)}catch(e){}};
 async function api(path,opts={}){
- const h={...(opts.body&&!(opts.body instanceof FormData)?{'Content-Type':'application/json'}:{}),...(opts.headers||{})};
+ const tk=getToken();
+ const h={...(opts.body&&!(opts.body instanceof FormData)?{'Content-Type':'application/json'}:{}),...(tk?{Authorization:'Bearer '+tk}:{}),...(opts.headers||{})};
  let r,d={};try{r=await fetch(API+path,{credentials:'include',...opts,headers:h});}catch(e){return{ok:false,status:0,data:{error:'network'}};}
  try{d=await r.json();}catch(e){}
- if(r.status===401&&!path.startsWith('/api/auth/'))showLogin();
+ if(r.status===401&&!path.startsWith('/api/auth/')){setToken(null);showLogin();}
  return{ok:r.ok,status:r.status,data:d};}
 const ERRTH={duplicate:'มีบริษัทนี้อยู่แล้ว',system_verified:'ใบสมัครนี้ระบบยืนยัน แก้เองไม่ได้',too_large:'ไฟล์ใหญ่เกิน 10MB',extract_failed:'อ่านเอกสารไม่สำเร็จ ลองใหม่อีกครั้ง',network:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้',already_confirmed:'บันทึกไปแล้ว',missing_company:'อ่านชื่อบริษัทไม่เจอ เพิ่มใบสมัครเองได้ที่หน้าติดตามการสมัคร',unauthorized:'กรุณาเข้าสู่ระบบ'};
 const errMsg=r=>ERRTH[r.data&&r.data.error]||(r.data&&r.data.error)||('เกิดข้อผิดพลาด ('+r.status+')');
@@ -331,8 +336,8 @@ async function loginReq(){const email=$('#loginEmail').value.trim();if(!email)re
  else $('#loginMsg').textContent=r.data.error==='network'?'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่':r.data.error==='not_allowed'?'อีเมลนี้ยังไม่เปิดให้ใช้ในช่วงทดลอง':r.data.error==='too_soon'?'เพิ่งส่งรหัสไป รอ 1 นาทีแล้วลองใหม่':'ส่งอีเมลไม่สำเร็จ ลองใหม่อีกครั้ง';}
 async function loginVerify(){const email=$('#loginEmail').value.trim(),code=$('#loginCode').value.trim();
  const r=await api('/api/auth/verify',{method:'POST',body:JSON.stringify({email,code})});
- if(r.ok){await loadState();}else $('#loginMsg').textContent={network:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่',invalid:'รหัสไม่ถูกต้อง',expired:'รหัสหมดอายุ ขอรหัสใหม่',locked:'ใส่ผิดหลายครั้ง ขอรหัสใหม่'}[r.data.error]||'เข้าสู่ระบบไม่สำเร็จ';}
-async function logout(){await api('/api/auth/logout',{method:'POST'});location.reload();}
+ if(r.ok){setToken(r.data.token);const s=await loadState();if(s!==true){$('#login').classList.add('show');$('#loginMsg').textContent='ยืนยันรหัสแล้ว แต่เปิดข้อมูลไม่ได้ ไม่ต้องใส่รหัสซ้ำ กดรีเฟรชหน้านี้ ถ้ายังไม่ได้ให้แจ้งทีม';}}else $('#loginMsg').textContent={network:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่',invalid:'รหัสไม่ถูกต้อง ถ้ากดขอรหัสหลายครั้ง ใช้รหัสจากอีเมลฉบับล่าสุด',expired:'รหัสหมดอายุ ขอรหัสใหม่',locked:'ใส่ผิดหลายครั้ง ขอรหัสใหม่'}[r.data.error]||'เข้าสู่ระบบไม่สำเร็จ';}
+async function logout(){await api('/api/auth/logout',{method:'POST'});setToken(null);location.reload();}
 const $=s=>document.querySelector(s);
 const today=new Date('2026-11-10');
 const days=d=>Math.round((new Date(d)-today)/864e5);
