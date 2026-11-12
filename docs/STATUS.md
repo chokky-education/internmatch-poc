@@ -11,7 +11,8 @@ _Last updated: 2026-11-13_
 - **Shipped profile/seasons:** PR #8 merged as `94d72cd`; release-verifier repair PR #9 merged as `0eec60a`. The owner accepted Local UAT and the revised milestone dialog. Guided forms now persist through shared Worker/D1 services; education snapshots, multi-season isolation, milestone proposals/rescheduling and original-target confirmations are implemented.
 - **Production Worker/D1 verified:** normal Worker version `36bc7368-e2de-4634-8521-fd91122555f3` is active at 100%, annotated with merged runtime SHA `0eec60a5defea032841138351c22e2d4a520858e`. Migration 0003 applied once; all original fields in 11 legacy tables matched before/after fingerprints, and all migrated season owners/selections validated. A private backup was exported and independently restored/compared locally before migration.
 - **Live feature verification:** authenticated production API smoke passed blank profile, snapshot education, season isolation, milestone confirmation/replay and atomic rescheduling. The short-lived smoke identity and its records were removed; no OTP/LINE/AI test messages were sent. Web revision and four asset hashes plus 16 baseline API/auth/CORS/signature checks passed for `0eec60a`. See `docs/releases/2026-11-13-profile.md`.
-- **CI follow-up:** required checks passed before both merges. Re-running the Pages job after maintenance exposed duplicate artifact names. This patch gives each attempt its own upload/deploy artifact name without changing the application or weakening the required check; verify the latest merged Pages run after this PR. Final integration also includes milestones in the shared assistant overview, even before reminders are confirmed; deploy the resulting merged Worker and repeat safe feature verification.
+- **CI follow-up:** `PR #10` merged as `f1a0843`; main CI run `43284287883` (`check` + Pages) completed with `success`.
+- **Labeled Seam 2 & Seam 3 UAT:** Ran Seam 2 (`worker` Vitest: 18 files, 139 tests including a new `runAssistant` `get_overview` unconfirmed-milestone isolation seam test) and Seam 3 (`scripts/test/*.test.mjs`: 14 tests + guardrails/syntax/Pages build + live `verify-production.mjs` 16/16 baseline checks for `f1a0843`), documented with explicit tester/model/scope labels in `docs/uat/2026-11-13-uat-labeled-report.md`.
 - **Release policy:** agent-owned PR → CI → merge → deploy → verify, including admins. Public-only Pages artifacts carry a revision manifest; Worker operations remain agent-owned using existing local credentials. Secrets/allowlist and real LINE links were preserved.
 
 ## In flight
@@ -32,8 +33,8 @@ _Last updated: 2026-11-13_
 - Finish the authorized security release through current-head PR CI, merge, Worker-before-Pages deploy, legacy session expiry and real feature checks. Do not merge the separate UAT/research/chat-animation PRs as part of this work.
 
 1. Continue only work the owner has authorized. PR #2 and PR #5 are separate open work; review them when requested.
-2. Verify the attempt-specific Pages artifact fix on the latest merged SHA and finish the release handoff. Faculty checklist remains generic.
-3. Replace sample job listings with a real source, keeping "รายงานข้อมูลผิด" and source links.
+2. Deploy the latest merged Worker if `f1a0843` (unconfirmed milestones in shared assistant overview) has not yet been rolled out to Cloudflare, and re-run live production verification (`verify-production.mjs` + safe feature smoke).
+3. Replace sample job listings with a real source, keeping "รายงานข้อมูลผิด" and source links. Faculty checklist remains generic.
 
 ## Gotchas
 
@@ -60,3 +61,5 @@ _Last updated: 2026-11-13_
 - 2026-11-13: Final release inspection added milestones to the shared overview so the assistant can read dates before a reminder has been confirmed. Added an isolation/unconfirmed-reminder regression; no schema change.
 
 - 2026-11-13: Addressed automated review on PR #10 by anchoring artifact regression assertions to complete YAML keys; an `artifact_name` suffix can no longer satisfy the upload `name` assertion.
+
+- 2026-11-13: Ran labeled Seam 2 & Seam 3 UAT (`docs/uat/2026-11-13-uat-labeled-report.md`, Tester: Claude Code / Model: `gemini-default`), added a `runAssistant` `get_overview` unconfirmed-milestone seam test (139/139 Worker tests, 14/14 tooling tests), recorded main CI run `43284287883` success, and verified live baseline `verify-production.mjs` (16/16) for `f1a0843`.
