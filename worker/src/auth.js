@@ -56,10 +56,19 @@ export async function createSession(env, userId) {
 }
 export const sessionCookie = token => `im_session=${token}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${SESSION_MS / 1000}`;
 
-export async function requireUser(req, env) {
+// iPhone browsers (Safari, Chrome, LINE) drop the cookie because the web and the Worker are on different sites,
+// so the web also sends the same session token as a Bearer header. Either one is accepted.
+function sessionToken(req) {
+  const b = /^Bearer ([a-f0-9]{64})$/.exec(req.headers.get('Authorization') || '');
+  if (b) return b[1];
   const m = /(?:^|;\s*)im_session=([a-f0-9]+)/.exec(req.headers.get('Cookie') || '');
-  if (m) {
-    const user = await env.DB.prepare('SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.expires_at > ?').bind(m[1], new Date().toISOString()).first();
+  return m ? m[1] : null;
+}
+
+export async function requireUser(req, env) {
+  const token = sessionToken(req);
+  if (token) {
+    const user = await env.DB.prepare('SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token=? AND s.expires_at > ?').bind(token, new Date().toISOString()).first();
     if (user) return user;
   }
   // Opt-in only in .dev.vars, and never valid on a deployed Worker hostname.
@@ -71,6 +80,6 @@ export async function requireUser(req, env) {
   return env.DB.prepare('SELECT * FROM users WHERE id=?').bind(id).first();
 }
 export async function destroySession(req, env) {
-  const m = /(?:^|;\s*)im_session=([a-f0-9]+)/.exec(req.headers.get('Cookie') || '');
-  if (m) await env.DB.prepare('DELETE FROM sessions WHERE token=?').bind(m[1]).run();
+  const token = sessionToken(req);
+  if (token) await env.DB.prepare('DELETE FROM sessions WHERE token=?').bind(token).run();
 }
