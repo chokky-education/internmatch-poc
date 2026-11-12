@@ -1,0 +1,31 @@
+async (page) => {
+ const check=(condition,message)=>{if(!condition)throw Error(message);};
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('http://localhost:8787/__uat/login?account=a');
+ await page.waitForFunction(()=>!!serverState);
+ const image='<img src="/__probe_missing" onerror="window.__securityProbe=1"> ไทย & "quote"';
+ const svg='<svg onload="window.__securityProbe=2"></svg>';
+ await page.evaluate(()=>{profileDirty=false;go('tracker');openAdd();});
+ await page.locator('#aCo').fill('Security '+image);await page.locator('#aRole').fill(svg);
+ await page.locator('#mAdd .btn').filter({hasText:'บันทึก'}).click();
+ await page.waitForFunction(company=>apps.some(a=>a.co===company),'Security '+image);
+ await page.evaluate(async next=>{const a=apps.find(a=>a.co.startsWith('Security '));const r=await api('/api/applications/'+a.id,{method:'PATCH',body:JSON.stringify({status:'Saved',next_step:next})});if(!r.ok)throw Error('update failed');await loadState();},'&lt;img onerror=literal&gt; '+image);
+ const quoted='ไทย" autofocus onfocus="window.__securityProbe=3';
+ await page.evaluate(async name=>{const r=await api('/api/profile',{method:'PATCH',body:JSON.stringify({profile:{preferred_name:name},version:serverState.profile_version})});if(!r.ok)throw Error('profile failed');},quoted);
+ await page.reload();await page.waitForFunction(()=>!!serverState);
+ await page.evaluate(()=>{profileOverview=false;profileStep=0;go('onboard');renderProfileUI(true);});
+ const input=page.locator('#profileSetup [name=preferred_name]');
+ check(await input.inputValue()===quoted,'quoted profile did not round-trip');
+ check(await input.getAttribute('onfocus')===null&&await input.getAttribute('autofocus')===null,'attribute injection');
+ await input.focus();
+ await page.evaluate(key=>renderOut({id:'local-fixture',doc_type:'job_post',fields:{[key]:'plain text'}}),image);
+ check(await page.locator('#kanban img,#kanban svg,#ocrOut img,#ocrOut svg').count()===0,'injected element');
+ check(await page.evaluate(()=>!window.__securityProbe&&!document.cookie.includes('__Host-im_session')&&localStorage.getItem('im_token')===null&&sessionStorage.getItem('im_token')===null),'script executed or credential exposed');
+ const cookies=await page.context().cookies();check(cookies.some(c=>c.name==='__Host-im_session'&&c.httpOnly&&c.secure&&c.sameSite==='Lax'),'secure cookie missing');
+ await page.getByText('ออกจากระบบ',{exact:true}).click();await page.locator('#login.show').waitFor();
+ check((await page.request.get('http://localhost:8787/api/me')).status()===401,'logout failed');
+ await page.goto('http://localhost:8787/__uat/login?account=a');await page.waitForFunction(()=>!!serverState);
+ check(await page.evaluate(()=>apps.some(a=>a.co.startsWith('Security '))),'relogin lost data');
+ check(errors.length===0,'browser script error');
+ return {ok:true,checks:['persisted manual application and next step stay text','SVG/entity alternate representations stay inert','quoted profile value remains one attribute after reload','unknown OCR key stays text','HttpOnly cookie and no browser storage credential','logout and relogin preserve data']};
+}

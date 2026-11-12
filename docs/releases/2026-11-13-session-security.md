@@ -11,7 +11,7 @@ Scope approved by the owner: close stored-XSS rendering and browser-readable ses
 
 ## Local evidence and legitimate behavior
 
-Before the fix, four actual-renderer regressions failed (board markup, document/task text, input quote breakout, unknown OCR key). Three Worker regressions also failed (JSON secret, reusable old session, cross-origin mutation). After implementation the same cases pass. Run backend Vitest, tooling tests, syntax, guardrails, index and artifact build from the release workflow, then browser checks against isolated local D1/providers. The preserved controls include normal Thai/quotes/ampersands, board movement, OCR confirmation/truth, profile edits, LINE linkage and season isolation.
+Before the fix, four actual-renderer regressions failed (board markup, document/task text, input quote breakout, unknown OCR key). Three Worker regressions also failed (JSON secret, reusable old session, cross-origin mutation). After implementation the same cases pass. `scripts/uat/security-browser.js` runs the real local UI storage/rendering/cookie/logout regression through Playwright against `scripts/uat/server.mjs`. Run backend Vitest, tooling tests, syntax, guardrails, index and artifact build from the release workflow, then browser checks against isolated local D1/providers. The preserved controls include normal Thai/quotes/ampersands, board movement, OCR confirmation/truth, profile edits, LINE linkage and season isolation.
 
 ## Deployment and data operation
 
