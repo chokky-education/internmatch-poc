@@ -6,15 +6,11 @@ _Last updated: 2026-11-13_
 
 ## Now (what is true today)
 
-- **Release operation in progress:** PR #8 merged as `94d72cd` and its required main check passed. Maintenance Worker is active; private D1 export succeeded. Migration 0003 has not been applied yet. The fingerprint helper must use D1 `--command` for SELECT/PRAGMA rather than the import-oriented `--file`; this patch fixes that adapter with regression coverage before migration resumes.
-- **Profile release candidate:** Guided profile/seasons/milestones implemented and Local UAT approved by owner, including the dialog layout revision. 136 backend tests and browser UAT passed before release integration. Feature remains on its branch until PR/CI/merge. Production migration and Worker deployment are pending; follow `docs/profile-release.md`.
-
-- **Shipped on `main`:** LINE-primary / web-fallback backend in `worker/` (auth by email + OTP, Gemini assistant, Paxa OCR with confirm step, cards + `runCardAction`, cron reminders with web-banner fallback). Web app reworked into a 2-column dashboard home and a 5-item menu (commit `71d1cdb`).
-- **Live:** Pages publishes through GitHub Actions after the required `check` job. The live `release.json` identifies the deployed SHA; HTML/config hashes are checked against it. Worker `internmatch-api` remains unchanged by the release-tooling work and retains the earlier auth allowlist repair.
-- **Release policy:** `AGENTS.md` and `docs/release-workflow.md` require agent-owned PR → CI → merge → deploy → production verification, including operational changes. CI checks backend/tooling/docs and gates the Pages deployment; the live manifest and asset hashes identify the merged commit. Worker/DB/secrets deploy remains the agent's responsibility using existing local credentials.
-- **Verified repository settings (2026-11-12):** PR #4 merged as `b69b77f`; required PRs and strict GitHub Actions `check` are enabled on `main`, including admins. Force pushes/deletions are disabled and conversations must be resolved. Pages source is `workflow`. CI run `43204001491` passed both `check` and `deploy-pages`; standalone live verification passed all 14 baseline checks for that SHA. [CI/deploy evidence](https://github.com/chokky-education/internmatch-poc/actions/runs/43204001491). Settings were read back from GitHub, not inferred from files. Always re-check current settings and live revision when continuing a release.
-- **Auth repair already shipped:** the four existing team accounts were restored to the production allowlist; the affected user re-linked LINE and successfully continued chatting. The cause of the earlier missing LINE binding was not conclusively located. Web logout preserves LINE linking in the backend test suite.
-- **Prototype limits:** only emails in the `ALLOWED_EMAILS` secret can log in.
+- **Shipped profile/seasons:** PR #8 merged as `94d72cd`; release-verifier repair PR #9 merged as `0eec60a`. The owner accepted Local UAT and the revised milestone dialog. Guided forms now persist through shared Worker/D1 services; education snapshots, multi-season isolation, milestone proposals/rescheduling and original-target confirmations are implemented.
+- **Production Worker/D1 verified:** normal Worker version `36bc7368-e2de-4634-8521-fd91122555f3` is active at 100%, annotated with merged runtime SHA `0eec60a5defea032841138351c22e2d4a520858e`. Migration 0003 applied once; all original fields in 11 legacy tables matched before/after fingerprints, and all migrated season owners/selections validated. A private backup was exported and independently restored/compared locally before migration.
+- **Live feature verification:** authenticated production API smoke passed blank profile, snapshot education, season isolation, milestone confirmation/replay and atomic rescheduling. The short-lived smoke identity and its records were removed; no OTP/LINE/AI test messages were sent. Web revision and four asset hashes plus 16 baseline API/auth/CORS/signature checks passed for `0eec60a`. See `docs/releases/2026-11-13-profile.md`.
+- **CI follow-up:** required checks passed before both merges. Re-running the Pages job after maintenance exposed duplicate artifact names. This patch gives each attempt its own upload/deploy artifact name without changing the application or weakening the required check; verify the latest merged Pages run after this PR. Worker runtime is unchanged by this patch and must not be redeployed for it.
+- **Release policy:** agent-owned PR → CI → merge → deploy → verify, including admins. Public-only Pages artifacts carry a revision manifest; Worker operations remain agent-owned using existing local credentials. Secrets/allowlist and real LINE links were preserved.
 
 ## In flight
 
@@ -32,7 +28,7 @@ _Last updated: 2026-11-13_
 ## Next (suggested, not yet agreed with the owner)
 
 1. Continue only work the owner has authorized. PR #2 and PR #5 are separate open work; review them when requested.
-2. Finish the authorized profile release via PR/CI/merge, guarded D1 migration, Worker deployment and separate live verification. Faculty checklist remains generic.
+2. Verify the attempt-specific Pages artifact fix on the latest merged SHA and finish the release handoff. Faculty checklist remains generic.
 3. Replace sample job listings with a real source, keeping "รายงานข้อมูลผิด" and source links.
 
 ## Gotchas
@@ -52,3 +48,5 @@ _Last updated: 2026-11-13_
 - 2026-11-13: Owner accepted Local UAT and authorized PR/CI/merge/deploy. Integrated current release tooling, expanded the public asset manifest for profile JS/CSS, and added a temporary maintenance entry plus reviewed migration/production smoke procedure. Production operations are not yet complete at this commit.
 
 - 2026-11-13: Production export succeeded under maintenance; release fingerprinting stopped before migration because Wrangler file execution returns import progress, not result rows. Corrected the helper read/write adapter and added a regression; no production user data changed.
+
+- 2026-11-13: Production migration and Worker release verified with protected backup, 11-table fingerprints, authenticated API smoke and complete fixture cleanup. Fixed Pages rerun artifact selection after a failed maintenance-overlap verification; this follow-up changes only release tooling/docs.
