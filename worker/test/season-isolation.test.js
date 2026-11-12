@@ -52,3 +52,15 @@ it('a rapid repeated application request inserts and audits only once',async()=>
  expect((await getOverview(env,U)).applications).toHaveLength(1);
  expect((await env.DB.prepare("SELECT * FROM audit_log WHERE entity='application'").all()).results).toHaveLength(1);
 });
+it('assistant overview includes milestones before reminder confirmation, only in the captured season',async()=>{
+ const {saveMilestone}=await import('../src/milestones.js');
+ const origin=(await context(env,U)).season.id;
+ const m=await saveMilestone(env,U,{title:'Faculty deadline',date:'2099-03-20'},'web');
+ const other=await createSeason(env,U,{name:'next'},'web');
+ await selectSeason(env,U,other.season.id,0,'line');
+ expect((await getOverview(env,U)).milestones).toHaveLength(0);
+ const original=await getOverview(scoped(env,origin),U);
+ expect(original.milestones[0].id).toBe(m.id);
+ expect(original.milestones[0].truth_level).toBe('USER_REPORTED');
+ expect(original.reminders).toHaveLength(0);
+});
