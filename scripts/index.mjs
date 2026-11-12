@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { readdirSync, readFileSync, statSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve, relative, dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
@@ -7,10 +7,10 @@ import { performance } from 'node:perf_hooks';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const STORE = join(ROOT, '.local-index');
-const VERSION = '1';
-const extensions = new Set(['.md','.html','.htm','.js','.mjs','.json','.css','.txt']);
-const ignoredDirs = new Set(['node_modules','.git','.local-index','.cursor','.vscode','dist','build']);
-const ignoredFiles = new Set(['INDEX.md','package-lock.json','pnpm-lock.yaml']);
+const VERSION = '2';
+const extensions = new Set(['.md','.html','.htm','.js','.mjs','.json','.css','.txt','.sql','.toml','.csv']);
+const ignoredDirs = new Set(['node_modules','.git','.local-index','.cursor','.vscode','dist','build','.pages','.playwright-cli','.claude','.worktrees']);
+const ignoredFiles = new Set(['package-lock.json','pnpm-lock.yaml']);
 const sha = value => createHash('sha256').update(value).digest('hex');
 const clip = (s,n) => s.length > n ? s.slice(0,Math.max(0,n-1))+'…' : s;
 const compact = s => s.replace(/\s+/gu,' ').trim();
@@ -131,9 +131,9 @@ function chunks(text, kind, title, ref) {
 }
 
 function classifyKind(path) {
-  if(path === 'PRD.md' || path === 'UI_UX_SPEC.md') return 'spec';
-  if(path.endsWith('.md')) return 'doc';
-  if(path.endsWith('.json')) return 'schema';
+  if(path === 'PRD.md' || path === 'UI_UX_SPEC.md' || path.startsWith('docs/superpowers/')) return 'spec';
+  if(path.endsWith('.md') || path.endsWith('.csv')) return 'doc';
+  if(path.endsWith('.json') || path.endsWith('.sql') || path.endsWith('.toml')) return 'schema';
   return 'code';
 }
 
@@ -168,42 +168,10 @@ function overview() {
   return { project: ROOT, updated: db.prepare("SELECT value FROM meta WHERE key='updated'").get()?.value, kinds };
 }
 
+// INDEX.md is hand-maintained (it used to be regenerated from a stale template
+// here, which silently wiped edits). Only warn if it is missing.
 function writeMap() {
-  const text = `# Project Map & Index: InternMatch
-
-Generated locally. Search automatically refreshes changed project files and specifications.
-
-\`node scripts/index.mjs search "คำค้น" [--kind doc|spec|code]\`
-\`node scripts/index.mjs files "filename" [--path src/]\`
-\`node scripts/index.mjs show <id> [--around keyword] [--context 3]\`
-
-Output is capped at 2,500 characters to protect AI context budgets.
-
-## File & Module Map
-
-| Component / Task | File / Path | Type | Description |
-| --- | --- | --- | --- |
-| **Interactive Web App (POC)** | \`index.html\` | Code | Complete single-page app (All 8 screens, Kanban, AI Chatbot, Paxa OCR, Admin Portal) |
-| **Product Requirements (PRD)** | \`PRD.md\` | Spec | Full Product Requirements Document (Positioning, Features, Data Pipeline, Metrics) |
-| **UI/UX Design Spec** | \`UI_UX_SPEC.md\` | Spec | Screen-by-screen UX/UI specifications, design tokens, component interactions & AI prompts |
-| **Agent Instructions** | \`AGENTS.md\` | Doc | Guidance for incoming AI Agents on rules, architecture invariants, and tools |
-| **Indexing Script** | \`scripts/index.mjs\` | Code | FTS5 trigram SQLite local indexer CLI for seamless AI agent navigation |
-| **Live Deployed App** | [GitHub Pages](https://chokky-education.github.io/internmatch-poc/) | Live | Deployed public demo running on GitHub Pages |
-
-## Key Concepts & Truth Hierarchy
-- **Positioning:** "ผู้ช่วยพาคุณผ่านฤดูฝึกงาน" (ไม่ใช่แค่ Job Board แต่เป็น Action-first Project Manager สำหรับนักศึกษาไทย)
-- **Truth Levels:**
-  - \`SYSTEM_VERIFIED\` (เขียว): ได้รับการยืนยันจากคณะ หรือส่งผ่านระบบ InternMatch
-  - \`USER_REPORTED\` (เทา/น้ำเงิน): ข้อมูลที่นักศึกษากรอกหรือย้ายการ์ดเอง
-  - \`AI_EXTRACTED\` (เหลือง): สกัดจากรูปภาพโพสต์งานหรือเอกสาร ต้องรอผู้ใช้ตรวจก่อน
-- **Dual AI Engine:**
-  - **Paxa Labs Document Extraction API** (\`paxa-doc-extract-v1\`): อ่านรูปภาพโพสต์งาน, คู่มือคณะ, Transcript, หนังสือตอบรับ
-  - **Gemini 3.8 Flash**: สมองแชทบอท "พี่ฝึกงาน" พร้อม Function Calling จัดการ State บอร์ดและเช็กลิสต์
-`;
-  const p = join(ROOT, 'INDEX.md');
-  if(!existsSync(p) || readFileSync(p, 'utf8') !== text) {
-    writeFileSync(p, text);
-  }
+  if(!existsSync(join(ROOT, 'INDEX.md'))) console.error('warning: INDEX.md missing; restore it from git');
 }
 
 const started = performance.now();

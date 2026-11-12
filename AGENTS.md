@@ -1,5 +1,7 @@
 # InternMatch: AI Agent Instructions & Operating Manual
 
+> ไฟล์นี้คือคำสั่งชุดเดียวสำหรับทุก harness (Claude Code อ่านผ่าน `CLAUDE.md`, Gemini CLI ผ่าน `GEMINI.md`, Codex/Cursor/Copilot อ่านไฟล์นี้ตรง) แก้ที่นี่ที่เดียว อย่าเพิ่มคำสั่งในไฟล์ชี้ทาง
+
 > **สำหรับ AI Agent ทุกตัวที่เข้ามารับช่วงต่อ (Continuation Guide)**  
 > โครงการนี้คือ **InternMatch (ผู้ช่วยพาคุณผ่านฤดูฝึกงาน)** แพลตฟอร์มช่วยนักศึกษาไทยบริหารจัดการการฝึกงานภาคบังคับและสหกิจศึกษา
 
@@ -7,13 +9,14 @@
 
 ## 1. ค้นหาบริบทก่อนเริ่มทำงาน (Find Context First)
 
-1. อ่าน `INDEX.md` เพื่อดูแผนผังไฟล์และสถาปัตยกรรมภาพรวม
-2. **ค้นหาด้วยคำสั่ง Index ก่อนอ่านไฟล์ดิบเสมอ:**
+1. อ่าน `docs/STATUS.md` ก่อน: งานอยู่ตรงไหน, อะไรค้างอยู่, ทำอะไรต่อ แล้วอ่าน `INDEX.md` เพื่อดูแผนผังไฟล์และสถาปัตยกรรมภาพรวม
+2. **ค้นหาด้วยคำสั่ง Index ก่อนอ่านไฟล์ดิบเสมอ** (ต้องใช้ Node 24+ เพราะใช้ `node:sqlite` ถ้ารันไม่ได้ให้ใช้ `rg` แทน):
    - ค้นหาตามเนื้อหา: `node scripts/index.mjs search "คำค้น" [--kind doc|spec|code]`
    - ค้นหารายชื่อไฟล์: `node scripts/index.mjs files "ชื่อไฟล์" [--path src/]`
    - เปิดดูเนื้อหาเฉพาะส่วน: `node scripts/index.mjs show <chunk-id> [--around "คำค้น"] [--context 3]`
    - ผลลัพธ์ถูกจำกัดความยาวไม่เกิน 2,500 ตัวอักษร เพื่อประหยัด Token Budget
-3. ไฟล์หลักที่ต้องอ่านเพื่อเข้าใจงาน:
+3. **ก่อนเปลี่ยนสถาปัตยกรรมหรือขอบเขต ให้อ่าน `docs/adr/`** ทุกไฟล์บันทึกการตัดสินใจที่ตั้งใจไว้แล้ว ถ้าจะทำต่างออกไปต้องถามเจ้าของก่อน ถ้าตัดสินใจเรื่องที่ย้อนกลับยากใหม่ ให้เพิ่ม ADR (รูปแบบสั้น 1 ย่อหน้า เลขเรียงต่อกัน)
+4. ไฟล์หลักที่ต้องอ่านเพื่อเข้าใจงาน:
    - สเปก UI/UX และระบบดีไซน์ทั้งหมด: `UI_UX_SPEC.md`
    - ข้อกำหนดผลิตภัณฑ์และ Data Pipeline: `PRD.md`
    - โค้ดต้นแบบระบบที่รันได้จริง: `index.html`
@@ -66,19 +69,19 @@
 
 ---
 
-## 4. ขั้นตอนก่อนรายงานผลงานสำเร็จ (Before Reporting Success)
+## 4. ส่งงานจนตรวจระบบจริงเสร็จ (Required release workflow)
 
-เมื่อทำการแก้ไขหรือพัฒนาฟีเจอร์ใหม่เสร็จสิ้น ให้ปฏิบัติตามขั้นตอนต่อไปนี้เสมอ:
-0. **รันเทสต์ backend:** `cd worker && npx vitest run` (ต้องผ่านทั้งหมด)
-1. **ตรวจสอบความถูกต้องของ Syntax:**  
-   `node -e "const h=require('fs').readFileSync('index.html','utf8');[...h.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)].forEach(m=>new Function(m[1]));console.log('OK')"`
-2. **รีเฟรชระบบ Index:**  
-   `node scripts/index.mjs refresh`  
-   ตรวจสอบให้แน่ใจว่าไฟล์ที่ถูกเพิ่มหรือแก้ไขถูกอัปเดตลง Index
-3. **Commit และ Push ขึ้น GitHub:**  
-   `git add . && git commit -m "คำอธิบายงาน" && git push origin main`
-4. **ตรวจสอบการ Deploy:**  
-   ระบบจะ Deploy ขึ้น GitHub Pages โดยอัตโนมัติภายใน 30-45 วินาที
+**ทุกงานที่เปลี่ยน repo หรือ production ใช้ลำดับ PR → CI → merge → deploy → ตรวจระบบจริง** รวมเอกสาร, config, secrets และการแก้ข้อมูล ไม่มีการ push เข้า `main` ตรงหรือใช้ admin ข้ามกฎ
+
+1. **เตรียม:** อ่าน [docs/release-workflow.md](docs/release-workflow.md) ก่อนเปลี่ยนไฟล์/ตั้งค่าระบบจริง เช็กสถานะ Git และ PR ปัจจุบัน ใช้ branch `codex/…` หรือ branch ของ PR ที่รับช่วง เก็บงานอื่นของผู้ใช้ไว้ตามเดิม
+2. **แก้และตรวจ:** อัปเดต `docs/STATUS.md` ตามสิ่งที่ทำจริงและ `INDEX.md` เมื่อแผนผังเปลี่ยน รัน backend tests, syntax, guardrails, release-tool tests และ index ตามคำสั่งใน workflow รีวิว diff ตาม `CODING_STANDARDS.md` และแก้ประเด็นที่พบ
+3. **PR → CI:** push เฉพาะ branch งาน → สร้างหรืออัปเดต PR → รอ required check ชื่อ `check` ของ GitHub Actions ผ่านบน revision ล่าสุด ถ้า base เปลี่ยนให้อัปเดต branch และรันใหม่
+4. **Merge:** เมื่อทำงานที่ผู้ใช้อนุมัติครบและ CI ผ่าน ให้ Agent merge PR เองตาม runbook ผู้ใช้อนุมัติขั้นตอนประจำนี้ไว้แล้ว ไม่หยุดรอให้ผู้ใช้ merge หรือยืนยัน deploy ซ้ำ ถ้าผู้ใช้สั่งให้ส่งแค่ draft/รีวิว ให้รักษาขอบเขตนั้น
+5. **Deploy:** ตามงานของ merged commit จนจบ CI บน `main` ต้องผ่านก่อน Pages deploy; Agent รับผิดชอบ deploy Worker/DB/secret ที่ PR ต้องใช้จาก merged checkout ด้วยเครื่องมือที่ล็อกอินไว้ ดูเงื่อนไขแต่ละชนิดใน runbook
+6. **ตรวจระบบจริง:** ยืนยัน Pages เป็น merged SHA และเนื้อหาตรง artifact, รัน production smoke, ตรวจ release/version ของ Worker ถ้าเปลี่ยน และตรวจ flow ที่แก้จริงทั้งเว็บ/LINE ตามผลกระทบ เก็บหลักฐานและข้อจำกัดในรายงานงาน อย่าใช้แค่ health endpoint แทนการตรวจฟีเจอร์
+7. **ปิดงาน:** รายงาน PR, merged SHA, CI, deploy และผลตรวจจริงอย่างแยกกัน งานยังไม่เสร็จถ้า CI/deploy/verification ล้มเหลว ให้ตามแก้ต่อ หากขาดสิทธิ์/OTP/credential ที่จำเป็น ให้ระบุสิ่งที่ขาดและขอเฉพาะส่วนนั้น
+
+ค่าลับไม่อยู่ใน Git: PR ของงาน secrets/ข้อมูลจริงต้องมีแผนที่ไม่เปิดเผยค่า เป้าหมาย ผลที่คาด วิธีตรวจ และวิธีย้อนกลับ ผ่าน CI/merge ก่อนใช้ค่าจริง ห้ามเดา LINE ID, เปิดสิทธิ์เพิ่ม หรือเปลี่ยน API key นอกขอบเขตที่ผู้ใช้อนุมัติ
 
 ---
 

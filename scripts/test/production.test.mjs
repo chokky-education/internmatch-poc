@@ -1,0 +1,66 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import { createHash } from 'node:crypto';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { verifyProduction } from '../verify-production.mjs';
+const commit = 'a'.repeat(40), hash = s => createHash('sha256').update(s).digest('hex');
+async function liveFixture(t, { staleCommit = false, staleAsset = false, brokenAuth = false } = {}) {
+  const server = createServer();
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => { server.closeAllConnections(); server.close(); });
+  const apiUrl = `http://127.0.0.1:${server.address().port}`;
+  const webUrl = apiUrl + '/app/';
+  const html = '<title>InternMatch</title><div id="login"></div><script src="config.js"></script>';
+  const config = `window.IM_API = '${apiUrl}';`;
+  server.on('request', (req, res) => {
+    const path = new URL(req.url, apiUrl).pathname;
+    const json = (body, status = 200) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
+    if (req.headers.origin === new URL(webUrl).origin) {
+      res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+    }
+    if (path === '/app/release.json') return json({ commit: staleCommit ? 'b'.repeat(40) : commit, files: { 'index.html': hash(html), 'config.js': hash(config) } });
+    if (path === '/app/') return res.end(staleAsset ? 'old page' : html);
+    if (path === '/app/config.js') return res.end(config);
+    if (path === '/api/health') return json({ ok: true });
+    if (path === '/api/state' && req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+    if (path === '/api/me' || path === '/api/state') return json({ error: 'unauthorized' }, 401);
+    if (path === '/api/auth/verify') return json({ ok: false, error: 'invalid' }, brokenAuth ? 500 : 401);
+    if (path === '/line/webhook') return json({ error: 'bad_signature' }, 401);
+    return json({ error: 'not_found' }, 404);
+  });
+  return { apiUrl, webUrl, commit };
+}
+
+test('checks the deployed revision, asset contents, CORS, auth and LINE signature gate', async t => {
+  const checks = await verifyProduction(await liveFixture(t));
+  assert.ok(checks.length >= 8);
+});
+test('an old release is a deployment failure', async t => {
+  await assert.rejects(verifyProduction(await liveFixture(t, { staleCommit: true })), /revision/);
+});
+test('an updated marker with stale cached HTML is a deployment failure', async t => {
+  await assert.rejects(verifyProduction(await liveFixture(t, { staleAsset: true })), /index.html/);
+});
+test('a failing OTP verification route is not hidden by a healthy health endpoint', async t => {
+  await assert.rejects(verifyProduction(await liveFixture(t, { brokenAuth: true })), /OTP/);
+});
+test('Pages bundle includes only public assets and a revision manifest', t => {
+  const root = mkdtempSync(join(tmpdir(), 'internmatch-pages-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, 'scripts')); mkdirSync(join(root, 'worker'));
+  writeFileSync(join(root, 'scripts/build-pages.mjs'), readFileSync(new URL('../build-pages.mjs', import.meta.url)));
+  writeFileSync(join(root, 'index.html'), '<title>InternMatch</title>');
+  writeFileSync(join(root, 'config.js'), 'window.IM_API="https://example.test";');
+  writeFileSync(join(root, 'worker/.dev.vars'), 'must never be published');
+  execFileSync(process.execPath, ['scripts/build-pages.mjs', commit], { cwd: root });
+  assert.deepEqual(readdirSync(join(root, '.pages')).sort(), ['config.js', 'index.html', 'release.json']);
+  const release = JSON.parse(readFileSync(join(root, '.pages/release.json')));
+  assert.equal(release.commit, commit);
+  assert.equal(release.files['index.html'], hash('<title>InternMatch</title>'));
+});
