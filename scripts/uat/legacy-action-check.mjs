@@ -1,4 +1,4 @@
-const headers={Authorization:'Bearer '+'b'.repeat(64),'Content-Type':'application/json'};
+const headers={Cookie:'__Host-im_session='+'b'.repeat(64),Origin:'http://localhost:8787','Content-Type':'application/json'};
 const call=async(path,method='GET',body)=>{const r=await fetch('http://localhost:8787'+path,{method,headers,...(body?{body:JSON.stringify(body)}:{})});return {status:r.status,data:await r.json()};};
 let s=(await call('/api/state')).data;
 const legacy=s.seasons.find(x=>x.name==='ฤดูฝึกงานเดิม');

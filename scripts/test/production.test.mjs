@@ -13,22 +13,26 @@ async function liveFixture(t, { staleCommit = false, staleAsset = false, brokenA
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => { server.closeAllConnections(); server.close(); });
   const apiUrl = `http://127.0.0.1:${server.address().port}`;
-  const webUrl = apiUrl + '/app/';
+  const webUrl = apiUrl + '/legacy/';
   const html = '<title>InternMatch</title><div id="login"></div><script src="config.js"></script>';
-  const config = `window.IM_API = '${apiUrl}';`;
+  const config = 'window.IM_API = location.origin;';
+  const launcher = '<title>เปิด InternMatch</title><script src="legacy-redirect.js"></script>';
+  const redirect = `localStorage.removeItem('im_token');location.replace(${JSON.stringify(apiUrl + '/')});`;
+  const appFiles = { 'index.html': html, 'config.js': config, 'profile-ui.js': 'profile script', 'profile-ui.css': 'profile style' };
+  const launcherFiles = { 'index.html': launcher, 'legacy-redirect.js': redirect };
   server.on('request', (req, res) => {
     const path = new URL(req.url, apiUrl).pathname;
     const json = (body, status = 200) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
-    if (req.headers.origin === new URL(webUrl).origin) {
+    if (req.headers.origin === apiUrl) {
       res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
       res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,X-Season-Id');
     }
-    if (path === '/app/release.json') return json({ commit: staleCommit ? 'b'.repeat(40) : commit, files: { 'index.html': hash(html), 'config.js': hash(config), 'profile-ui.js':hash('profile script'),'profile-ui.css':hash('profile style') } });
-    if (path === '/app/') return res.end(staleAsset ? 'old page' : html);
-    if (path === '/app/config.js') return res.end(config);
-    if(path==='/app/profile-ui.js')return res.end('profile script');
-    if(path==='/app/profile-ui.css')return res.end('profile style');
+    if (path === '/api/auth/logout') return json({ error: 'untrusted_origin' }, 403);
+    if (path === '/release.json' || path === '/legacy/release.json') return json({ commit: staleCommit ? 'b'.repeat(40) : commit, files: Object.fromEntries(Object.entries(path.startsWith('/legacy/') ? launcherFiles : appFiles).map(([k,v]) => [k,hash(v)])) });
+    const bundle = path.startsWith('/legacy/') ? launcherFiles : appFiles;
+    const name = path.replace(/^\/legacy\//, '/').slice(1) || 'index.html';
+    if (name in bundle) return res.end(staleAsset && name === 'index.html' ? 'old page' : bundle[name]);
     if (path === '/api/health') return json({ ok: true });
     if (path === '/api/state' && req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
     if (path === '/api/me' || path === '/api/state') return json({ error: 'unauthorized' }, 401);
@@ -63,10 +67,16 @@ test('Pages bundle includes only public assets and a revision manifest', t => {
   writeFileSync(join(root,'profile-ui.css'),'profile style');
   writeFileSync(join(root, 'worker/.dev.vars'), 'must never be published');
   execFileSync(process.execPath, ['scripts/build-pages.mjs', commit], { cwd: root });
-  assert.deepEqual(readdirSync(join(root, '.pages')).sort(), ['config.js', 'index.html','profile-ui.css','profile-ui.js', 'release.json']);
+  assert.deepEqual(readdirSync(join(root, '.pages')).sort(), ['index.html', 'legacy-redirect.js', 'release.json']);
   const release = JSON.parse(readFileSync(join(root, '.pages/release.json')));
   assert.equal(release.commit, commit);
-  assert.equal(release.files['index.html'], hash('<title>InternMatch</title>'));
+  const app = JSON.parse(readFileSync(join(root, '.app/release.json')));
+  assert.equal(app.files['index.html'], hash('<title>InternMatch</title>'));
+  assert.deepEqual(readdirSync(join(root,'.app')).sort(), ['config.js','index.html','profile-ui.css','profile-ui.js','release.json']);
+  assert.ok(!readFileSync(join(root,'.pages/index.html'),'utf8').includes('id="login"'));
+  const redirect=readFileSync(join(root,'.pages/legacy-redirect.js'),'utf8');
+  assert.ok(redirect.indexOf('removeItem') < redirect.indexOf('location.replace'));
+  assert.ok(!redirect.includes('location.search'));
 });
 
  test('D1 read commands preserve result JSON; file writes accept import progress without exposing SQL',async()=>{
@@ -81,3 +91,9 @@ test('Pages reruns upload and select an artifact unique to that attempt',()=>{
  assert.match(workflow,/^\s+name: github-pages-\$\{\{ github\.run_attempt \}\}$/m);
  assert.match(workflow,/^\s+artifact_name: github-pages-\$\{\{ github\.run_attempt \}\}$/m);
 });
+
+ test('Pages launcher publication waits for the matching Worker release',()=>{
+ const workflow=readFileSync(new URL('../../.github/workflows/ci.yml',import.meta.url),'utf8');
+ assert.ok(workflow.indexOf('--app-only') < workflow.indexOf('actions/upload-pages-artifact'));
+ assert.match(workflow,/timeout-minutes: 15/);
+ });

@@ -9,7 +9,7 @@ beforeEach(async () => {
 
 describe('local development login', () => {
   it('opens the app without OTP and keeps checklist changes across requests', async () => {
-    const bindings = { LOCAL_DEV_LOGIN: 'true' };
+    const bindings = { LOCAL_DEV_LOGIN: 'true', WEB_ORIGIN: 'http://localhost:8787' };
     const first = await call('http://localhost:8787/api/state', bindings);
     expect(first.status).toBe(200);
     const state = await first.json();
@@ -17,7 +17,7 @@ describe('local development login', () => {
     expect(state.university_checklist).toHaveLength(6);
     const task = state.university_checklist[0];
     const update = await call(`http://localhost:8787/api/tasks/${task.id}`, bindings, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json','X-Season-Id':state.selected_season.id,'X-Selection-Version':String(state.selection_version) }, body: JSON.stringify({ done: true }),
+      method: 'PATCH', headers: { Origin: 'http://localhost:8787', 'Content-Type': 'application/json','X-Season-Id':state.selected_season.id,'X-Selection-Version':String(state.selection_version) }, body: JSON.stringify({ done: true }),
     });
     expect(update.status).toBe(200);
     const again = await (await call('http://127.0.0.1:8787/api/state', bindings)).json();

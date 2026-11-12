@@ -292,16 +292,13 @@ const STAGES=['Saved','Applied','Interview','Offer','Closed'];
 const TH={Saved:'บันทึกไว้',Applied:'สมัครแล้ว',Interview:'สัมภาษณ์',Offer:'ได้รับข้อเสนอ',Closed:'ปิด/ไม่ผ่าน'};
 let apps=[];const reminders=[];let serverState=null;
 const API=window.IM_API||'';
-// iPhone browsers drop the cross-site session cookie, so the session token is also kept here and sent as a header.
-const TOKEN_KEY='im_token';
-const getToken=()=>{try{return localStorage.getItem(TOKEN_KEY)}catch(e){return null}};
-const setToken=t=>{try{t?localStorage.setItem(TOKEN_KEY,t):localStorage.removeItem(TOKEN_KEY)}catch(e){}};
+// Remove credentials left by older releases; never read or migrate them.
+for(const storage of ['localStorage','sessionStorage'])try{window[storage].removeItem('im_token');}catch(e){}
 async function api(path,opts={}){
- const tk=getToken();
- const h={...(opts.body&&!(opts.body instanceof FormData)?{'Content-Type':'application/json'}:{}),...(tk?{Authorization:'Bearer '+tk}:{}),...(serverState?{'X-Season-Id':serverState.selected_season.id,'X-Selection-Version':String(serverState.selection_version)}:{}),...(opts.headers||{})};
+ const h={...(opts.body&&!(opts.body instanceof FormData)?{'Content-Type':'application/json'}:{}),...(serverState?{'X-Season-Id':serverState.selected_season.id,'X-Selection-Version':String(serverState.selection_version)}:{}),...(opts.headers||{})};
  let r,d={};try{r=await fetch(API+path,{credentials:'include',...opts,headers:h});}catch(e){return{ok:false,status:0,data:{error:'network'}};}
  try{d=await r.json();}catch(e){}
- if(r.status===401&&!path.startsWith('/api/auth/')){setToken(null);showLogin();}
+ if(r.status===401&&!path.startsWith('/api/auth/')){showLogin();}
  return{ok:r.ok,status:r.status,data:d};}
 const ERRTH={conflict:'ข้อมูลเปลี่ยนจากอีกช่องทาง กรุณาโหลดข้อมูลล่าสุดก่อนบันทึก ร่างที่กรอกยังอยู่',bad_request:'ตรวจข้อมูลที่กรอกอีกครั้ง',duplicate:'มีบริษัทนี้อยู่แล้ว',system_verified:'ใบสมัครนี้ระบบยืนยัน แก้เองไม่ได้',too_large:'ไฟล์ใหญ่เกิน 10MB',extract_failed:'อ่านเอกสารไม่สำเร็จ ลองใหม่อีกครั้ง',network:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้',already_confirmed:'บันทึกไปแล้ว',missing_company:'อ่านชื่อบริษัทไม่เจอ เพิ่มใบสมัครเองได้ที่หน้าติดตามการสมัคร',unauthorized:'กรุณาเข้าสู่ระบบ'};
 const errMsg=r=>ERRTH[r.data&&r.data.error]||(r.data&&(r.data.reply||r.data.error))||('เกิดข้อผิดพลาด ('+r.status+')');
@@ -328,8 +325,8 @@ async function loginReq(){const email=$('#loginEmail').value.trim();if(!email)re
  else $('#loginMsg').textContent=r.data.error==='network'?'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่':r.data.error==='not_allowed'?'อีเมลนี้ยังไม่เปิดให้ใช้ในช่วงทดลอง':r.data.error==='too_soon'?'เพิ่งส่งรหัสไป รอ 1 นาทีแล้วลองใหม่':'ส่งอีเมลไม่สำเร็จ ลองใหม่อีกครั้ง';}
 async function loginVerify(){const email=$('#loginEmail').value.trim(),code=$('#loginCode').value.trim();
  const r=await api('/api/auth/verify',{method:'POST',body:JSON.stringify({email,code})});
- if(r.ok){setToken(r.data.token);const s=await loadState();if(s!==true){$('#login').classList.add('show');$('#loginMsg').textContent='ยืนยันรหัสแล้ว แต่เปิดข้อมูลไม่ได้ ไม่ต้องใส่รหัสซ้ำ กดรีเฟรชหน้านี้ ถ้ายังไม่ได้ให้แจ้งทีม';}}else $('#loginMsg').textContent={network:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่',invalid:'รหัสไม่ถูกต้อง ถ้ากดขอรหัสหลายครั้ง ใช้รหัสจากอีเมลฉบับล่าสุด',expired:'รหัสหมดอายุ ขอรหัสใหม่',locked:'ใส่ผิดหลายครั้ง ขอรหัสใหม่'}[r.data.error]||'เข้าสู่ระบบไม่สำเร็จ';}
-async function logout(){await api('/api/auth/logout',{method:'POST'});setToken(null);location.reload();}
+ if(r.ok){const s=await loadState();if(s!==true){$('#login').classList.add('show');$('#loginMsg').textContent='ยืนยันรหัสแล้ว แต่เปิดข้อมูลไม่ได้ ไม่ต้องใส่รหัสซ้ำ กดรีเฟรชหน้านี้ ถ้ายังไม่ได้ให้แจ้งทีม';}}else $('#loginMsg').textContent={network:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่',invalid:'รหัสไม่ถูกต้อง ถ้ากดขอรหัสหลายครั้ง ใช้รหัสจากอีเมลฉบับล่าสุด',expired:'รหัสหมดอายุ ขอรหัสใหม่',locked:'ใส่ผิดหลายครั้ง ขอรหัสใหม่'}[r.data.error]||'เข้าสู่ระบบไม่สำเร็จ';}
+async function logout(){await api('/api/auth/logout',{method:'POST'});location.reload();}
 const $=s=>document.querySelector(s);
 const today=new Date('2026-11-10');
 const days=d=>Math.round((new Date(d)-today)/864e5);
@@ -393,8 +390,8 @@ function appDetail(i){const a=apps[i];
  $('#mDetail').classList.add('show');}
 function renderKanban(){$('#kanban').innerHTML=STAGES.map(s=>{const l=apps.map((a,i)=>[a,i]).filter(([a])=>a.st===s);
  return `<div class="col"><h4>${TH[s]}<span>${l.length}</span></h4>${l.map(([a,i])=>`<div class="app-card" onclick="appDetail(${i})">
- <b>${a.role}</b><small>${a.co}</small><div class="meta" style="margin:6px 0 4px">${a.truth==='SYSTEM_VERIFIED'?'<span class="chip ok">✔ ระบบ</span>':a.truth==='AI_EXTRACTED'?'<span class="chip warn">🤖 AI อ่าน</span>':'<span class="chip">✎ เอง</span>'}${a.upd>14?'<span class="chip warn">ไม่อัปเดต '+a.upd+' วัน</span>':''}</div>
- <small>➜ ${a.next}</small>${a.verified?'':`<div class="row" style="margin-top:6px;gap:4px" onclick="event.stopPropagation()"><button class="btn ghost sm" onclick="move(${i},-1)">←</button><button class="btn ghost sm" onclick="move(${i},1)">→</button></div>`}</div>`).join('')}</div>`}).join('');}
+ <b>${esc(a.role)}</b><small>${esc(a.co)}</small><div class="meta" style="margin:6px 0 4px">${a.truth==='SYSTEM_VERIFIED'?'<span class="chip ok">✔ ระบบ</span>':a.truth==='AI_EXTRACTED'?'<span class="chip warn">🤖 AI อ่าน</span>':'<span class="chip">✎ เอง</span>'}${a.upd>14?'<span class="chip warn">ไม่อัปเดต '+a.upd+' วัน</span>':''}</div>
+ <small>➜ ${esc(a.next)}</small>${a.verified?'':`<div class="row" style="margin-top:6px;gap:4px" onclick="event.stopPropagation()"><button class="btn ghost sm" onclick="move(${i},-1)">←</button><button class="btn ghost sm" onclick="move(${i},1)">→</button></div>`}</div>`).join('')}</div>`}).join('');}
 function renderDash(){const u=serverState?serverState.user:null,un=serverState?serverState.unseen_reminders||[]:[];
  const staleApps=apps.map((a,i)=>[a,i]).filter(([a])=>!a.verified&&a.upd>14&&a.st!=='Closed'&&a.st!=='Saved');
  const closing=jobs.filter(j=>saved.has(j.id)&&days(j.close)>=0&&days(j.close)<=7);
@@ -456,7 +453,7 @@ function renderOut(x){const f=x.fields;
  if(x.doc_type==='acceptance')note=`<div class="note">${f.signer?'✔ พบชื่อผู้ลงนาม: '+esc(f.signer):'⚠ ไม่พบชื่อผู้ลงนาม: ตรวจลายเซ็นก่อนส่งคณะ'}</div>`;
  $('#ocrOut').innerHTML=`<div class="row" style="justify-content:space-between"><h3 style="margin:0">ผลการอ่าน</h3><span class="chip warn">อ่านได้ ${okN}/${Object.keys(f).length} ช่อง</span></div>
  <p class="sub" style="margin:6px 0 10px"><span class="chip warn">🤖 อ่านโดย AI: ตรวจก่อนบันทึก</span></p>
- <table style="width:100%;border-collapse:collapse">${Object.entries(f).map(([k,v])=>`<tr style="border-top:1px solid var(--line)"><td style="padding:8px 6px;color:var(--mute);width:34%;vertical-align:top">${LBL[k]||k}</td><td style="padding:8px 6px">${show(v)}</td></tr>`).join('')}</table>
+ <table style="width:100%;border-collapse:collapse">${Object.entries(f).map(([k,v])=>`<tr style="border-top:1px solid var(--line)"><td style="padding:8px 6px;color:var(--mute);width:34%;vertical-align:top">${esc(LBL[k]||k)}</td><td style="padding:8px 6px">${show(v)}</td></tr>`).join('')}</table>
  ${note}<div class="row" style="margin-top:14px"><button class="btn" onclick="confirmExt('${x.id}')">✔ ยืนยันและบันทึก</button><button class="btn ghost" onclick="discardExt('${x.id}')">ไม่ใช่</button></div>`;}
 async function confirmExt(id){const r=await api('/api/extractions/'+id+'/confirm',{method:'POST'});toast(r.ok?'บันทึกแล้ว ✔ (ป้าย 🤖 AI อ่าน)':errMsg(r));await loadState();
  if(r.ok&&lastExt&&lastExt.id===id){const t=lastExt.doc_type;lastExt=null;$('#ocrOut').innerHTML='<p class="sub" style="margin:0">ผลลัพธ์จะแสดงที่นี่</p>';go(t==='job_post'?'tracker':'docs');}}
@@ -464,7 +461,7 @@ async function discardExt(id){const r=await api('/api/extractions/'+id+'/discard
 function renderOcrPending(){const p=serverState?serverState.pending_extractions:[],el=$('#ocrPending');if(!el)return;el.style.display=p.length?'block':'none';
  el.innerHTML=p.length?'<h3 style="margin-top:0">🤖 รอคุณยืนยัน</h3>'+p.map(x=>`<div class="it" style="display:block"><b>${esc(x.fields.company||x.fields.program||x.fields.student_name||x.doc_type)}</b> <small style="color:var(--mute)">· จาก ${x.channel==='line'?'LINE':'เว็บ'}</small><div class="row" style="margin-top:6px"><button class="btn sm" onclick="confirmExt('${x.id}')">ยืนยัน</button><button class="btn sm ghost" onclick="discardExt('${x.id}')">ไม่ใช่</button></div></div>`).join(''):'';}
 const bub=(t,me,who)=>`<div style="align-self:${me?'flex-end':'flex-start'};max-width:82%">${who?`<small style="color:#fff">${who}</small>`:''}<div style="background:${me?'#9be15d':'#fff'};border-radius:16px;padding:9px 12px;font-size:13px;line-height:1.5">${t}</div></div>`;
-const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const ACT_RE=/^[a-z_]+:[0-9A-Za-z-]+(:[A-Za-z]+)?$/;
 const TRUTH_LBL={USER_REPORTED:'✎ อัปเดตโดยคุณ',AI_EXTRACTED:'🤖 อ่านโดย AI · ตรวจก่อนยืนยัน',SYSTEM_VERIFIED:'✔ ยืนยันโดยระบบ'};
 function renderCard(c){if(!c)return'';
@@ -490,10 +487,10 @@ const need={};
 const ic={ok:'<span class="chip ok">✔</span>',warn:'<span class="chip warn">⚠</span>',bad:'<span class="chip bad">✕</span>','-':'<span style="color:var(--mute)">—</span>'};
 function renderDocs(){
  $('#myDocs').innerHTML=myDocs.map(d=>`<div class="card"><div class="row" style="justify-content:space-between"><span style="font-size:22px">${d.i}</span>${ic[d.s]}</div>
- <h3 style="margin:6px 0 2px">${d.t}</h3><small style="color:var(--mute)">${d.v}</small><p style="font-size:13px;margin:8px 0 10px">${d.n}</p>
+ <h3 style="margin:6px 0 2px">${esc(d.t)}</h3><small style="color:var(--mute)">${esc(d.v)}</small><p style="font-size:13px;margin:8px 0 10px">${esc(d.n)}</p>
  <div class="row"><button class="btn sm ghost">${d.s==='bad'?'อัปโหลด':'แทนที่'}</button>${d.s==='ok'?'<button class="btn sm ghost">ดู</button>':''}</div></div>`).join('');
  $('#myDocs').insertAdjacentHTML('beforeend',extraDocs.map(d=>`<div class="card"><div class="row" style="justify-content:space-between"><span style="font-size:22px">🤖</span><span class="chip warn">อ่านโดย AI</span></div><h3 style="margin:6px 0 2px">${esc(d.name)}</h3><small style="color:var(--mute)">${esc(Object.entries(d.fields).filter(([,v])=>v!==null&&typeof v!=='object').slice(0,3).map(([k,v])=>(LBL[k]||k)+': '+v).join(' · '))}</small></div>`).join(''));
- $('#matrix').innerHTML=`<tr style="text-align:left;color:var(--mute)"><th style="padding:8px">ใบสมัคร</th>${myDocs.map(d=>`<th>${d.t}</th>`).join('')}<th>ความพร้อม</th></tr>`+
+ $('#matrix').innerHTML=`<tr style="text-align:left;color:var(--mute)"><th style="padding:8px">ใบสมัคร</th>${myDocs.map(d=>`<th>${esc(d.t)}</th>`).join('')}<th>ความพร้อม</th></tr>`+
  Object.entries(need).map(([co,r])=>{const req=Object.values(r).filter(v=>v!=='-'),ok=req.filter(v=>v==='ok').length;
   return `<tr style="border-top:1px solid var(--line)"><td style="padding:10px 8px"><b>${co}</b></td>${myDocs.map(d=>`<td>${ic[r[d.k]]}</td>`).join('')}
   <td>${ok===req.length?'<span class="chip ok">พร้อมส่ง</span>':`<span class="chip warn">ขาด ${req.length-ok} รายการ</span>`}</td></tr>`}).join('');
@@ -502,7 +499,7 @@ const uni=[];
 const PH=['ค้นหา','สมัคร','สัมภาษณ์','ได้ใบตอบรับ','เอกสารคณะ','เริ่มฝึกงาน'];
 function renderUni(){const n=uni.filter(u=>u.done).length;$('#uniPct').textContent=`${n}/${uni.length} เสร็จ`;
  $('#uniList').innerHTML=uni.map((u,i)=>`<div class="it"><input type="checkbox" ${u.done?'checked':''} onchange="toggleTask(${i},this.checked)" style="width:18px;height:18px">
- <div style="flex:1;${u.done?'text-decoration:line-through;color:var(--mute)':''}"><b>${u.t}</b><br><small style="color:var(--mute)">${u.d}</small></div>${u.act&&!u.done?`<button class="btn sm ghost">${u.act}</button>`:''}</div>`).join('');}
+ <div style="flex:1;${u.done?'text-decoration:line-through;color:var(--mute)':''}"><b>${esc(u.t)}</b><br><small style="color:var(--mute)">${esc(u.d)}</small></div>${u.act&&!u.done?`<button class="btn sm ghost">${esc(u.act)}</button>`:''}</div>`).join('');}
 function autofill(){$('#afMsg').textContent='ยังดึงข้อมูลจากลิงก์ไม่ได้ในรอบนี้ กรอกชื่อบริษัทและตำแหน่งเองได้เลย';}
 function render(){
  renderDocs();renderUni();renderDash();renderJobs();renderKanban();renderNotif();renderOcrPending();$('#savedCount').textContent=saved.size;
@@ -555,10 +552,10 @@ const TOOL_LABEL={add_application:'📋 เพิ่มใบสมัคร',up
 async function aiSend(text){if(aiBusy)return;text=(text||$('#aiIn').value).trim();if(!text)return;aiBusy=true;$('#aiGo').disabled=true;$('#aiIn').value='';
  aiAdd('u',aiMd(text));const typing=aiAdd('b','<i style="color:var(--mute)">กำลังคิด…</i>');
  try{const r=await api('/api/chat',{method:'POST',body:JSON.stringify({text})});typing.remove();
-  if(!r.ok){aiAdd('e','❌ '+errMsg(r));$('#aiIn').value=text;}
+  if(!r.ok){aiAdd('e','❌ '+esc(errMsg(r)));$('#aiIn').value=text;}
   else if(r.data.ok===false){aiAdd('e','❌ '+esc(r.data.reply));$('#aiIn').value=text;}
-  else{(r.data.actions||[]).forEach(a=>aiAdd('t',TOOL_LABEL[a]||a));aiAdd('b',aiMd(r.data.reply||'(ไม่มีคำตอบ)')+(r.data.cards||[]).map(renderCard).join(''));await loadState();}}
- catch(e){typing.remove();aiAdd('e','❌ '+e.message);}
+  else{(r.data.actions||[]).forEach(a=>aiAdd('t',esc(TOOL_LABEL[a]||a)));aiAdd('b',aiMd(r.data.reply||'(ไม่มีคำตอบ)')+(r.data.cards||[]).map(renderCard).join(''));await loadState();}}
+ catch(e){typing.remove();aiAdd('e','❌ '+esc(e.message));}
  finally{aiBusy=false;$('#aiGo').disabled=false;$('#aiIn').focus();}}
 if(location.hash==='#ai')$('#aiPanel').classList.add('show');
 $('#aiSugg').innerHTML=SUGG.map(s=>`<span onclick="aiSend(this.textContent)">${s}</span>`).join('');

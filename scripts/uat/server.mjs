@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {readFile,mkdir} from 'node:fs/promises';
 import {resolve} from 'node:path';
@@ -11,7 +12,13 @@ const messages=[],emails=[];
 let failLine=false;
 const json=v=>new MFResponse(JSON.stringify(v),{headers:{'Content-Type':'application/json'}});
 const mf=new Miniflare((convertV4MiniflareOptions||((v)=>v))({name:'internmatch-uat',script:await readFile(output,'utf8'),modules:true,compatibilityDate:'2026-01-01',host:'localhost',port:8787,d1Databases:{DB:'internmatch-uat'},
- bindings:{WEB_ORIGIN:'http://localhost:8000',LOCAL_DEV_LOGIN:'false',ALLOWED_EMAILS:'alpha@example.test,beta@example.test',BREVO_API_KEY:'uat',BREVO_SENDER_EMAIL:'sender@example.test',LINE_CHANNEL_SECRET:'uat-line-secret',LINE_CHANNEL_ACCESS_TOKEN:'uat-line-token',GEMINI_API_KEY:'uat',GEMINI_MODEL:'uat-model',PAXA_API_KEY:'uat',PAXA_MODEL:'uat-model'},
+ bindings:{WEB_ORIGIN:'http://localhost:8787',LOCAL_DEV_LOGIN:'false',ALLOWED_EMAILS:'alpha@example.test,beta@example.test',BREVO_API_KEY:'uat',BREVO_SENDER_EMAIL:'sender@example.test',LINE_CHANNEL_SECRET:'uat-line-secret',LINE_CHANNEL_ACCESS_TOKEN:'uat-line-token',GEMINI_API_KEY:'uat',GEMINI_MODEL:'uat-model',PAXA_API_KEY:'uat',PAXA_MODEL:'uat-model'},
+ serviceBindings:{ASSETS:async req=>{
+  const path=new URL(req.url).pathname;
+  const file=path==='/open.html'?'scripts/uat/open.html':['/index.html','/config.js','/profile-ui.js','/profile-ui.css','/release.json'].includes(path)?'.app'+path:null;
+  if(!file)return new MFResponse('Not found',{status:404});
+  return new MFResponse(await readFile(file),{headers:{'Content-Type':path.endsWith('.js')?'text/javascript':path.endsWith('.css')?'text/css':path.endsWith('.json')?'application/json':'text/html'}});
+ }},
  outboundService:async req=>{
  const url=new URL(req.url),body=await req.json().catch(()=>({}));
  if(url.hostname==='api.brevo.com'){emails.push(body);return json({messageId:'uat'});}
@@ -40,7 +47,7 @@ for(const name of ['0001_init.sql','0002_message_cards.sql','0003_student_season
 }
 for(const [id,email,token,line] of [['alpha','alpha@example.test','a'.repeat(64),null],['beta','beta@example.test','b'.repeat(64),'line-beta']]){
  await db.prepare('INSERT OR IGNORE INTO users(id,email,line_user_id,created_at) VALUES (?,?,?,?)').bind(id,email,line,new Date().toISOString()).run();
- await db.prepare('INSERT INTO sessions(token,user_id,expires_at) VALUES (?,?,?)').bind(token,id,'2099-01-01T00:00:00.000Z').run();
+ await db.prepare('INSERT INTO sessions(token,user_id,expires_at) VALUES (?,?,?)').bind('v2:'+createHash('sha256').update(token).digest('hex'),id,'2099-01-01T00:00:00.000Z').run();
 }
 // A separate control server is bound only to loopback for deterministic failure tests.
 const {createServer}=await import('node:http');

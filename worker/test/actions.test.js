@@ -91,6 +91,6 @@ describe('runCardAction', () => {
 
 describe('POST /api/actions', () => {
   it('is 401 without a session and 400 without data', async () => {
-    expect((await SELF.fetch('https://x.test/api/actions', { method: 'POST', body: '{}' })).status).toBe(401);
+    expect((await SELF.fetch('https://x.test/api/actions', { method: 'POST', headers: { Origin: 'https://x.test' }, body: '{}' })).status).toBe(401);
   });
 });

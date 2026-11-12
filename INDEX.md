@@ -22,7 +22,7 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 
 ## File & Module Map
 
-### Front end (GitHub Pages)
+### Front end (same-origin Worker app; GitHub Pages launcher)
 
 | Path | What it is |
 | --- | --- |
@@ -86,6 +86,8 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 | `.github/main-protection.json` | Versioned main branch policy, including administrators |
 | `docs/release-workflow.md` | Agent-owned PR → CI → merge → deploy → production verification, including config/secrets |
 | `scripts/build-pages.mjs` | Publish only public assets with a commit/hash manifest |
+| `scripts/release/security-production.mjs`, `docs/releases/2026-11-13-session-security.md` | Reviewed legacy-session expiry and isolated Chromium/mobile-WebKit production verification |
+| `scripts/test/web-security.test.mjs`, `worker/test/session-security.test.js` | Stored-text/attribute rendering, cookie-only lifecycle and cross-origin regression checks |
 | `scripts/verify-production.mjs` | Safe live web/API verification for the merged revision |
 | `scripts/test/*.test.mjs` | Regression tests for guards, index upgrade, artifact and production checks |
 | `CODING_STANDARDS.md` | Judgement-call rules for reviewing a diff (ADRs, logic in Worker, truth levels, honest stubs) |

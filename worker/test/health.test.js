@@ -8,7 +8,7 @@ describe('health', () => {
     expect(await r.json()).toEqual({ ok: true });
   });
   it('CORS allows the web origin with credentials', async () => {
-    const origin = 'https://chokky-education.github.io';
+    const origin = 'https://x.test';
     const r = await SELF.fetch('https://x.test/api/health', { method: 'OPTIONS', headers: { Origin: origin } });
     expect(r.headers.get('Access-Control-Allow-Origin')).toBe(origin);
     expect(r.headers.get('Access-Control-Allow-Credentials')).toBe('true');

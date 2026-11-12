@@ -115,21 +115,21 @@ describe('linked users', () => {
   it('web login and logout preserve the LINE link across follow and later messages', async () => {
     await linkUser();
     await SELF.fetch('https://x.test/api/auth/request', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { Origin: 'https://x.test', 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: 'ton@example.com' }),
     });
     const code = JSON.stringify(brevo[0]).match(/\b(\d{6})\b/)[1];
     const login = await SELF.fetch('https://x.test/api/auth/verify', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { Origin: 'https://x.test', 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: 'ton@example.com', code }),
     });
     expect(login.status).toBe(200);
-    const { token } = await login.json();
+    const cookie = login.headers.get('Set-Cookie').split(';')[0];
     const logout = await SELF.fetch('https://x.test/api/auth/logout', {
-      method: 'POST', headers: { Authorization: 'Bearer ' + token },
+      method: 'POST', headers: { Origin: 'https://x.test', Cookie: cookie },
     });
     expect(logout.status).toBe(200);
-    expect((await SELF.fetch('https://x.test/api/me', { headers: { Authorization: 'Bearer ' + token } })).status).toBe(401);
+    expect((await SELF.fetch('https://x.test/api/me', { headers: { Origin: 'https://x.test', Cookie: cookie } })).status).toBe(401);
     expect((await env.DB.prepare('SELECT line_user_id FROM users WHERE id=?').bind(USER).first()).line_user_id).toBe(LU);
     await handleEvent(env, ev({ type: 'follow', message: undefined }));
     expect(lastReply()).toContain('ยินดีต้อนรับกลับมา');
