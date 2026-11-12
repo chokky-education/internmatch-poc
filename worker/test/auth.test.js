@@ -51,6 +51,28 @@ describe('otp', () => {
     const me = await SELF.fetch('https://x.test/api/me', { headers: { Cookie: cookie.split(';')[0] } });
     expect((await me.json()).email).toBe('ton@example.com');
   });
+  it('verify also returns a token that works as a Bearer header when the browser drops the cookie (iPhone)', async () => {
+    await requestOtp(env, 'ton@example.com', { purpose: 'web' });
+    const r = await SELF.fetch('https://x.test/api/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'ton@example.com', code: lastCode() }) });
+    const { token } = await r.json();
+    expect(token).toMatch(/^[a-f0-9]{64}$/);
+    const me = await SELF.fetch('https://x.test/api/me', { headers: { Authorization: 'Bearer ' + token } });
+    expect(me.status).toBe(200);
+    expect((await me.json()).email).toBe('ton@example.com');
+    expect((await SELF.fetch('https://x.test/api/state', { headers: { Authorization: 'Bearer ' + token } })).status).toBe(200);
+  });
+  it('a wrong or malformed Bearer token is 401, and logout with the header ends that session', async () => {
+    expect((await SELF.fetch('https://x.test/api/me', { headers: { Authorization: 'Bearer ' + 'a'.repeat(64) } })).status).toBe(401);
+    expect((await SELF.fetch('https://x.test/api/me', { headers: { Authorization: "Bearer x' OR 1=1" } })).status).toBe(401);
+    await requestOtp(env, 'ton@example.com', { purpose: 'web' });
+    const { token } = await (await SELF.fetch('https://x.test/api/auth/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'ton@example.com', code: lastCode() }) })).json();
+    expect((await SELF.fetch('https://x.test/api/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer ' + token } })).status).toBe(200);
+    expect((await SELF.fetch('https://x.test/api/me', { headers: { Authorization: 'Bearer ' + token } })).status).toBe(401);
+  });
+  it('CORS preflight from the web origin allows the Authorization header', async () => {
+    const r = await SELF.fetch('https://x.test/api/state', { method: 'OPTIONS', headers: { Origin: env.WEB_ORIGIN, 'Access-Control-Request-Headers': 'authorization' } });
+    expect(r.headers.get('Access-Control-Allow-Headers')).toMatch(/Authorization/);
+  });
   it('code older than 10 minutes is expired', async () => {
     await requestOtp(env, 'ton@example.com', { purpose: 'web' });
     await env.DB.prepare("UPDATE otps SET expires_at = ?").bind(new Date(Date.now() - 1000).toISOString()).run();
