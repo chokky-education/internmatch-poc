@@ -6,10 +6,11 @@ _Last updated: 2026-11-13_
 
 ## Now (what is true today)
 
-- **Security release candidate:** owner authorized stored-XSS and token fixes. Output encoding now covers board/document/task text, OCR labels, profile attributes and drawer text. The same app/API move to the existing Worker origin; Pages becomes a legacy-credential cleanup launcher. Cookie-only hashed sessions reject old raw credentials and untrusted web mutations; LINE authentication/data links stay separate. ADR 0005 and `docs/releases/2026-11-13-session-security.md` record rollout/revocation and synthetic/owner-account verification. Local checks passed 143 Worker tests, 19 tooling/renderer tests and the existing local browser UAT (profile/season/LINE/OCR/reminder isolation, responsive UI and zero page errors). The dedicated real-browser XSS/cookie check also passed. Final PR/CI/deploy results are reported with this task; production success is not asserted by this pre-release commit.
+- **Security PR #12 deployed:** merged `0ffa92f2041228c8d2512b3a78d8ffc6703085d1`; Worker `b2be1fa3-35b7-4021-af9d-e798dd125a79` serves the same-origin app with cookie-only hashed sessions. Main CI/Pages run `43299692687` attempt 2 succeeded after the first attempt safely timed out awaiting the Worker. Both manifests/content hashes and 27 live baseline checks passed; 21 legacy raw sessions were expired. The profile API smoke passed and removed its fixture. Owner-authorized real Chromium email OTP login/reload passed with HttpOnly/Secure/Lax cookies, no token in JSON/storage/document.cookie and the existing LINE link preserved.
+- **Mobile verification follow-up:** the Chromium synthetic production stage completed, but mobile WebKit found the floating AI button above the add-application modal, intercepting Save. The temporary security fixture/OTP were cleaned up (zero remaining). This follow-up raises the existing modal above the drawer/FAB and below login/toasts; it does not change auth/data behavior or remove the drawer. Repeat the failing mobile flow and finish owner logout/relogin plus synthetic browser verification after its PR/CI/deploy.
 
 - **Shipped profile/seasons:** PR #8 merged as `94d72cd`; release-verifier repair PR #9 merged as `0eec60a`. The owner accepted Local UAT and the revised milestone dialog. Guided forms now persist through shared Worker/D1 services; education snapshots, multi-season isolation, milestone proposals/rescheduling and original-target confirmations are implemented.
-- **Production Worker/D1 verified:** normal Worker version `36bc7368-e2de-4634-8521-fd91122555f3` is active at 100%, annotated with merged runtime SHA `0eec60a5defea032841138351c22e2d4a520858e`. Migration 0003 applied once; all original fields in 11 legacy tables matched before/after fingerprints, and all migrated season owners/selections validated. A private backup was exported and independently restored/compared locally before migration.
+- **Historical profile Worker/D1 verification:** Worker version `36bc7368-e2de-4634-8521-fd91122555f3` was verified at 100% for that release, annotated with runtime SHA `0eec60a5defea032841138351c22e2d4a520858e`. Migration 0003 applied once; all original fields in 11 legacy tables matched before/after fingerprints, and all migrated season owners/selections validated. A private backup was exported and independently restored/compared locally before migration.
 - **Live feature verification:** authenticated production API smoke passed blank profile, snapshot education, season isolation, milestone confirmation/replay and atomic rescheduling. The short-lived smoke identity and its records were removed; no OTP/LINE/AI test messages were sent. Web revision and four asset hashes plus 16 baseline API/auth/CORS/signature checks passed for `0eec60a`. See `docs/releases/2026-11-13-profile.md`.
 - **CI follow-up:** `PR #10` merged as `f1a0843`; main CI run `43284287883` (`check` + Pages) completed with `success`.
 - **Labeled Seam 2 & Seam 3 UAT:** Ran Seam 2 (`worker` Vitest: 18 files, 139 tests including a new `runAssistant` `get_overview` unconfirmed-milestone isolation seam test) and Seam 3 (`scripts/test/*.test.mjs`: 14 tests + guardrails/syntax/Pages build + live `verify-production.mjs` 16/16 baseline checks for `f1a0843`), documented with explicit tester/model/scope labels in `docs/uat/2026-11-13-uat-labeled-report.md`.
@@ -30,7 +31,7 @@ _Last updated: 2026-11-13_
 
 ## Next (suggested, not yet agreed with the owner)
 
-- Finish the authorized security release through current-head PR CI, merge, Worker-before-Pages deploy, legacy session expiry and real feature checks. Do not merge the separate UAT/research/chat-animation PRs as part of this work.
+- Finish the authorized security release with the mobile modal follow-up PR/CI/merge/Worker-before-Pages deploy and repeat the changed real-browser flow. Legacy session expiry is already complete; do not expire new v2 sessions. Do not merge the separate UAT/research/chat-animation PRs as part of this work.
 
 1. Continue only work the owner has authorized. PR #2 and PR #5 are separate open work; review them when requested.
 2. Deploy the latest merged Worker if `f1a0843` (unconfirmed milestones in shared assistant overview) has not yet been rolled out to Cloudflare, and re-run live production verification (`verify-production.mjs` + safe feature smoke).
@@ -43,6 +44,8 @@ _Last updated: 2026-11-13_
 - `go('<screen id>')` still works for every old screen id: it opens the grouped page and scrolls (see `GROUPS` in `index.html`).
 
 ## Log
+
+- 2026-11-13: PR #12 merged/deployed with 27 baseline checks and real Chromium OTP/reload confirmed. Production mobile WebKit exposed an existing modal/FAB stacking conflict; added the narrow follow-up and retained fixture cleanup/LINE-link invariants.
 
 - 2026-11-13: Built the authorized XSS/cookie-session candidate in an isolated worktree, reproduced seven pre-fix boundary failures, added regression coverage and a reviewed same-origin rollout/verification plan. Existing pending user work was preserved.
 
