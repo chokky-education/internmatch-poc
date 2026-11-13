@@ -6,8 +6,8 @@ _Last updated: 2026-11-13_
 
 ## Now (what is true today)
 
-- **Security PR #12 deployed:** merged `0ffa92f2041228c8d2512b3a78d8ffc6703085d1`; Worker `b2be1fa3-35b7-4021-af9d-e798dd125a79` serves the same-origin app with cookie-only hashed sessions. Main CI/Pages run `43299692687` attempt 2 succeeded after the first attempt safely timed out awaiting the Worker. Both manifests/content hashes and 27 live baseline checks passed; 21 legacy raw sessions were expired. The profile API smoke passed and removed its fixture. Owner-authorized real Chromium email OTP login/reload passed with HttpOnly/Secure/Lax cookies, no token in JSON/storage/document.cookie and the existing LINE link preserved.
-- **Mobile verification follow-up:** the Chromium synthetic production stage completed, but mobile WebKit found the floating AI button above the add-application modal, intercepting Save. The temporary security fixture/OTP were cleaned up (zero remaining). This follow-up raises the existing modal above the drawer/FAB and below login/toasts; it does not change auth/data behavior or remove the drawer. Repeat the failing mobile flow and finish owner logout/relogin plus synthetic browser verification after its PR/CI/deploy.
+- **XSS/session release complete:** PR #12 shipped the same-origin Worker app, inert text/attribute rendering, HttpOnly cookie-only hashed sessions and Origin enforcement. PR #13 completed the ordinary mobile modal flow. Feature verification finished on `4d7e2b4eeed041b426eaaff0d6916b18b07db74f` / Worker `72b716e4-10b7-49ec-9923-a6f2698e8f1d`; current metadata deployment details are retained in the PR/task release evidence. This closeout changes documentation only and retains those same app/runtime bytes.
+- **Verified production behavior:** main CI/Pages run `43342405991` passed, both manifests/six asset hashes matched and 27 baseline checks passed. Chromium and mobile WebKit synthetic login/reload/logout/relogin, stored manual/LINE-origin OCR text, quote-safe profile attributes, storage cleanup and foreign mutation checks passed. Fixtures were removed and existing LINE-link fingerprints matched. Owner-authorized genuine email OTP form login/reload/logout in Chromium and form relogin/reload in mobile-size WebKit passed; the existing LINE link stayed true and Save reached normal validation without writing real business records. Twenty-one old raw sessions were expired once; v2 sessions were preserved. Physical iPhone and new LINE/OCR/LLM deliveries were not claimed. See `docs/releases/2026-11-13-session-security.md` and PRs #12/#13 for the rollout history.
 
 - **Shipped profile/seasons:** PR #8 merged as `94d72cd`; release-verifier repair PR #9 merged as `0eec60a`. The owner accepted Local UAT and the revised milestone dialog. Guided forms now persist through shared Worker/D1 services; education snapshots, multi-season isolation, milestone proposals/rescheduling and original-target confirmations are implemented.
 - **Historical profile Worker/D1 verification:** Worker version `36bc7368-e2de-4634-8521-fd91122555f3` was verified at 100% for that release, annotated with runtime SHA `0eec60a5defea032841138351c22e2d4a520858e`. Migration 0003 applied once; all original fields in 11 legacy tables matched before/after fingerprints, and all migrated season owners/selections validated. A private backup was exported and independently restored/compared locally before migration.
@@ -31,10 +31,10 @@ _Last updated: 2026-11-13_
 
 ## Next (suggested, not yet agreed with the owner)
 
-- Finish the authorized security release with the mobile modal follow-up PR/CI/merge/Worker-before-Pages deploy and repeat the changed real-browser flow. Legacy session expiry is already complete; do not expire new v2 sessions. Do not merge the separate UAT/research/chat-animation PRs as part of this work.
+- The authorized security feature work and changed-flow verification are complete. Preserve session revocation and the same-origin boundary in future changes; do not merge unrelated open work or repeat legacy expiry on v2 sessions.
 
 1. Continue only work the owner has authorized. PR #2 and PR #5 are separate open work; review them when requested.
-2. Deploy the latest merged Worker if `f1a0843` (unconfirmed milestones in shared assistant overview) has not yet been rolled out to Cloudflare, and re-run live production verification (`verify-production.mjs` + safe feature smoke).
+2. Follow the same-origin release workflow for the next owner-authorized change; keep Worker app and Pages launcher manifests matched to the merged release. The overview and security changes have been deployed.
 3. Replace sample job listings with a real source, keeping "รายงานข้อมูลผิด" and source links. Faculty checklist remains generic.
 
 ## Gotchas
@@ -44,6 +44,8 @@ _Last updated: 2026-11-13_
 - `go('<screen id>')` still works for every old screen id: it opens the grouped page and scrolls (see `GROUPS` in `index.html`).
 
 ## Log
+
+- 2026-11-13: Completed PR #12/#13 feature verification: both production browser engines passed the unchanged security smoke; real OTP login/logout/relogin and LINE-link preservation passed; all temporary data/sessions were cleaned up. Recorded final evidence without changing runtime code.
 
 - 2026-11-13: PR #12 merged/deployed with 27 baseline checks and real Chromium OTP/reload confirmed. Production mobile WebKit exposed an existing modal/FAB stacking conflict; added the narrow follow-up and retained fixture cleanup/LINE-link invariants.
 
