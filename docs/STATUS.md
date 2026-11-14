@@ -6,7 +6,9 @@ _Last updated: 2026-11-14_
 
 ## Now (what is true today)
 
-- **Document-list release candidate:** `codex/student-document-checklist` replaces invented faculty requirements with student-added season-scoped preparation items. Unknown recipient/method/date remain blank; preparation and submission are separate user-reported states. New users/seasons get no generic tasks; historical checkbox data remains in a labeled legacy section and is excluded from current progress. Shared actions/API/manual assistant commands use one service, revision checks and atomic audit writes. The owner selected API/web verification and deferred connecting handbook OCR to this list. Release and live verification are pending at this commit.
+- **Document list shipped:** PR #15 merged as `eab938c`; main CI/Pages run `43590538044` passed and Worker `c4c88d98-ba37-48dd-9a2e-a9b19c65d5f8` serves that SHA at 100%. Student-added season-scoped items replace invented faculty requirements. Unknown recipient/method/date remain blank; preparation/submission are distinct user-reported states. New users/seasons get no generic tasks; historical checkbox data remains separate and excluded from current counts. Shared actions/API/manual chat use one service with revision checks and atomic audit. Handbook OCR integration remains deferred by the owner.
+- **Production document verification follow-up:** both Chromium desktop and mobile-size WebKit passed 15 real manual API/UI checks, and the merged app/Pages passed 29 baseline checks. The original smoke's final cleanup-count UNION exceeded D1's compound-SELECT limit after deletion completed. An independent read confirmed zero fixture rows across all 12 tables. `codex/document-smoke-verifier` replaces that query with a tested scalar aggregate and retains the pre-smoke link fingerprint privately; re-release and complete smoke/cleanup verification are pending at this commit. No product/runtime behavior changes in this follow-up.
+- **Verifier follow-up checks:** 151/151 Worker tests and 21/21 tooling/rendering tests pass, including real SQLite counts before/after fixture cleanup, unrelated-user preservation and reserved-prefix rejection. Syntax, guardrails, index refresh and public bundle build passed.
 - **Document-list local checks:** 151/151 Worker tests, 19/19 tooling/rendering tests and 15 changed-flow checks each in Chromium desktop/mobile-size WebKit passed. Syntax/guardrails/index/public bundling passed. Reviewed bounded production fixture/cleanup plan: `docs/document-release.md`; local evidence and external-provider limits: `docs/uat/2026-11-14-documents.md`.
 
 - **XSS/session release complete:** PR #12 shipped the same-origin Worker app, inert text/attribute rendering, HttpOnly cookie-only hashed sessions and Origin enforcement. PR #13 completed the ordinary mobile modal flow. Feature verification finished on `4d7e2b4eeed041b426eaaff0d6916b18b07db74f` / Worker `72b716e4-10b7-49ec-9923-a6f2698e8f1d`; current metadata deployment details are retained in the PR/task release evidence. This closeout changes documentation only and retains those same app/runtime bytes.
@@ -38,7 +40,7 @@ _Last updated: 2026-11-14_
 
 1. Continue only work the owner has authorized. PR #2 and PR #5 are separate open work; review them when requested.
 2. Follow the same-origin release workflow for the next owner-authorized change; keep Worker app and Pages launcher manifests matched to the merged release. The overview and security changes have been deployed.
-3. Complete PR/CI/deploy and changed-flow verification for the authorized manual document list. Keep handbook-to-checklist integration deferred. Sample job listings remain separate future work.
+3. Complete PR/CI/deploy for the document smoke verifier and re-run the guarded production smoke, including cleanup/link invariants. Keep handbook-to-checklist integration deferred. Sample job listings remain separate future work.
 
 ## Gotchas
 
@@ -47,6 +49,8 @@ _Last updated: 2026-11-14_
 - `go('<screen id>')` still works for every old screen id: it opens the grouped page and scrolls (see `GROUPS` in `index.html`).
 
 ## Log
+
+- 2026-11-14: PR #15 shipped and passed the production baseline and both browser flows. Repaired the final cleanup verifier's D1 compound-SELECT limitation; independently confirmed all 12 fixture tables empty and added aggregate/ownership/prefix regressions. The follow-up changes release verification only and remains pending release at this commit.
 
 - 2026-11-14: Addressed Standards/Spec review: source-season labels on document cards, mandatory stable create request IDs, payload fingerprints preserving changed retry drafts, shared chat retry IDs, durable document-chat success/partial receipts that replay before model tool reordering, and honest failed-refresh feedback. Rechecked 151 Worker tests, 19 tooling tests and 15 browser checks per engine.
 
