@@ -51,6 +51,19 @@ describe('delete_reminder tool', () => {
 });
 
 describe('cards from tools', () => {
+  it('replays a partial document request before asking the model for a reordered tool plan', async () => {
+    const { getOverview } = await import('../src/store.js');
+    const a = { title: 'รายการ A', from_document: false }, b = { title: 'รายการ B', from_document: false };
+    queue = [fc('save_document_item', a), 'ERR'];
+    const first = await runAssistant(env, U, 'web', 'เพิ่มรายการ A และ B', { request_id: 'partial-document-request' });
+    expect(first.partial).toBe(true);
+    const modelCalls = geminiBodies.length;
+    queue = [fc('save_document_item', b), fc('save_document_item', a), text('บันทึกแล้ว')];
+    const retry = await runAssistant(env, U, 'web', 'เพิ่มรายการ A และ B', { request_id: 'partial-document-request' });
+    expect(retry).toEqual(first);
+    expect(geminiBodies).toHaveLength(modelCalls);
+    expect((await getOverview(env, U)).checklist_items).toEqual([expect.objectContaining({ title: 'รายการ A' })]);
+  });
   it('replays a manual document command with the same request id without creating a second item', async () => {
     const { getOverview } = await import('../src/store.js');
     const command = { title: 'รายการที่บอกเอง', from_document: false };
@@ -61,7 +74,7 @@ describe('cards from tools', () => {
     expect((await getOverview(env, U)).checklist_items).toEqual([expect.objectContaining({ title: 'รายการที่บอกเอง' })]);
     queue = [fc('save_document_item', { ...command, title: 'ข้อความที่ต่างจากคำขอเดิม' }), text('ร่างเปลี่ยนไป ตรวจรายการก่อนนะ')];
     const changed = await runAssistant(env, U, 'web', 'ช่วยจดรายการนี้', { request_id: 'same-document-command' });
-    expect(changed.cards).toEqual([]);
+    expect(changed.cards[0].title).toBe('รายการที่บอกเอง');
     expect((await getOverview(env, U)).checklist_items).toEqual([expect.objectContaining({ title: 'รายการที่บอกเอง' })]);
   });
   it('adds a student document item through LINE and keeps document-derived content behind confirmation', async () => {

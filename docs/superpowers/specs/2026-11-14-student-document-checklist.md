@@ -9,7 +9,7 @@ Owner direction: start from information the student has. Scope: manual items thr
 - Each item has a title, optional notes, recipient, submission method, due date and source reference/page. Missing values stay unknown. Sources can be a document name, URL or a note about information the student received.
 - Progress states are `todo` (ยังไม่ได้เตรียม), `prepared` (เตรียมแล้ว), `submitted` (ส่งแล้ว). These are student-reported progress, not confirmation that a faculty received or approved anything.
 - Item editing and progress updates are shared backend operations, audit-logged with channel and protected by ownership, season and revision checks. Card buttons run through `runCardAction`. Manual chat commands use the same services so the two front doors remain consistent.
-- Repeated add requests do not create duplicate records. A stale edit/status request does not overwrite newer information. A card continues to refer to its original season after the selected season changes.
+- Repeated add requests do not create duplicate records. Manual document-chat requests retain a durable success/partial receipt and replay it before asking the model for another tool plan. A stale edit/status request does not overwrite newer information. A card continues to refer to its original season after the selected season changes.
 - Existing generic `tasks` and their checked states remain intact in a clearly labeled legacy section. They are excluded from the new preparation list and its counts.
 - Existing OCR results remain readable as extracted information, separate from the checklist. The page explains that only extracted data is retained, not original files. There is no new upload-to-checklist action.
 - Dashboard and LINE checklist summaries use the new list and describe counts as items the student added. They never claim all faculty requirements are completed.
@@ -17,7 +17,7 @@ Owner direction: start from information the student has. Scope: manual items thr
 
 ## Storage and scope
 
-Use the existing season-scoped `documents` table with `kind='checklist_item'`; use `title`, `note`, `status`, `truth_level` and validated `fields_json` metadata. Other document kinds remain separate records. This introduces no infrastructure service, schema migration, data deletion, authentication change or advisor role.
+Use the existing season-scoped `documents` table with `kind='checklist_item'`; use `title`, `note`, `status`, `truth_level` and validated `fields_json` metadata. Other document kinds remain separate records. Existing `pending_actions` stores private document-chat request receipts; it needs no schema change. This introduces no infrastructure service, schema migration, data deletion, authentication change or advisor role.
 
 A researched faculty database, handbook OCR integration, original-file storage, institutional submission/approval and automatic reminders are outside this release.
 

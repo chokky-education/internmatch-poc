@@ -44,6 +44,7 @@ const toolImpl = {
     if (a.id) return saveChecklistItem(env, u, a, ch, { id: a.id, version: a.version });
     const fingerprint = await documentCreateFingerprint(a);
     if (!fingerprint) return { ok: false, error: 'bad_request' };
+    if (!await claimDocumentRequest(env, u)) return { ok: false, error: 'document_request_in_progress' };
     if (!env.DOCUMENT_OPERATIONS.has(fingerprint)) env.DOCUMENT_OPERATIONS.set(fingerprint, env.DOCUMENT_OPERATIONS.size);
     const request_id = await documentRequestId([u, env.SEASON_ID, env.ASSISTANT_REQUEST_ID], env.DOCUMENT_OPERATIONS.get(fingerprint));
     return saveChecklistItem(env, u, a, ch, { request_id });
@@ -104,6 +105,36 @@ async function fail(env, userId, channel, text, actions, cards, done) {
 export async function runAssistant(env, userId, channel, text, { request_id = crypto.randomUUID() } = {}) {
   const c=await context(env,userId);
   env={...scoped(env,c.season.id),ASSISTANT_REQUEST_ID:request_id,DOCUMENT_OPERATIONS:new Map(),ASSISTANT_CONTEXT:{profile:c.profile,season:c.season,seasons:(await listSeasons(env,userId)).map(s=>({id:s.id,name:s.name}))}};
+  env.DOCUMENT_RECEIPT_ID = await documentRequestId([userId, c.season.id, request_id], 'receipt');
+  env.DOCUMENT_REQUEST_TEXT = text;
+  const cached = await cachedDocumentRequest(env, userId);
+  if (cached) return cached;
+  const result = await assistantTurn(env, userId, channel, text, c);
+  if (env.DOCUMENT_CLAIM) await env.DB.prepare("UPDATE pending_actions SET status='confirmed',result_json=? WHERE id=? AND user_id=? AND claim_token=? AND status='applying'")
+    .bind(JSON.stringify(result), env.DOCUMENT_RECEIPT_ID, userId, env.DOCUMENT_CLAIM).run();
+  return result;
+}
+
+// Only document-creating turns acquire a receipt. A retry replays the original
+// success/partial reply before Gemini can change the order of committed tools.
+async function cachedDocumentRequest(env, userId) {
+  const row = await env.DB.prepare("SELECT payload_json,status,result_json FROM pending_actions WHERE id=? AND user_id=? AND season_id=? AND kind='document_request'")
+    .bind(env.DOCUMENT_RECEIPT_ID, userId, env.SEASON_ID).first();
+  if (!row) return null;
+  if (JSON.parse(row.payload_json).text !== env.DOCUMENT_REQUEST_TEXT) return { ok: false, reply: 'ข้อความของคำขอเดิมเปลี่ยนไป ตรวจรายการที่บันทึกแล้วก่อนส่งใหม่', actions: [], cards: [] };
+  if (row.status === 'confirmed' && row.result_json) return JSON.parse(row.result_json);
+  return { ok: false, reply: 'คำขอนี้กำลังดำเนินการ หรืออาจบันทึกบางส่วนแล้ว เปิดรายการเพื่อตรวจก่อนส่งข้อความใหม่', actions: [], cards: [] };
+}
+async function claimDocumentRequest(env, userId) {
+  if (env.DOCUMENT_CLAIM) return true;
+  const token = crypto.randomUUID(), at = new Date().toISOString();
+  const r = await env.DB.prepare("INSERT OR IGNORE INTO pending_actions(id,user_id,season_id,kind,payload_json,status,claim_token,created_at,expires_at) VALUES (?,?,?,'document_request',?,'applying',?,?,?)")
+    .bind(env.DOCUMENT_RECEIPT_ID, userId, env.SEASON_ID, JSON.stringify({ text: env.DOCUMENT_REQUEST_TEXT }), token, at, new Date(Date.now() + 86400e3).toISOString()).run();
+  if (r.meta.changes) env.DOCUMENT_CLAIM = token;
+  return !!r.meta.changes;
+}
+
+async function assistantTurn(env, userId, channel, text, c) {
   const actions = [], cards = [];
   let done = 0;
   try {
@@ -125,6 +156,7 @@ export async function runAssistant(env, userId, channel, text, { request_id = cr
         let out;
         try { out = toolImpl[f.name] ? await toolImpl[f.name](env, userId, f.args || {}, channel) : { ok: false, error: 'unknown_tool' }; }
         catch (e) { out = { ok: false, error: e.message }; }
+        if (out?.error === 'document_request_in_progress') return await cachedDocumentRequest(env, userId);
         if (f.name !== 'get_overview') actions.push(f.name);
         if (out?.ok && f.name !== 'get_overview') done++;
         const card = cardFor(f.name, out, f.args || {}); if (card) cards.push(card);
