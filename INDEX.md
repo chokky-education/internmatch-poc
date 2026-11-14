@@ -73,6 +73,7 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 | `UI_UX_SPEC.md` | Screen specs and design tokens |
 | `docs/superpowers/specs/2026-11-14-student-document-checklist.md` | Manual student-owned document list; handbook OCR integration deferred |
 | `docs/uat/2026-11-14-documents.md` | Labeled manual document API/web verification and production limits |
+| `docs/releases/2026-11-14-documents.md` | Completed document release: merged revisions, CI/deploy, production flows and fixture cleanup |
 | `docs/superpowers/specs/2026-11-11-line-primary-web-fallback-design.md` | Design of the LINE-primary / web-fallback architecture |
 | `docs/superpowers/plans/2026-11-11-line-primary-web-fallback.md` | Implementation plan for the above |
 | `docs/line-setup.md` | How to set up LINE OA, secrets, deploy |
