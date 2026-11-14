@@ -1,6 +1,8 @@
 import { proposeProfile,proposeSeason } from './profile-proposals.js';
 import { saveMilestone } from './milestones.js';
 import { context, scoped, listSeasons } from './seasons.js';
+import { saveChecklistItem, setChecklistStatus } from './document-checklist.js';
+import { documentItemCard } from './cards.js';
 import { getOverview, addApplication, updateApplicationStatus, setTask, addReminder, deleteReminder } from './store.js';
 import { systemPrompt } from './prompt.js';
 
@@ -11,6 +13,13 @@ export const PARTIAL_REPLY = 'ทำรายการให้แล้วน�
 const MAX_TURNS = 5, HISTORY = 20;
 
 export const TOOLS = [{ functionDeclarations: [
+  { name: 'save_document_item', description: 'เพิ่มหรือแก้รายการเตรียมเอกสารจากสิ่งที่ผู้ใช้บอกเอง เว้นช่องที่ไม่ทราบ ถ้าแก้ให้ใช้ id/version ล่าสุดจาก get_overview ยังไม่รองรับนำผล OCR มาเพิ่มอัตโนมัติ', parameters: { type: 'object', properties: {
+    ...Object.fromEntries(['title','detail','recipient','submission_method','due_date','source','source_page','id'].map(k => [k, { type: 'string' }])),
+    version: { type: 'integer' }, from_document: { type: 'boolean', description: 'true ถ้านำเนื้อหาจากเอกสารที่ AI อ่านมาเพิ่ม' },
+  }, required: ['from_document'] } },
+  { name: 'update_document_item_status', description: 'เปลี่ยนสถานะที่ผู้ใช้รายงาน เตรียมแล้วกับส่งแล้วต่างกัน ใช้ id/version จาก get_overview ไม่ใช่การยืนยันรับจากคณะ', parameters: { type: 'object', properties: {
+    id: { type: 'string' }, version: { type: 'integer' }, status: { type: 'string', enum: ['todo','prepared','submitted'] },
+  }, required: ['id','version','status'] } },
   {name:'propose_profile',description:'เสนอแก้โปรไฟล์จากคำสั่งชัดเจนของผู้ใช้ ต้องกดยืนยันการ์ดก่อนบันทึก',parameters:{type:'object',properties:Object.fromEntries(['preferred_name','university','faculty','major','study_year'].map(k=>[k,{type:'string'}]).concat([['career_interests',{type:'array',items:{type:'string'}}]]))}},
   {name:'propose_season',description:'เสนอสร้างฤดูด้วย create_name เลือกฤดูด้วย select_name ชื่อเต็มตรงกัน หรือแก้ฤดูที่เลือกด้วย name/education/details ต้องยืนยันก่อนบันทึก ถ้าชื่อคลุมเครือถามก่อน',parameters:{type:'object',properties:{create_name:{type:'string'},select_name:{type:'string'},name:{type:'string'},education:{type:'object',properties:Object.fromEntries(['university','faculty','major','study_year'].map(k=>[k,{type:'string'}]))},details:{type:'object',properties:{type:{type:'string'},other_type:{type:'string'},hours:{type:'number'},weeks:{type:'number'},source:{type:'string'},start_date:{type:'string'},end_date:{type:'string'}}}}}},
   {name:'add_milestone',description:'บันทึกวันสำคัญแล้วเสนอเตือนให้กดยืนยัน date เว้นได้เมื่อไม่ทราบ',parameters:{type:'object',properties:{title:{type:'string'},date:{type:'string'},end_date:{type:'string'},source:{type:'string'}},required:['title']}},
@@ -25,11 +34,15 @@ export const TOOLS = [{ functionDeclarations: [
     text: { type: 'string' }, datetime: { type: 'string', description: 'ISO 8601 เวลาไทย เช่น 2026-11-19T20:00' } }, required: ['text', 'datetime'] } },
   { name: 'delete_reminder', description: 'ลบการเตือนที่ตั้งไว้ (ลบทุกรายการที่ข้อความมีคำนี้)', parameters: { type: 'object', properties: {
     text_keyword: { type: 'string', description: 'คำในข้อความเตือน' } }, required: ['text_keyword'] } },
-  { name: 'set_university_task', description: 'ติ๊กหรือยกเลิกติ๊กรายการในเช็กลิสต์คณะ', parameters: { type: 'object', properties: {
+  { name: 'set_university_task', description: 'ติ๊กรายการเก่าที่ผู้ใช้ระบุชัดเจนเท่านั้น รายการเก่าอาจเป็นตัวอย่าง ไม่ใช่ข้อกำหนดของคณะ', parameters: { type: 'object', properties: {
     task_keyword: { type: 'string', description: 'คำในชื่อรายการ' }, done: { type: 'boolean' } }, required: ['task_keyword', 'done'] } },
 ] }];
 
 const toolImpl = {
+  save_document_item: (env, u, a, ch) => a.from_document !== false
+    ? { ok: false, error: 'confirmation_required', instruction: 'ยังไม่รองรับนำผล OCR มาเพิ่มรายการ ให้ผู้ใช้ตรวจต้นฉบับแล้วบอกข้อมูลหรือเพิ่มรายการเอง' }
+    : saveChecklistItem(env, u, a, ch, { id: a.id, version: a.version }),
+  update_document_item_status: (env, u, a, ch) => setChecklistStatus(env, u, a.id, a.status, a.version, ch),
   propose_profile:(env,u,a)=>proposeProfile(env,u,a),
   propose_season:(env,u,a)=>proposeSeason(env,u,a),
   add_milestone:(env,u,a,ch)=>saveMilestone(env,u,a,ch),
@@ -61,6 +74,7 @@ export async function saveMessage(env, userId, channel, role, content, cards = n
 
 function cardFor(name, out, args) {
   if (!out?.ok) return null;
+  if (['save_document_item','update_document_item_status'].includes(name)) return documentItemCard(out.item);
   if(out.proposal)return proposalCard(out.proposal);
   if (name === 'add_application') return applicationCard({ ...out, truth_level: args.from_document ? 'AI_EXTRACTED' : 'USER_REPORTED' }, { undo: true });
   if (name === 'update_application_status') return applicationCard({ ...out, truth_level: 'USER_REPORTED' });

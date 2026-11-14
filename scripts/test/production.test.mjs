@@ -18,7 +18,7 @@ async function liveFixture(t, { staleCommit = false, staleAsset = false, brokenA
   const config = 'window.IM_API = location.origin;';
   const launcher = '<title>เปิด InternMatch</title><script src="legacy-redirect.js"></script>';
   const redirect = `localStorage.removeItem('im_token');location.replace(${JSON.stringify(apiUrl + '/')});`;
-  const appFiles = { 'index.html': html, 'config.js': config, 'profile-ui.js': 'profile script', 'profile-ui.css': 'profile style' };
+  const appFiles = { 'index.html': html, 'config.js': config, 'profile-ui.js': 'profile script', 'profile-ui.css': 'profile style', 'document-ui.js': 'document script', 'document-ui.css': 'document style' };
   const launcherFiles = { 'index.html': launcher, 'legacy-redirect.js': redirect };
   server.on('request', (req, res) => {
     const path = new URL(req.url, apiUrl).pathname;
@@ -65,6 +65,8 @@ test('Pages bundle includes only public assets and a revision manifest', t => {
   writeFileSync(join(root, 'config.js'), 'window.IM_API="https://example.test";');
   writeFileSync(join(root,'profile-ui.js'),'profile script');
   writeFileSync(join(root,'profile-ui.css'),'profile style');
+  writeFileSync(join(root,'document-ui.js'),'document script');
+  writeFileSync(join(root,'document-ui.css'),'document style');
   writeFileSync(join(root, 'worker/.dev.vars'), 'must never be published');
   execFileSync(process.execPath, ['scripts/build-pages.mjs', commit], { cwd: root });
   assert.deepEqual(readdirSync(join(root, '.pages')).sort(), ['index.html', 'legacy-redirect.js', 'release.json']);
@@ -72,7 +74,7 @@ test('Pages bundle includes only public assets and a revision manifest', t => {
   assert.equal(release.commit, commit);
   const app = JSON.parse(readFileSync(join(root, '.app/release.json')));
   assert.equal(app.files['index.html'], hash('<title>InternMatch</title>'));
-  assert.deepEqual(readdirSync(join(root,'.app')).sort(), ['config.js','index.html','profile-ui.css','profile-ui.js','release.json']);
+  assert.deepEqual(readdirSync(join(root,'.app')).sort(), ['config.js','document-ui.css','document-ui.js','index.html','profile-ui.css','profile-ui.js','release.json']);
   assert.ok(!readFileSync(join(root,'.pages/index.html'),'utf8').includes('id="login"'));
   const redirect=readFileSync(join(root,'.pages/legacy-redirect.js'),'utf8');
   assert.ok(redirect.indexOf('removeItem') < redirect.indexOf('location.replace'));

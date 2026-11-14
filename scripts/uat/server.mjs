@@ -15,7 +15,7 @@ const mf=new Miniflare((convertV4MiniflareOptions||((v)=>v))({name:'internmatch-
  bindings:{WEB_ORIGIN:'http://localhost:8787',LOCAL_DEV_LOGIN:'false',ALLOWED_EMAILS:'alpha@example.test,beta@example.test',BREVO_API_KEY:'uat',BREVO_SENDER_EMAIL:'sender@example.test',LINE_CHANNEL_SECRET:'uat-line-secret',LINE_CHANNEL_ACCESS_TOKEN:'uat-line-token',GEMINI_API_KEY:'uat',GEMINI_MODEL:'uat-model',PAXA_API_KEY:'uat',PAXA_MODEL:'uat-model'},
  serviceBindings:{ASSETS:async req=>{
   const path=new URL(req.url).pathname;
-  const file=path==='/open.html'?'scripts/uat/open.html':['/index.html','/config.js','/profile-ui.js','/profile-ui.css','/release.json'].includes(path)?'.app'+path:null;
+  const file=path==='/open.html'?'scripts/uat/open.html':['/index.html','/config.js','/profile-ui.js','/profile-ui.css','/document-ui.js','/document-ui.css','/release.json'].includes(path)?'.app'+path:null;
   if(!file)return new MFResponse('Not found',{status:404});
   return new MFResponse(await readFile(file),{headers:{'Content-Type':path.endsWith('.js')?'text/javascript':path.endsWith('.css')?'text/css':path.endsWith('.json')?'application/json':'text/html'}});
  }},

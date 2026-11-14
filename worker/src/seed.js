@@ -1,5 +1,5 @@
-// Real users start with an empty board. Only a generic faculty checklist is
-// created, labelled USER_REPORTED because it is not from their faculty.
+// Legacy templates retained for test fixtures only. Never seed these as a real
+// student's faculty requirements; existing task records are preserved as legacy.
 export const SEED_TASKS = [
   { title: 'ลงทะเบียนรายวิชาฝึกงาน', detail: 'ดูกำหนดการในคู่มือคณะ' },
   { title: 'อาจารย์ที่ปรึกษาอนุมัติบริษัทเป้าหมาย', detail: 'ก่อนส่งหนังสือขอความอนุเคราะห์' },

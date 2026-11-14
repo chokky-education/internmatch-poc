@@ -17,7 +17,7 @@ function bundle(directory, entries) {
   }
   writeFileSync(join(out, 'release.json'), JSON.stringify({ commit, appUrl, files }) + '\n');
 }
-bundle('.app', ['index.html', 'config.js', 'profile-ui.js', 'profile-ui.css'].map(name => [name, readFileSync(join(root, name))]));
+bundle('.app', ['index.html', 'config.js', 'profile-ui.js', 'profile-ui.css', 'document-ui.js', 'document-ui.css'].map(name => [name, readFileSync(join(root, name))]));
 bundle('.pages', [
   ['index.html', `<!doctype html><html lang="th"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; base-uri 'none'"><title>เปิด InternMatch</title><h1>InternMatch</h1><p>กำลังเปิดหน้าฝึกงานของคุณ…</p><p><a href="${appUrl}">กดเปิด InternMatch</a></p><script src="legacy-redirect.js"></script></html>`],
   ['legacy-redirect.js', `// Discard legacy credentials without reading or forwarding them.\nfor (const name of ['localStorage','sessionStorage']) try { window[name].removeItem('im_token'); } catch {}\nlocation.replace(${JSON.stringify(appUrl)} + location.hash);\n`],

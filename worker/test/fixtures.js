@@ -1,6 +1,7 @@
 // Test-only sample data. Never seeded for real users.
 import { context } from '../src/seasons.js';
 import { seedUser } from '../src/store.js';
+import { SEED_TASKS } from '../src/seed.js';
 export const SAMPLE_APPLICATIONS = [
   { company: 'บริษัท A', role: 'Data Analyst Intern', status: 'Interview', truth: 'SYSTEM_VERIFIED', next: 'สัมภาษณ์ 11 พ.ย. 10:00', history: [['1 พ.ย.', 'สมัครผ่าน InternMatch'], ['8 พ.ย.', 'บริษัทเปลี่ยนเป็นสัมภาษณ์']] },
   { company: 'บริษัท B', role: 'BI Intern', status: 'Applied', truth: 'USER_REPORTED', url: 'careers.company-b.com', next: 'รอผลพิจารณา', history: [['3 พ.ย.', 'บันทึกเอง: สมัครบนเว็บบริษัท']] },
@@ -21,6 +22,8 @@ export async function seedDemo(env, userId) {
   const seasonId = (await context(env,userId)).season.id;
   const now = new Date().toISOString(), db = env.DB;
   await db.batch([
+    ...SEED_TASKS.map((t, i) => db.prepare('INSERT INTO tasks(id,user_id,season_id,title,detail,done,truth_level,sort) VALUES (?,?,?,?,?,0,?,?)')
+      .bind(crypto.randomUUID(), userId, seasonId, t.title, t.detail, 'USER_REPORTED', i)),
     ...SAMPLE_APPLICATIONS.map(a => db.prepare('INSERT INTO applications (id,user_id,season_id,company,role,status,next_step,url,truth_level,history_json,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
       .bind(crypto.randomUUID(), userId, seasonId, a.company, a.role, a.status, a.next, a.url || null, a.truth, JSON.stringify(a.history), now)),
     ...SAMPLE_DOCUMENTS.map(d => db.prepare('INSERT INTO documents (id,user_id,season_id,kind,title,status,note,fields_json,truth_level,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)')

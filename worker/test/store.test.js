@@ -24,14 +24,14 @@ describe('seed + overview', () => {
 });
 
 describe('new real user', () => {
-  it('seedUser gives a new user an empty board and no sample documents, only a checklist that is not marked verified or done', async () => {
+  it('seedUser gives a new user an empty board and no sample documents or faculty requirements', async () => {
     await env.DB.exec('DELETE FROM applications; DELETE FROM tasks; DELETE FROM documents;');
     await seedUser(env, U);
     const o = await getOverview(env, U);
     expect(o.applications).toEqual([]);
     expect(o.my_documents).toEqual([]);
-    expect(o.university_checklist.length).toBeGreaterThan(0);
-    expect(o.university_checklist.every(t => !t.done && t.truth_level !== 'SYSTEM_VERIFIED')).toBe(true);
+    expect(o.university_checklist).toEqual([]);
+    expect(o.checklist_items).toEqual([]);
   });
   it('addApplication without a role saves with role "ไม่ระบุ"', async () => {
     const r = await addApplication(env, U, { company: 'Dynamic', status: 'Applied', truth_level: 'USER_REPORTED' }, 'line');

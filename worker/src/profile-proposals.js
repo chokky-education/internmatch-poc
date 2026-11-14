@@ -1,6 +1,5 @@
 import {context,listSeasons,educationOf} from './seasons.js';
 import {newProposal,dateOK} from './milestones.js';
-import {SEED_TASKS} from './seed.js';
 const bad=error=>({ok:false,error});
 export async function proposeProfile(env,u,patch) {
  const c=await context(env,u),after={...c.profile};
@@ -43,8 +42,7 @@ export async function confirmProfileProposal(env,u,p,ch) {
   mutations=[env.DB.prepare(`UPDATE users SET selected_season_id=?,selection_version=selection_version+1 WHERE id=? AND ${guard}`).bind(payload.id,u,p.id,token)];
  }else if(p.kind==='season_create'){
   versionCondition='1=1';
-  mutations=[env.DB.prepare(`INSERT INTO seasons(id,user_id,name,education_json,created_at) SELECT ?,?,?,?,? WHERE ${guard}`).bind(payload.id,u,payload.name,JSON.stringify(payload.education),at,p.id,token),
-   ...SEED_TASKS.map((t,i)=>env.DB.prepare(`INSERT INTO tasks(id,user_id,season_id,title,detail,sort,truth_level) SELECT ?,?,?,?,?,?,? WHERE ${guard}`).bind(crypto.randomUUID(),u,payload.id,t.title,t.detail,i,'USER_REPORTED',p.id,token))];
+  mutations=[env.DB.prepare(`INSERT INTO seasons(id,user_id,name,education_json,created_at) SELECT ?,?,?,?,? WHERE ${guard}`).bind(payload.id,u,payload.name,JSON.stringify(payload.education),at,p.id,token)];
  }else return bad('bad_request');
  const season=await env.DB.prepare('SELECT name FROM seasons WHERE id=? AND user_id=?').bind(p.season_id,u).first();
  const result={ok:true,season_id:p.season_id,season_name:season.name};

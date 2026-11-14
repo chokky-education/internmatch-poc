@@ -5,16 +5,26 @@ import { getOverview, updateApplicationStatus, deleteApplication, deleteReminder
 import { confirmExtraction, discardExtraction } from './ocr.js';
 import { applicationCard, reminderSetCard, STAT_TH, todayCard, applicationsSummaryCard, checklistSummaryCard, remindersSummaryCard } from './cards.js';
 import { saveMessage } from './assistant.js';
+import { saveChecklistItem, setChecklistStatus } from './document-checklist.js';
+import { documentItemCard } from './cards.js';
 
 const STATUS = ['Saved', 'Applied', 'Interview', 'Offer', 'Closed'];
 const GENERIC = 'ทำไม่สำเร็จ ลองใหม่อีกครั้งนะ';
 const ERR_TH = { not_found: 'รายการนี้ไม่มีแล้วนะ', system_verified: 'รายการนี้บริษัทเป็นผู้อัปเดต แก้เองไม่ได้นะ' };
-const LABEL = { app_status: 'เปลี่ยนสถานะ', app_undo: 'ยกเลิก', rem_delete: 'ลบการเตือน', rem_done: 'ทำแล้ว', rem_snooze: 'เลื่อน 1 ชม.', ext_confirm: 'ยืนยันบันทึก', ext_discard: 'ไม่ใช่', 'menu:today': 'วันนี้ต้องทำอะไร', 'menu:apps': 'ขอดูสถานะใบสมัครทั้งหมด', 'menu:checklist': 'เช็กลิสต์คณะเหลืออะไรบ้าง', 'menu:reminders': 'มีเตือนอะไรตั้งไว้บ้าง' };
+const LABEL = { doc_save: 'บันทึกรายการเตรียมเอกสาร', doc_status: 'อัปเดตสถานะการเตรียมเอกสาร', app_status: 'เปลี่ยนสถานะ', app_undo: 'ยกเลิก', rem_delete: 'ลบการเตือน', rem_done: 'ทำแล้ว', rem_snooze: 'เลื่อน 1 ชม.', ext_confirm: 'ยืนยันบันทึก', ext_discard: 'ไม่ใช่', 'menu:today': 'วันนี้ต้องทำอะไร', 'menu:apps': 'ขอดูสถานะใบสมัครทั้งหมด', 'menu:checklist': 'รายการเตรียมเอกสารของฉัน', 'menu:reminders': 'มีเตือนอะไรตั้งไว้บ้าง' };
 const thTime = iso => new Date(iso).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' });
 const EXT_ERR = { already_confirmed: 'อันนี้บันทึกไปแล้วนะ', duplicate: 'มีบริษัทนี้อยู่ในบอร์ดแล้วนะ', missing_company: 'อ่านชื่อบริษัทไม่เจอ เลยยังไม่บันทึกนะ พิมพ์บอกพี่แทนได้ เช่น "สมัคร SCB แล้ว"' };
 
 async function dispatch(env, userId, channel, name, id, arg, options) {
   switch (name) {
+    case 'doc_save': case 'doc_status': {
+      const r = name === 'doc_save'
+        ? await saveChecklistItem(env, userId, options?.item, channel, { ...options, id: id || null })
+        : await setChecklistStatus(env, userId, id, arg, options?.version, channel);
+      const errors = { conflict: 'ข้อมูลเปลี่ยนแล้ว โหลดข้อมูลล่าสุดก่อนแก้อีกครั้งนะ', bad_request: 'ตรวจชื่อรายการและวันที่อีกครั้งนะ', not_found: 'ไม่พบรายการในฤดูนี้' };
+      return r.ok ? { ...r, reply: 'บันทึกรายการเตรียมเอกสารแล้ว · สถานะเป็นข้อมูลที่คุณรายงาน', cards: [documentItemCard(r.item)] }
+        : { ok: false, error: r.error, reply: errors[r.error] || GENERIC };
+    }
     case 'proposal_confirm': {
       const r=await confirmProposal(env,userId,id,channel,options?.reminders);
       const errors={expired:'การ์ดหมดอายุแล้ว เปิดรายการเพื่อทำใหม่ได้เลย',conflict:'ข้อมูลเปลี่ยนแล้ว เปิดรายการเพื่อตรวจใหม่ก่อนนะ',invalid_datetime:'เลือกเวลาเตือนในอนาคต',not_found:'ไม่พบรายการนี้'};
@@ -57,9 +67,9 @@ async function dispatch(env, userId, channel, name, id, arg, options) {
     }
     case 'menu': {
       const MENU = {
-        today: o => { const c = todayCard(o); return { reply: c.rows.length ? 'นี่คือสิ่งที่ควรทำตอนนี้นะ' : 'ตอนนี้ไม่มีอะไรค้างเลย 🎉 บอกพี่ได้ถ้าสมัครที่ไหนเพิ่ม', cards: c.rows.length ? [c] : [] }; },
+        today: o => { const c = todayCard(o); return { reply: c.rows.length ? 'นี่คือสิ่งที่ควรทำตอนนี้นะ' : 'ยังไม่มีงานที่บันทึกไว้ให้ติดตาม บอกพี่ได้ว่าต้องเตรียมอะไรหรือสมัครที่ไหน', cards: c.rows.length ? [c] : [] }; },
         apps: o => o.applications.length ? { reply: 'สถานะใบสมัครทั้งหมดของคุณ', cards: [applicationsSummaryCard(o)] } : { reply: 'ยังไม่มีใบสมัครในบอร์ดเลย พิมพ์บอกพี่ได้ เช่น "สมัคร SCB แล้ว"', cards: [] },
-        checklist: o => ({ reply: 'เช็กลิสต์คณะที่ยังค้างอยู่ (ตรวจกำหนดการจริงกับคู่มือคณะด้วยนะ)', cards: [checklistSummaryCard(o)] }),
+        checklist: o => ({ reply: 'รายการที่คุณเพิ่มในฤดูนี้ พร้อมสถานะที่คุณรายงาน', cards: [checklistSummaryCard(o)] }),
         reminders: o => { const c = remindersSummaryCard(o); return c.rows.length ? { reply: 'การเตือนที่ตั้งไว้', cards: [c] } : { reply: 'ยังไม่มีการเตือนที่ตั้งไว้ พิมพ์บอกพี่ได้ เช่น "เตือนพรุ่งนี้ 2 ทุ่มให้ส่งเอกสาร"', cards: [] }; },
       };
       if (!MENU[id]) return { ok: false, reply: GENERIC };
@@ -70,20 +80,22 @@ async function dispatch(env, userId, channel, name, id, arg, options) {
 }
 
 export async function runCardAction(env, userId, channel, data, options) {
-  const [name, id, arg] = String(data || '').split(':');
+  const [name, id, arg, version] = String(data || '').split(':');
+  if (name === 'doc_status') options = { ...options, version: /^\d+$/.test(version || '') ? Number(version) : null };
   const tables={app_status:'applications',app_undo:'applications',rem_delete:'reminders',rem_done:'reminders',rem_snooze:'reminders',ext_confirm:'extractions',confirm:'extractions',ext_discard:'extractions',discard:'extractions',proposal_confirm:'pending_actions',proposal_discard:'pending_actions'};
-  if(tables[name]) {
-    const target=await env.DB.prepare(`SELECT season_id FROM ${tables[name]} WHERE id=? AND user_id=?`).bind(id,userId).first();
+  const table = tables[name] || (['doc_save','doc_status'].includes(name) && id ? 'documents' : null);
+  if(table) {
+    const target=await env.DB.prepare(`SELECT season_id FROM ${table} WHERE id=? AND user_id=?`).bind(id,userId).first();
     if(!target?.season_id)return {ok:false,reply:'รายการนี้ไม่มีแล้วนะ',cards:[]};
     env=scoped(env,target.season_id);
   } else {const c=await context(env,userId);env=scoped(env,c.season.id);}
   let out;
   try { out = await dispatch(env, userId, channel, name, id, arg, options); } catch (e) { console.error('card action error', e.message); out = { ok: false, reply: GENERIC }; }
   const cards = out.cards || [];
-  if (out.ok) {
+  if (out.ok && !out.replayed) {
     const label = LABEL[out.label || name] || name;
     await saveMessage(env, userId, channel, 'user', label);
     await saveMessage(env, userId, channel, 'model', out.reply, cards);
   }
-  return { ok: out.ok, reply: out.reply, cards };
+  return { ok: out.ok, reply: out.reply, cards, ...(out.error ? { error: out.error } : {}), ...(out.item ? { item: out.item } : {}) };
 }

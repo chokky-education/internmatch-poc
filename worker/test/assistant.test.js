@@ -51,6 +51,17 @@ describe('delete_reminder tool', () => {
 });
 
 describe('cards from tools', () => {
+  it('adds a student document item through LINE and keeps document-derived content behind confirmation', async () => {
+    const { getOverview } = await import('../src/store.js');
+    queue = [fc('save_document_item', { title: 'ส่งคำร้อง', source: 'คำแนะนำที่ได้รับจากคณะ', from_document: false }), text('เพิ่มรายการแล้ว')];
+    const result = await runAssistant(env, U, 'line', 'ช่วยจดว่าต้องส่งคำร้อง ยังไม่รู้วันส่ง');
+    expect(result.cards[0]).toMatchObject({ kind: 'checklist_item', truth: 'USER_REPORTED' });
+    expect((await getOverview(env, U)).checklist_items[0]).toMatchObject({ title: 'ส่งคำร้อง', due_date: null });
+    queue = [fc('save_document_item', { title: 'รายการจากคู่มือ', from_document: true }), text('ตรวจรายการจากคู่มือก่อนนะ')];
+    const blocked = await runAssistant(env, U, 'line', 'เพิ่มจากคู่มือเลย');
+    expect(blocked.cards).toEqual([]);
+    expect((await getOverview(env, U)).checklist_items).toHaveLength(1);
+  });
   it('add_application returns one application card with undo and saves it in cards_json', async () => {
     queue = [fc('add_application', { company: 'บริษัท Z', role: 'Data Intern', status: 'Applied' }), text('บันทึกแล้ว')];
     const r = await runAssistant(env, U, 'line', 'สมัครบริษัท Z แล้ว');

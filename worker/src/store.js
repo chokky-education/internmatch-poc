@@ -1,5 +1,5 @@
 import { context } from './seasons.js';
-import { SEED_TASKS } from './seed.js';
+import { checklistItem, checklistSummary } from './document-checklist.js';
 
 const nowIso = () => new Date().toISOString();
 const uuid = () => crypto.randomUUID();
@@ -15,10 +15,8 @@ async function write(env,userId,seasonId,stmt,entity,id,change,channel,truth) {
 }
 
 export async function seedUser(env, userId) {
-  const seasonId = await scope(env, userId);
-  const now = nowIso(), db = env.DB;
-  await db.batch(SEED_TASKS.map((t, i) => db.prepare('INSERT INTO tasks (id,user_id,season_id,title,detail,done,truth_level,sort) VALUES (?,?,?,?,?,?,?,?)')
-    .bind(uuid(), userId, seasonId, t.title, t.detail, 0, 'USER_REPORTED', i)));
+  // Initialize context only. Unknown faculty requirements must remain empty.
+  await context(env, userId);
 }
 
 export async function getOverview(env, userId) {
@@ -31,11 +29,14 @@ export async function getOverview(env, userId) {
     q('SELECT * FROM reminders WHERE user_id=? AND season_id=? ORDER BY due_at'),
     q('SELECT * FROM milestones WHERE user_id=? AND season_id=? ORDER BY date IS NULL,date,created_at'),
   ]);
+  const checklist = docs.filter(d => d.kind === 'checklist_item').map(checklistItem);
   return {
+    checklist_items: checklist,
+    checklist_summary: checklistSummary(checklist),
     milestones,
     applications: apps.map(a => ({ id: a.id, company: a.company, role: a.role, status: a.status, next_step: a.next_step, url: a.url, truth_level: a.truth_level, verified_by_system: a.truth_level === 'SYSTEM_VERIFIED', history: JSON.parse(a.history_json), updated_at: a.updated_at })),
-    university_checklist: tasks.map(t => ({ id: t.id, task: t.title, detail: t.detail, done: !!t.done, truth_level: t.truth_level })),
-    my_documents: docs.map(d => ({ id: d.id, kind: d.kind, name: d.title, status: d.status, note: d.note, fields: JSON.parse(d.fields_json), truth_level: d.truth_level })),
+    university_checklist: tasks.map(t => ({ id: t.id, task: t.title, detail: t.detail, done: !!t.done, truth_level: t.truth_level, legacy: true })),
+    my_documents: docs.filter(d => d.kind !== 'checklist_item').map(d => ({ id: d.id, kind: d.kind, name: d.title, status: d.status, note: d.note, fields: JSON.parse(d.fields_json), truth_level: d.truth_level })),
     reminders: rems.map(r => ({ id: r.id, text: r.text, due_at: r.due_at, sent_at: r.sent_at, delivery: r.delivery, seen_at: r.seen_at })),
   };
 }

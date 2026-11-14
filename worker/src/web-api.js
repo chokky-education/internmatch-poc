@@ -79,9 +79,11 @@ export async function handleApi(req, env, user, url) {
     return J(await runAssistant(env, user.id, 'web', String(text).trim()));
   }
   if (p === '/api/actions' && m === 'POST') {
-    const { data, reminders } = await readJson(req);
+    const b = await readJson(req);
+    const { data, reminders } = b || {};
     if (!data || typeof data !== 'string') return J({ error: 'bad_request' }, 400);
-    return J(await runCardAction(env, user.id, 'web', data, {reminders}));
+    if (data.split(':')[0] === 'doc_save' && !data.split(':')[1] && (b.season_id !== captured.season.id || b.selection_version !== captured.selection_version)) return fail(J, 'conflict');
+    return J(await runCardAction(env, user.id, 'web', data, {reminders, item: b.item, version: b.version, request_id: b.request_id, season_id: b.season_id, selection_version: b.selection_version}));
   }
   if (p === '/api/ocr' && m === 'POST') {
     let fd; try { fd = await req.formData(); } catch { return J({ error: 'bad_form' }, 400); }

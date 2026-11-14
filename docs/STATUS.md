@@ -2,9 +2,12 @@
 
 The one file that says where the work stands. **Read it first; update it last.** Every agent that finishes a chunk of work rewrites the "Now" and "Next" sections and adds one line to the log at the bottom, in the same commit as the work.
 
-_Last updated: 2026-11-13_
+_Last updated: 2026-11-14_
 
 ## Now (what is true today)
+
+- **Document-list release candidate:** `codex/student-document-checklist` replaces invented faculty requirements with student-added season-scoped preparation items. Unknown recipient/method/date remain blank; preparation and submission are separate user-reported states. New users/seasons get no generic tasks; historical checkbox data remains in a labeled legacy section and is excluded from current progress. Shared actions/API/manual assistant commands use one service, revision checks and atomic audit writes. The owner selected API/web verification and deferred connecting handbook OCR to this list. Release and live verification are pending at this commit.
+- **Document-list local checks:** 148/148 Worker tests, 19/19 tooling/rendering tests and 12 changed-flow checks each in Chromium desktop/mobile-size WebKit passed. Syntax/guardrails/index/public bundling passed. Reviewed bounded production fixture/cleanup plan: `docs/document-release.md`; local evidence and external-provider limits: `docs/uat/2026-11-14-documents.md`.
 
 - **XSS/session release complete:** PR #12 shipped the same-origin Worker app, inert text/attribute rendering, HttpOnly cookie-only hashed sessions and Origin enforcement. PR #13 completed the ordinary mobile modal flow. Feature verification finished on `4d7e2b4eeed041b426eaaff0d6916b18b07db74f` / Worker `72b716e4-10b7-49ec-9923-a6f2698e8f1d`; current metadata deployment details are retained in the PR/task release evidence. This closeout changes documentation only and retains those same app/runtime bytes.
 - **Verified production behavior:** main CI/Pages run `43342405991` passed, both manifests/six asset hashes matched and 27 baseline checks passed. Chromium and mobile WebKit synthetic login/reload/logout/relogin, stored manual/LINE-origin OCR text, quote-safe profile attributes, storage cleanup and foreign mutation checks passed. Fixtures were removed and existing LINE-link fingerprints matched. Owner-authorized genuine email OTP form login/reload/logout in Chromium and form relogin/reload in mobile-size WebKit passed; the existing LINE link stayed true and Save reached normal validation without writing real business records. Twenty-one old raw sessions were expired once; v2 sessions were preserved. Physical iPhone and new LINE/OCR/LLM deliveries were not claimed. See `docs/releases/2026-11-13-session-security.md` and PRs #12/#13 for the rollout history.
@@ -24,7 +27,7 @@ _Last updated: 2026-11-13_
 
 ## Known gaps (stubs that look real)
 
-- 📁 เอกสาร: faculty checklist is a generic 6-item seed (`worker/src/seed.js`), not tied to a real faculty.
+- 📁 เอกสาร: preparation items are student-reported, not a researched faculty requirement database. Existing OCR stores extracted data only and does not populate the checklist; original-file storage and readiness matrices are unavailable.
 - 🔎 ค้นหาฝึกงาน and ⭐ ที่บันทึกไว้: job listings are sample data in `index.html`; "ฉันสมัครแล้ว" does write to the real board.
 - Profile/season/milestone persistence replaces the unsaved onboard form in this release candidate. Dates without confirmed reminders do not yet appear on Dashboard.
 - `GLOSSARY.md` defines profile/season vocabulary; ADR 0004 records shared selected season and historical context.
@@ -35,7 +38,7 @@ _Last updated: 2026-11-13_
 
 1. Continue only work the owner has authorized. PR #2 and PR #5 are separate open work; review them when requested.
 2. Follow the same-origin release workflow for the next owner-authorized change; keep Worker app and Pages launcher manifests matched to the merged release. The overview and security changes have been deployed.
-3. Replace sample job listings with a real source, keeping "รายงานข้อมูลผิด" and source links. Faculty checklist remains generic.
+3. Complete PR/CI/deploy and changed-flow verification for the authorized manual document list. Keep handbook-to-checklist integration deferred. Sample job listings remain separate future work.
 
 ## Gotchas
 
@@ -44,6 +47,8 @@ _Last updated: 2026-11-13_
 - `go('<screen id>')` still works for every old screen id: it opens the grouped page and scrolls (see `GROUPS` in `index.html`).
 
 ## Log
+
+- 2026-11-14: Built the owner-authorized manual document-list candidate, retained legacy progress, stopped real-user template seeding in all three initialization paths, and documented the API/web verification scope. No migration, secret, allowlist or real user data change is part of this release.
 
 - 2026-11-13: Completed PR #12/#13 feature verification: both production browser engines passed the unchanged security smoke; real OTP login/logout/relogin and LINE-link preservation passed; all temporary data/sessions were cleaned up. Recorded final evidence without changing runtime code.
 

@@ -22,7 +22,7 @@ export async function verifyProduction({ webUrl, apiUrl, commit, appOnly = false
       if (kind === 'launcher' && name === 'legacy-redirect.js') assert(body.includes(JSON.stringify(apiUrl.replace(/\/$/, '') + '/')) && body.includes("removeItem('im_token')") && !body.includes('location.search'), 'old Pages clears credentials and opens the canonical app without query credentials');
     }
   }
-  await assets(apiUrl, ['index.html', 'config.js', 'profile-ui.js', 'profile-ui.css'], 'app');
+  await assets(apiUrl, ['index.html', 'config.js', 'profile-ui.js', 'profile-ui.css', 'document-ui.js', 'document-ui.css'], 'app');
   if (!appOnly) await assets(webUrl, ['index.html', 'legacy-redirect.js'], 'launcher');
   const health = await request(apiUrl + '/api/health', { headers: { Origin: origin } });
   assert(health.ok && (await health.json()).ok === true, 'API health responds');

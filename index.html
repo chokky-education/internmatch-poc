@@ -94,6 +94,8 @@ aside{display:flex;flex-direction:column}.navfoot{margin-top:auto;border-top:1px
 </style>
 <link rel="stylesheet" href="profile-ui.css?v=20261113-dialog">
 <script src="profile-ui.js?v=20261113-dialog"></script>
+<link rel="stylesheet" href="document-ui.css?v=20261114">
+<script src="document-ui.js?v=20261114"></script>
 </head>
 <body>
 <div id="login"><div class="box">
@@ -153,24 +155,26 @@ aside{display:flex;flex-direction:column}.navfoot{margin-top:auto;border-top:1px
 
 <!-- UNI -->
 <section class="screen" id="uni">
-  <h1>เอกสาร</h1><h3 style="margin:14px 0 4px">ขั้นตอนคณะ</h3><p class="sub">เช็กลิสต์ตั้งต้นทั่วไป ยังไม่ใช่ของคณะคุณ <span class="chip">✎ ตรวจกำหนดการจริงกับคู่มือคณะ</span></p>
-  <div class="row" style="align-items:flex-start">
-    <div class="card" style="flex:1.4;min-width:340px"><h3 style="margin-top:0">เช็กลิสต์ <span class="chip ok" id="uniPct"></span></h3><div class="list" id="uniList"></div></div>
+  <div class="document-page"><div class="document-toolbar"><div><h1>เอกสาร</h1><p class="sub">จัดสิ่งที่ต้องเตรียม จากคู่มือ ประกาศ หรือข้อมูลที่คุณมี</p><span class="chip" id="documentSeason"></span></div>
+    <div class="row"><button class="btn" type="button" id="documentAdd">＋ เพิ่มรายการเอง</button></div></div>
+  <form class="document-form" id="documentForm" hidden><h2 id="documentFormTitle">เพิ่มรายการที่ต้องเตรียม</h2><p class="sub" id="documentFormSeason"></p>
+    <label for="documentTitle">ชื่อรายการ *</label><input id="documentTitle" name="title" maxlength="160" required autocomplete="off"><small>ใส่เฉพาะสิ่งที่รู้ รายละเอียดที่ยังไม่ทราบเว้นไว้ได้</small>
+    <div class="document-form-grid"><div><label for="documentRecipient">ส่งให้ใคร</label><input id="documentRecipient" name="recipient" maxlength="300"></div><div><label for="documentMethod">ส่งทางไหน</label><input id="documentMethod" name="submission_method" maxlength="600"></div>
+    <div><label for="documentDue">กำหนดส่ง</label><input type="date" id="documentDue" name="due_date"></div><div><label for="documentPage">หน้าอ้างอิง (ถ้ามี)</label><input id="documentPage" name="source_page" maxlength="120"></div></div>
+    <label for="documentSource">ที่มาของข้อมูล</label><input id="documentSource" name="source" maxlength="1200"><small>ชื่อคู่มือ ลิงก์ประกาศ หรือข้อมูลที่ได้รับจากคณะ</small>
+    <label for="documentDetail">หมายเหตุ / สิ่งที่ยังต้องถามคณะ</label><textarea id="documentDetail" name="detail" maxlength="2000"></textarea>
+    <p id="documentFormError" class="document-form-error" role="alert"></p><div class="row"><button class="btn ghost sm" id="documentReload" type="button">โหลดข้อมูลล่าสุด</button><button class="btn ghost" id="documentCancel" type="button">ยกเลิก</button><button class="btn" id="documentSubmit" type="submit">บันทึกรายการ</button></div>
+  </form>
+  <div class="document-panel"><div class="document-panel-heading"><h2>รายการที่ต้องเตรียม</h2><p id="documentProgress" aria-live="polite">กำลังโหลดรายการ…</p></div>
+    <div class="document-empty" id="documentEmpty"><h3>เริ่มจากสิ่งที่รู้</h3><p>ยังไม่มีข้อมูลว่าคณะของคุณต้องส่งอะไรในฤดูนี้ เปิดคู่มือหรือประกาศที่คุณมี แล้วเพิ่มรายการที่เกี่ยวข้อง</p><p>ยังไม่รู้วันส่งหรือวิธีส่งก็เริ่มจดรายการไว้ก่อนได้</p></div>
+    <div class="document-progress-note" id="documentProgressNote" hidden>สถานะเป็นข้อมูลที่คุณรายงาน จำนวนนี้นับเฉพาะรายการที่เพิ่ม ยังไม่ได้ยืนยันว่าครบทุกข้อกำหนดหรือคณะรับเอกสารแล้ว</div><div id="documentItems"></div>
   </div>
+  <details class="document-legacy" id="documentLegacy" hidden><summary>รายการเดิมที่ยังต้องตรวจ <span class="chip" id="uniPct"></span></summary><p class="sub">เก็บรายการและการติ๊กจากหน้ารุ่นเดิมไว้ให้ บางรายการเป็นตัวอย่างทั่วไป ตรวจคู่มือก่อนใช้ และเพิ่มข้อมูลที่ตรงกับฤดูนี้ในรายการด้านบน</p><div class="list" id="uniList"></div></details></div>
 </section>
 
 <!-- DOCS -->
 <section class="screen" id="docs">
-  <div class="row" style="justify-content:space-between"><div><h2 style="margin:0 0 4px">คลังเอกสาร</h2><p class="sub">เตรียมครั้งเดียว ใช้ได้ทุกใบสมัคร · ดูว่าเอกสารใดยังติดขัดอยู่</p></div>
-  <button class="btn" onclick="alert('อัปโหลดไฟล์ (POC)')">＋ อัปโหลดเอกสาร</button></div>
-
-  <h3>1 · เอกสารของฉัน</h3>
-  <div class="grid" id="myDocs"></div>
-
-  <h3 style="margin-top:26px">2 · ความพร้อมเอกสารรายใบสมัคร</h3>
-  <div class="card" style="overflow:auto"><table id="matrix" style="width:100%;border-collapse:collapse"></table>
-  <p class="sub" style="margin:10px 0 0">✔ แนบแล้ว · ⚠ ต้องแก้ · ✕ ขาด · — ไม่ต้องใช้</p></div>
-
+  <div class="document-sources"><h2 style="margin:0 0 6px">ข้อมูลที่อ่านจากเอกสาร</h2><p class="sub">เก็บผลอ่านที่คุณยืนยันแล้ว ไฟล์ต้นฉบับยังอยู่กับคุณ · รอบนี้เพิ่มรายการที่ต้องเตรียมด้วยตัวเอง</p><div id="myDocs"></div></div>
 </section>
 
 
@@ -399,11 +403,10 @@ function renderDash(){const u=serverState?serverState.user:null,un=serverState?s
  const todo=[];
  un.forEach(r=>todo.push(['⏰','w',esc(r.text),'เตือนที่ยังไม่ได้อ่าน','รับทราบ',`seenRem('${r.id}')`]));
  staleApps.forEach(([a,i])=>todo.push(['🔄','w',esc(a.co)+' ไม่มีความเคลื่อนไหว '+a.upd+' วัน','ตามผลหรือปิดใบสมัคร · ✎ อัปเดตโดยคุณ','อัปเดต',`appDetail(${i})`]));
- if(serverState&&!apps.length){todo.push(['📄','','อัปโหลด Resume','ใช้ซ้ำได้ทุกใบสมัคร','ทำเลย',"go('docs')"]);
+ if(serverState&&!apps.length){todo.push(['📄','','เริ่มจดสิ่งที่ต้องเตรียม','เพิ่มรายการจากข้อมูลที่คุณมี','เริ่มจด',"go('uni')"]);
   if(u&&!u.line_linked)todo.push(['💚','g','เพิ่มเพื่อน LINE OA ของโปรเจกต์','เจองานที่ไหนก็แชร์ลิงก์เข้า LINE ได้เลย','เชื่อม',"go('notif')"]);
   todo.push(['⭐','','บันทึกบริษัทเป้าหมาย 5 ที่','จากหน้าค้นหา หรือวางลิงก์ที่เจอเอง','ทำเลย',"go('discover')"]);}
- else myDocs.filter(d=>d.s!=='ok').slice(0,2).forEach(d=>todo.push(['📁','',esc(d.t+': '+d.n),'เอกสาร','ทำเลย',"go('docs')"]));
- uni.filter(x=>!x.done).slice(0,2).forEach(x=>todo.push(['📝','g',esc(x.t),esc(x.d),'ดูขั้นตอน',"go('uni')"]));
+ (serverState?.checklist_items||[]).filter(x=>x.status!=='submitted').slice(0,2).forEach(x=>todo.push(['📝','g',esc(x.title),x.due_date?'กำหนดส่ง '+esc(x.due_date)+' · สถานะที่คุณรายงาน':'ยังไม่ทราบกำหนดส่ง · รายการที่คุณเพิ่ม','ดูรายการ',"go('uni')"]));
  $('#todoCount').textContent=todo.length?todo.length+' เรื่อง':'';
  $('#todo').innerHTML=todo.map(t=>`<div class="drow"><div class="dtile ${t[1]}">${t[0]}</div><div class="dbody"><b>${t[2]}</b><span class="dm">${t[3]}</span></div><button class="btn sm ghost" onclick="${t[5]}">${t[4]}</button></div>`).join('')||'<div class="drow"><span class="dm">วันนี้ไม่มีเรื่องค้าง 🎉</span></div>';
  // เร็ว ๆ นี้
@@ -419,7 +422,7 @@ function renderDash(){const u=serverState?serverState.user:null,un=serverState?s
  const cur=apps.some(a=>a.st==='Offer')?3:apps.some(a=>a.st==='Interview')?2:apps.some(a=>a.st==='Applied')?1:0;
  $('#phaseTxt').innerHTML=`ตอนนี้อยู่ช่วง <b style="color:var(--pri)">${PH[cur]}</b> (ขั้น ${cur+1} จาก ${PH.length})`;
  $('#journey').innerHTML=PH.map((p,i)=>`<i class="${i<cur?'p':i===cur?'n':''}" title="${p}"></i>`).join('');
- $('#startUni').textContent=`เอกสารคณะเสร็จ ${uni.filter(x=>x.done).length}/${uni.length}`;}
+ const ds=serverState?.checklist_summary;$('#startUni').textContent=ds?.total?`เตรียมแล้ว ${ds.prepared} · ส่งแล้ว ${ds.submitted} จาก ${ds.total} รายการที่เพิ่ม`:'ยังไม่มีรายการเตรียมเอกสารของฤดูนี้';}
 function renderNotif(){if(!serverState)return;const lb=$('#lineBtn');if(lb)lb.innerHTML=serverState.user.line_linked?'<span class="chip ok">💚 ผูกบัญชี LINE แล้ว</span>':'<span class="chip warn">ยังไม่ได้ผูก LINE: ทักพี่ฝึกงานใน LINE แล้วทำตามที่บอท</span>';
  const rl=$('#remList');if(rl)rl.innerHTML=serverState.reminders.length?serverState.reminders.map(r=>`<div class="it"><div style="flex:1"><b>${esc(r.text)}</b><br><small style="color:var(--mute)">${new Date(r.due_at).toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Bangkok'})} · ${r.sent_at?(r.delivery==='line'?'ส่งทาง LINE แล้ว':'ส่ง LINE ไม่สำเร็จ'):'รอเตือน'}</small></div><button class="btn sm" onclick="delRem('${r.id}')">ลบ</button></div>`).join(''):'<p class="sub">ยังไม่มีการเตือน</p>';}
 async function delRem(id){if(!confirm('ลบการเตือนนี้?'))return;const r=await api('/api/reminders/'+id,{method:'DELETE'});toast(r.ok?'ลบการเตือนแล้ว':errMsg(r));await loadState();}
@@ -462,14 +465,14 @@ function renderOcrPending(){const p=serverState?serverState.pending_extractions:
  el.innerHTML=p.length?'<h3 style="margin-top:0">🤖 รอคุณยืนยัน</h3>'+p.map(x=>`<div class="it" style="display:block"><b>${esc(x.fields.company||x.fields.program||x.fields.student_name||x.doc_type)}</b> <small style="color:var(--mute)">· จาก ${x.channel==='line'?'LINE':'เว็บ'}</small><div class="row" style="margin-top:6px"><button class="btn sm" onclick="confirmExt('${x.id}')">ยืนยัน</button><button class="btn sm ghost" onclick="discardExt('${x.id}')">ไม่ใช่</button></div></div>`).join(''):'';}
 const bub=(t,me,who)=>`<div style="align-self:${me?'flex-end':'flex-start'};max-width:82%">${who?`<small style="color:#fff">${who}</small>`:''}<div style="background:${me?'#9be15d':'#fff'};border-radius:16px;padding:9px 12px;font-size:13px;line-height:1.5">${t}</div></div>`;
 const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-const ACT_RE=/^[a-z_]+:[0-9A-Za-z-]+(:[A-Za-z]+)?$/;
+const ACT_RE=/^(?:[a-z_]+:[0-9A-Za-z-]+(?::[A-Za-z]+)?|doc_status:[0-9A-Za-z-]+:(?:todo|prepared|submitted):\d+)$/;
 const TRUTH_LBL={USER_REPORTED:'✎ อัปเดตโดยคุณ',AI_EXTRACTED:'🤖 อ่านโดย AI · ตรวจก่อนยืนยัน',SYSTEM_VERIFIED:'✔ ยืนยันโดยระบบ'};
 function renderCard(c){if(!c)return'';
  const rows=(c.rows||[]).map(([k,v])=>`<div style="display:flex;gap:8px;font-size:13px;margin-top:4px"><span style="flex:2;color:var(--mute)">${esc(k)}</span><span style="flex:5">${esc(v==null||v===''?'—':v)}</span></div>`).join('');
  const btns=(c.actions||[]).filter(x=>ACT_RE.test(x.data||'')).map(x=>`<button class="btn sm${x.style==='primary'?'':' ghost'}" data-act="${x.data}" onclick="cardAct(this.dataset.act)">${esc(x.label)}</button>`).join('');
  return `<div style="align-self:flex-start;max-width:82%;background:#fff;color:var(--ink,#222);border:1px solid #e5e7ee;border-radius:14px;padding:11px 13px;margin-top:2px"><b style="font-size:14px">${esc(c.title)}</b>${c.subtitle?`<div style="font-size:12px;color:var(--mute)">${esc(c.subtitle)}</div>`:''}${TRUTH_LBL[c.truth]?`<div style="font-size:11px;color:var(--mute);margin-top:2px">${TRUTH_LBL[c.truth]}</div>`:''}${rows}${btns?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${btns}</div>`:''}</div>`;}
 async function cardAct(data){if(!ACT_RE.test(data||''))return;const r=await api('/api/actions',{method:'POST',body:JSON.stringify({data})});toast(r.ok?r.data.reply:errMsg(r));await loadState();}
-const MENU_CHIPS=[['menu:today','🏠 วันนี้ต้องทำอะไร'],['menu:apps','📋 สถานะการสมัคร'],['menu:checklist','🎓 เช็กลิสต์คณะ'],['menu:reminders','🔔 การเตือนของฉัน']];
+const MENU_CHIPS=[['menu:today','🏠 วันนี้ต้องทำอะไร'],['menu:apps','📋 สถานะการสมัคร'],['menu:checklist','📁 รายการเตรียมเอกสาร'],['menu:reminders','🔔 การเตือนของฉัน']];
 const QUICK=['เหลืออะไรที่ยังไม่ส่งบ้าง','สมัคร SCB ตำแหน่ง Data intern แล้ว','สรุปให้หน่อยว่าตอนนี้ต้องทำอะไรบ้าง'];
 function renderChat(){const el=$('#msgs');if(!el)return;const m=serverState?serverState.messages:[];
  el.innerHTML=m.length?m.map(x=>bub(esc(x.content).replace(/\n/g,'<br>'),x.role==='user',x.channel==='line'?'💬 LINE':'🌐 เว็บ')+(x.cards||[]).map(renderCard).join('')).join(''):'<p style="color:#fff;text-align:center">ยังไม่มีบทสนทนา ลองทักพี่ฝึกงานได้เลย</p>';
@@ -486,25 +489,23 @@ const myDocs=[];let extraDocs=[];const ICONS={resume:'📄',tr:'🎓',port:'🗂
 const need={};
 const ic={ok:'<span class="chip ok">✔</span>',warn:'<span class="chip warn">⚠</span>',bad:'<span class="chip bad">✕</span>','-':'<span style="color:var(--mute)">—</span>'};
 function renderDocs(){
- $('#myDocs').innerHTML=myDocs.map(d=>`<div class="card"><div class="row" style="justify-content:space-between"><span style="font-size:22px">${d.i}</span>${ic[d.s]}</div>
- <h3 style="margin:6px 0 2px">${esc(d.t)}</h3><small style="color:var(--mute)">${esc(d.v)}</small><p style="font-size:13px;margin:8px 0 10px">${esc(d.n)}</p>
- <div class="row"><button class="btn sm ghost">${d.s==='bad'?'อัปโหลด':'แทนที่'}</button>${d.s==='ok'?'<button class="btn sm ghost">ดู</button>':''}</div></div>`).join('');
- $('#myDocs').insertAdjacentHTML('beforeend',extraDocs.map(d=>`<div class="card"><div class="row" style="justify-content:space-between"><span style="font-size:22px">🤖</span><span class="chip warn">อ่านโดย AI</span></div><h3 style="margin:6px 0 2px">${esc(d.name)}</h3><small style="color:var(--mute)">${esc(Object.entries(d.fields).filter(([,v])=>v!==null&&typeof v!=='object').slice(0,3).map(([k,v])=>(LBL[k]||k)+': '+v).join(' · '))}</small></div>`).join(''));
- $('#matrix').innerHTML=`<tr style="text-align:left;color:var(--mute)"><th style="padding:8px">ใบสมัคร</th>${myDocs.map(d=>`<th>${esc(d.t)}</th>`).join('')}<th>ความพร้อม</th></tr>`+
- Object.entries(need).map(([co,r])=>{const req=Object.values(r).filter(v=>v!=='-'),ok=req.filter(v=>v==='ok').length;
-  return `<tr style="border-top:1px solid var(--line)"><td style="padding:10px 8px"><b>${co}</b></td>${myDocs.map(d=>`<td>${ic[r[d.k]]}</td>`).join('')}
-  <td>${ok===req.length?'<span class="chip ok">พร้อมส่ง</span>':`<span class="chip warn">ขาด ${req.length-ok} รายการ</span>`}</td></tr>`}).join('');
- if(!Object.keys(need).length)$('#matrix').innerHTML='<tr><td style="padding:12px;color:var(--mute)">ตารางความพร้อมเอกสารรายบริษัทจะแสดงเมื่อระบบรู้ว่าแต่ละบริษัทขอเอกสารอะไร (ยังไม่เปิดใช้ในรอบนี้)</td></tr>';}
+ $('#myDocs').innerHTML=myDocs.map(d=>`<article class="document-source"><h3>${esc(d.t)}</h3><p>${esc(d.v)} · ${esc(d.n)}</p><span class="chip">✎ อัปเดตโดยคุณ · ข้อมูลจากหน้ารุ่นเดิม</span></article>`).join('');
+ $('#myDocs').insertAdjacentHTML('beforeend',extraDocs.map(d=>`<article class="document-source"><h3>${esc(d.name)}</h3><span class="chip ${d.truth_level==='AI_EXTRACTED'?'warn':''}">${d.truth_level==='AI_EXTRACTED'?'🤖 อ่านโดย AI':'✎ อัปเดตโดยคุณ'}</span>
+ <details><summary>ดูข้อมูลที่อ่านได้</summary><dl>${Object.entries(d.fields).filter(([,v])=>v!==null).map(([k,v])=>`<dt>${esc(LBL[k]||k)}</dt><dd>${esc(typeof v==='object'?JSON.stringify(v):v)}</dd>`).join('')}</dl></details></article>`).join(''));
+ if(!myDocs.length&&!extraDocs.length)$('#myDocs').innerHTML='<p class="sub">ยังไม่มีผลอ่านที่บันทึกไว้ เพิ่มรายการเตรียมเอกสารเองด้านบนได้เลย</p>';}
 const uni=[];
 const PH=['ค้นหา','สมัคร','สัมภาษณ์','ได้ใบตอบรับ','เอกสารคณะ','เริ่มฝึกงาน'];
-function renderUni(){const n=uni.filter(u=>u.done).length;$('#uniPct').textContent=`${n}/${uni.length} เสร็จ`;
- $('#uniList').innerHTML=uni.map((u,i)=>`<div class="it"><input type="checkbox" ${u.done?'checked':''} onchange="toggleTask(${i},this.checked)" style="width:18px;height:18px">
+function renderUni(){const n=uni.filter(u=>u.done).length;$('#uniPct').textContent=`ติ๊กไว้ ${n}/${uni.length}`;
+ $('#uniList').innerHTML=uni.map((u,i)=>`<div class="it"><input type="checkbox" aria-label="สถานะเดิม: ${esc(u.t)}" ${u.done?'checked':''} onchange="toggleTask(${i},this.checked)" style="width:18px;height:18px">
  <div style="flex:1;${u.done?'text-decoration:line-through;color:var(--mute)':''}"><b>${esc(u.t)}</b><br><small style="color:var(--mute)">${esc(u.d)}</small></div>${u.act&&!u.done?`<button class="btn sm ghost">${esc(u.act)}</button>`:''}</div>`).join('');}
 function autofill(){$('#afMsg').textContent='ยังดึงข้อมูลจากลิงก์ไม่ได้ในรอบนี้ กรอกชื่อบริษัทและตำแหน่งเองได้เลย';}
 function render(){
+ if(!documentUI)documentUI=window.InternDocuments.mount({api,reload:loadState,notify:toast,esc});
+ documentUI.render(serverState);
  renderDocs();renderUni();renderDash();renderJobs();renderKanban();renderNotif();renderOcrPending();$('#savedCount').textContent=saved.size;
  $('#savedList').innerHTML=jobs.filter(j=>saved.has(j.id)).map(jobCard).join('')||'<p class="sub">ยังไม่มีงานที่บันทึก</p>';}
 document.querySelectorAll('.pick span').forEach(s=>s.onclick=()=>s.classList.toggle('on'));
+let documentUI=null;
 render();
 </script>
 <!-- ===== AI CHATBOT: พี่ฝึกงาน (Gemini + Paxa OCR) ===== -->
