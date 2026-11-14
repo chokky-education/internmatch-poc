@@ -66,6 +66,7 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 | Path | What it is |
 | --- | --- |
 | `marketing/README.md` | Entry point for customer research, strategy, content, experiments and source notes; no campaign authorized |
+| `marketing/research/2026-11-14-student-internship-journey.md` | Thai/international primary-source journey research, evidence limits and marketing hypotheses |
 | `marketing/research/`, `marketing/strategy/`, `marketing/content/`, `marketing/experiments/` | Starter briefs and recording templates |
 | `marketing/references/marketing-strategy-behavioral-design.md` | Bounded notes from the owner-provided document, with provenance and verification limits |
 
