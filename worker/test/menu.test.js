@@ -26,8 +26,8 @@ describe('menu actions answer with fixed summary cards, no Gemini', () => {
     flexOk(r.cards[0]);
   });
   it('menu:checklist lists student-added items with distinct preparation and submission states', async () => {
-    const a = await saveChecklistItem(env, U, { title: 'รายการที่เตรียมแล้ว' }, 'line');
-    const b = await saveChecklistItem(env, U, { title: 'รายการที่ส่งแล้ว' }, 'line');
+    const a = await saveChecklistItem(env, U, { title: 'รายการที่เตรียมแล้ว' }, 'line', { request_id: crypto.randomUUID() });
+    const b = await saveChecklistItem(env, U, { title: 'รายการที่ส่งแล้ว' }, 'line', { request_id: crypto.randomUUID() });
     await setChecklistStatus(env, U, a.item.id, 'prepared', 0, 'line');
     await setChecklistStatus(env, U, b.item.id, 'submitted', 0, 'line');
     const r = await runCardAction(env, U, 'web', 'menu:checklist');
@@ -45,7 +45,7 @@ describe('menu actions answer with fixed summary cards, no Gemini', () => {
     flexOk(r.cards[0]);
   });
   it('menu:today combines upcoming reminders, stale applications and the next checklist item', async () => {
-    await saveChecklistItem(env, U, { title: 'รายการที่อ่านจากประกาศเอง' }, 'web');
+    await saveChecklistItem(env, U, { title: 'รายการที่อ่านจากประกาศเอง' }, 'web', { request_id: crypto.randomUUID() });
     await addReminder(env, U, { text: 'สัมภาษณ์ SCB', datetime: new Date(Date.now() + 3600e3).toISOString() }, 'line');
     const old = await addApplication(env, U, { company: 'OldCo', status: 'Applied', truth_level: 'USER_REPORTED' }, 'line');
     await env.DB.prepare('UPDATE applications SET updated_at=? WHERE id=?').bind(new Date(Date.now() - 20 * 86400e3).toISOString(), old.id).run();

@@ -88,11 +88,24 @@ describe('student-owned document checklist', () => {
     const original = await state();
     const other = await (await api('/api/seasons', { name: 'ฤดูใหม่' })).json();
     await api(`/api/seasons/${other.season.id}/select`, { selection_version: original.selection_version });
-    expect((await runCardAction(env, U, 'line', `doc_status:${id}:submitted:2`)).ok).toBe(true);
+    const oldCard = await runCardAction(env, U, 'line', `doc_status:${id}:submitted:2`);
+    expect(oldCard.ok).toBe(true);
+    expect(oldCard.cards[0].subtitle).toBe(original.selected_season.name);
     expect((await state()).checklist_items).toEqual([]);
     const current = await state();
     await api(`/api/seasons/${original.selected_season.id}/select`, { selection_version: current.selection_version });
     expect((await state()).checklist_items[0]).toMatchObject({ title: 'ส่งแบบฟอร์มยืนยัน', status: 'submitted', version: 3 });
+  });
+
+  it('requires an add request id and rejects a changed retry payload without discarding the saved item', async () => {
+    const initial = await state();
+    const body = { data: 'doc_save', item: { title: 'ร่างแรก' }, season_id: initial.selected_season.id, selection_version: initial.selection_version };
+    expect((await (await api('/api/actions', body)).json()).ok).toBe(false);
+    const request = { ...body, request_id: crypto.randomUUID() };
+    expect((await (await api('/api/actions', request)).json()).ok).toBe(true);
+    const changed = await (await api('/api/actions', { ...request, item: { title: 'ร่างที่แก้หลังการเชื่อมต่อขาด' } })).json();
+    expect(changed).toMatchObject({ ok: false, error: 'request_conflict' });
+    expect((await state()).checklist_items).toEqual([expect.objectContaining({ title: 'ร่างแรก' })]);
   });
 
 });

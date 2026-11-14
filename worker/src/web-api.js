@@ -74,9 +74,10 @@ export async function handleApi(req, env, user, url) {
     return r.ok?J(r):fail(J,r.error);
   }
   if (p === '/api/chat' && m === 'POST') {
-    const { text } = await readJson(req);
+    const { text, request_id } = await readJson(req);
     if (!text || !String(text).trim()) return J({ error: 'empty' }, 400);
-    return J(await runAssistant(env, user.id, 'web', String(text).trim()));
+    if (request_id !== undefined && (typeof request_id !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(request_id))) return J({ error: 'bad_request' }, 400);
+    return J(await runAssistant(env, user.id, 'web', String(text).trim(), { request_id }));
   }
   if (p === '/api/actions' && m === 'POST') {
     const b = await readJson(req);

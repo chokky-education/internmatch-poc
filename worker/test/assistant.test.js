@@ -51,6 +51,19 @@ describe('delete_reminder tool', () => {
 });
 
 describe('cards from tools', () => {
+  it('replays a manual document command with the same request id without creating a second item', async () => {
+    const { getOverview } = await import('../src/store.js');
+    const command = { title: 'รายการที่บอกเอง', from_document: false };
+    for (let n = 0; n < 2; n++) {
+      queue = [fc('save_document_item', command), text('บันทึกแล้ว')];
+      await runAssistant(env, U, 'web', 'ช่วยจดรายการนี้', { request_id: 'same-document-command' });
+    }
+    expect((await getOverview(env, U)).checklist_items).toEqual([expect.objectContaining({ title: 'รายการที่บอกเอง' })]);
+    queue = [fc('save_document_item', { ...command, title: 'ข้อความที่ต่างจากคำขอเดิม' }), text('ร่างเปลี่ยนไป ตรวจรายการก่อนนะ')];
+    const changed = await runAssistant(env, U, 'web', 'ช่วยจดรายการนี้', { request_id: 'same-document-command' });
+    expect(changed.cards).toEqual([]);
+    expect((await getOverview(env, U)).checklist_items).toEqual([expect.objectContaining({ title: 'รายการที่บอกเอง' })]);
+  });
   it('adds a student document item through LINE and keeps document-derived content behind confirmation', async () => {
     const { getOverview } = await import('../src/store.js');
     queue = [fc('save_document_item', { title: 'ส่งคำร้อง', source: 'คำแนะนำที่ได้รับจากคณะ', from_document: false }), text('เพิ่มรายการแล้ว')];

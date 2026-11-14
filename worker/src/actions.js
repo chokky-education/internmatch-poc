@@ -21,7 +21,7 @@ async function dispatch(env, userId, channel, name, id, arg, options) {
       const r = name === 'doc_save'
         ? await saveChecklistItem(env, userId, options?.item, channel, { ...options, id: id || null })
         : await setChecklistStatus(env, userId, id, arg, options?.version, channel);
-      const errors = { conflict: 'ข้อมูลเปลี่ยนแล้ว โหลดข้อมูลล่าสุดก่อนแก้อีกครั้งนะ', bad_request: 'ตรวจชื่อรายการและวันที่อีกครั้งนะ', not_found: 'ไม่พบรายการในฤดูนี้' };
+      const errors = { conflict: 'ข้อมูลเปลี่ยนแล้ว โหลดข้อมูลล่าสุดก่อนแก้อีกครั้งนะ', request_conflict: 'คำขอเดิมบันทึกแล้ว แต่ร่างนี้เปลี่ยนไป โหลดข้อมูลล่าสุดแล้วเปิดแก้รายการที่บันทึกไว้ ร่างที่กรอกยังอยู่', bad_request: 'ตรวจชื่อรายการและวันที่อีกครั้งนะ', not_found: 'ไม่พบรายการในฤดูนี้' };
       return r.ok ? { ...r, reply: 'บันทึกรายการเตรียมเอกสารแล้ว · สถานะเป็นข้อมูลที่คุณรายงาน', cards: [documentItemCard(r.item)] }
         : { ok: false, error: r.error, reply: errors[r.error] || GENERIC };
     }

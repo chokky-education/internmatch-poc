@@ -39,8 +39,10 @@ window.InternDocuments = {
     });
     el('documentCancel').addEventListener('click', close);
     el('documentReload').addEventListener('click', async () => {
-      await reload();
-      if (draft) el('documentFormError').textContent = 'โหลดข้อมูลล่าสุดแล้ว ร่างนี้ยังผูกกับฤดูเดิม หากรายการเปลี่ยนแล้ว ให้เปิดแก้รายการอีกครั้ง';
+      const result = await reload();
+      if (draft) el('documentFormError').textContent = result === true
+        ? 'โหลดข้อมูลล่าสุดแล้ว ร่างนี้ยังผูกกับฤดูเดิม หากรายการเปลี่ยนแล้ว ให้เปิดแก้รายการอีกครั้ง'
+        : 'ยังโหลดข้อมูลล่าสุดไม่ได้ ร่างที่กรอกยังอยู่ ตรวจการเชื่อมต่อแล้วลองใหม่';
     });
     el('documentAdd').addEventListener('click', () => edit());
     el('documentItems').addEventListener('click', event => {

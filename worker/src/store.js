@@ -20,7 +20,7 @@ export async function seedUser(env, userId) {
 }
 
 export async function getOverview(env, userId) {
-  const seasonId = await scope(env, userId);
+  const captured = await context(env, userId), seasonId = captured.season.id;
   const q = (sql) => env.DB.prepare(sql).bind(userId, seasonId).all().then(r => r.results);
   const [apps, tasks, docs, rems, milestones] = await Promise.all([
     q('SELECT * FROM applications WHERE user_id=? AND season_id=? ORDER BY updated_at DESC, rowid DESC'),
@@ -29,7 +29,7 @@ export async function getOverview(env, userId) {
     q('SELECT * FROM reminders WHERE user_id=? AND season_id=? ORDER BY due_at'),
     q('SELECT * FROM milestones WHERE user_id=? AND season_id=? ORDER BY date IS NULL,date,created_at'),
   ]);
-  const checklist = docs.filter(d => d.kind === 'checklist_item').map(checklistItem);
+  const checklist = docs.filter(d => d.kind === 'checklist_item').map(d => checklistItem(d, captured.season.name));
   return {
     checklist_items: checklist,
     checklist_summary: checklistSummary(checklist),

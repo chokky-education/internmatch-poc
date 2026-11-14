@@ -72,6 +72,33 @@ export async function checkDocumentFlow(page, { base, label, outputDir }) {
   current = await state();
   check(current.checklist_items[0].status === 'prepared', 'The original-season card changed the wrong item');
   check(current.reminders.length === 0, 'An item due date created an unconfirmed reminder');
+  // Commit the create but drop its response, then retry an edited draft.
+  await page.reload();
+  await page.waitForFunction(() => typeof serverState !== 'undefined' && !!serverState);
+  await page.locator('#nav [data-s=docs]').click();
+  await page.getByRole('button', { name: '＋ เพิ่มรายการเอง', exact: true }).click();
+  await page.locator('#documentTitle').fill('ร่างก่อนการเชื่อมต่อขาด ' + label);
+  let dropCreate = true;
+  await page.route('**/api/actions', async route => {
+    if (dropCreate && route.request().postDataJSON()?.data === 'doc_save') {
+      dropCreate = false; await route.fetch(); await route.abort('failed');
+    } else await route.continue();
+  });
+  await page.getByRole('button', { name: 'บันทึกรายการ', exact: true }).click();
+  await page.locator('#documentFormError').filter({ hasText: 'เชื่อมต่อ' }).waitFor();
+  await page.unroute('**/api/actions');
+  const changedDraft = 'ร่างที่แก้หลังการเชื่อมต่อขาด ' + label;
+  await page.locator('#documentTitle').fill(changedDraft);
+  await page.getByRole('button', { name: 'บันทึกรายการ', exact: true }).click();
+  await page.locator('#documentFormError').filter({ hasText: 'ร่างนี้เปลี่ยนไป' }).waitFor();
+  check(await page.locator('#documentForm').isVisible() && await page.locator('#documentTitle').inputValue() === changedDraft, 'An edited retry draft was silently discarded');
+  check((await state()).checklist_items.filter(x => x.title.startsWith('ร่างก่อนการเชื่อมต่อขาด')).length === 1, 'A lost-response retry created a duplicate');
+  await page.route('**/api/state', route => route.abort('failed'));
+  await page.getByRole('button', { name: 'โหลดข้อมูลล่าสุด', exact: true }).click();
+  await page.locator('#documentFormError').filter({ hasText: 'ยังโหลดข้อมูลล่าสุดไม่ได้' }).waitFor();
+  check(!(await page.locator('#documentFormError').textContent()).includes('โหลดข้อมูลล่าสุดแล้ว'), 'A failed refresh claimed success');
+  await page.unroute('**/api/state');
+  await page.getByRole('button', { name: 'ยกเลิก', exact: true }).click();
   check(errors.length === 0, 'Browser errors: ' + errors.join('; '));
-  return { engine: label, ok: true, checks: ['empty state', 'required title', 'unknown values', 'source text and page', 'prepared/submitted distinction', 'edit and persistence', 'stale edit rejection', 'retry idempotency', 'inert stored markup', 'viewport layout', 'original-season actions', 'no implicit reminder'], seasonId };
+  return { engine: label, ok: true, checks: ['empty state', 'required title', 'unknown values', 'source text and page', 'prepared/submitted distinction', 'edit and persistence', 'stale edit rejection', 'retry idempotency', 'inert stored markup', 'viewport layout', 'original-season actions', 'no implicit reminder', 'edited retry draft retained', 'lost-response retry has one record', 'failed refresh is honest'], seasonId };
 }

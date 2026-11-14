@@ -296,12 +296,15 @@ const STAGES=['Saved','Applied','Interview','Offer','Closed'];
 const TH={Saved:'บันทึกไว้',Applied:'สมัครแล้ว',Interview:'สัมภาษณ์',Offer:'ได้รับข้อเสนอ',Closed:'ปิด/ไม่ผ่าน'};
 let apps=[];const reminders=[];let serverState=null;
 const API=window.IM_API||'';
+const chatRetryIds=new Map();
 // Remove credentials left by older releases; never read or migrate them.
 for(const storage of ['localStorage','sessionStorage'])try{window[storage].removeItem('im_token');}catch(e){}
 async function api(path,opts={}){
+ let chatKey=null;if(path==='/api/chat'&&opts.body){const body=JSON.parse(opts.body);chatKey=JSON.stringify([serverState?.user.email,serverState?.selected_season.id,body.text]);if(!chatRetryIds.has(chatKey))chatRetryIds.set(chatKey,crypto.randomUUID());if(chatRetryIds.size>32)chatRetryIds.delete(chatRetryIds.keys().next().value);opts={...opts,body:JSON.stringify({...body,request_id:body.request_id||chatRetryIds.get(chatKey)})};}
  const h={...(opts.body&&!(opts.body instanceof FormData)?{'Content-Type':'application/json'}:{}),...(serverState?{'X-Season-Id':serverState.selected_season.id,'X-Selection-Version':String(serverState.selection_version)}:{}),...(opts.headers||{})};
  let r,d={};try{r=await fetch(API+path,{credentials:'include',...opts,headers:h});}catch(e){return{ok:false,status:0,data:{error:'network'}};}
  try{d=await r.json();}catch(e){}
+ if(chatKey&&r.ok&&d.ok===true)chatRetryIds.delete(chatKey);
  if(r.status===401&&!path.startsWith('/api/auth/')){showLogin();}
  return{ok:r.ok,status:r.status,data:d};}
 const ERRTH={conflict:'ข้อมูลเปลี่ยนจากอีกช่องทาง กรุณาโหลดข้อมูลล่าสุดก่อนบันทึก ร่างที่กรอกยังอยู่',bad_request:'ตรวจข้อมูลที่กรอกอีกครั้ง',duplicate:'มีบริษัทนี้อยู่แล้ว',system_verified:'ใบสมัครนี้ระบบยืนยัน แก้เองไม่ได้',too_large:'ไฟล์ใหญ่เกิน 10MB',extract_failed:'อ่านเอกสารไม่สำเร็จ ลองใหม่อีกครั้ง',network:'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้',already_confirmed:'บันทึกไปแล้ว',missing_company:'อ่านชื่อบริษัทไม่เจอ เพิ่มใบสมัครเองได้ที่หน้าติดตามการสมัคร',unauthorized:'กรุณาเข้าสู่ระบบ'};

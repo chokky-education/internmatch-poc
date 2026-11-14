@@ -7,8 +7,8 @@ const thDateTime = iso => new Date(iso).toLocaleString('th-TH', { dateStyle: 'me
 const thDate = v => (/^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(v).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok' }) : v);
 
 export function documentItemCard(item) {
-  return { kind: 'checklist_item', title: item.title, truth: item.truth_level,
-    rows: [['สถานะที่คุณรายงาน', DOCUMENT_STATUS[item.status]], ['ส่งให้', item.recipient || 'ยังไม่ทราบ'],
+  return { kind: 'checklist_item', title: item.title, subtitle: item.season_name, truth: item.truth_level,
+    rows: [['ฤดูต้นทาง', item.season_name], ['สถานะที่คุณรายงาน', DOCUMENT_STATUS[item.status]], ['ส่งให้', item.recipient || 'ยังไม่ทราบ'],
       ['ส่งทาง', item.submission_method || 'ยังไม่ทราบ'], ['กำหนดส่ง', item.due_date ? thDate(item.due_date) : 'ยังไม่ทราบ'],
       ['ที่มา', item.source || 'ยังไม่ระบุ'], ...(item.source_page ? [['หน้า', item.source_page]] : []),
       ...(item.detail ? [['หมายเหตุ', item.detail]] : [])],

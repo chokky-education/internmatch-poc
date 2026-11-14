@@ -1,7 +1,7 @@
 import { proposeProfile,proposeSeason } from './profile-proposals.js';
 import { saveMilestone } from './milestones.js';
 import { context, scoped, listSeasons } from './seasons.js';
-import { saveChecklistItem, setChecklistStatus } from './document-checklist.js';
+import { saveChecklistItem, setChecklistStatus, documentCreateFingerprint, documentRequestId } from './document-checklist.js';
 import { documentItemCard } from './cards.js';
 import { getOverview, addApplication, updateApplicationStatus, setTask, addReminder, deleteReminder } from './store.js';
 import { systemPrompt } from './prompt.js';
@@ -39,9 +39,15 @@ export const TOOLS = [{ functionDeclarations: [
 ] }];
 
 const toolImpl = {
-  save_document_item: (env, u, a, ch) => a.from_document !== false
-    ? { ok: false, error: 'confirmation_required', instruction: 'ยังไม่รองรับนำผล OCR มาเพิ่มรายการ ให้ผู้ใช้ตรวจต้นฉบับแล้วบอกข้อมูลหรือเพิ่มรายการเอง' }
-    : saveChecklistItem(env, u, a, ch, { id: a.id, version: a.version }),
+  save_document_item: async (env, u, a, ch) => {
+    if (a.from_document !== false) return { ok: false, error: 'confirmation_required', instruction: 'ยังไม่รองรับนำผล OCR มาเพิ่มรายการ ให้ผู้ใช้ตรวจต้นฉบับแล้วบอกข้อมูลหรือเพิ่มรายการเอง' };
+    if (a.id) return saveChecklistItem(env, u, a, ch, { id: a.id, version: a.version });
+    const fingerprint = await documentCreateFingerprint(a);
+    if (!fingerprint) return { ok: false, error: 'bad_request' };
+    if (!env.DOCUMENT_OPERATIONS.has(fingerprint)) env.DOCUMENT_OPERATIONS.set(fingerprint, env.DOCUMENT_OPERATIONS.size);
+    const request_id = await documentRequestId([u, env.SEASON_ID, env.ASSISTANT_REQUEST_ID], env.DOCUMENT_OPERATIONS.get(fingerprint));
+    return saveChecklistItem(env, u, a, ch, { request_id });
+  },
   update_document_item_status: (env, u, a, ch) => setChecklistStatus(env, u, a.id, a.status, a.version, ch),
   propose_profile:(env,u,a)=>proposeProfile(env,u,a),
   propose_season:(env,u,a)=>proposeSeason(env,u,a),
@@ -95,9 +101,9 @@ async function fail(env, userId, channel, text, actions, cards, done) {
   return { ok: false, reply: FALLBACK_REPLY, actions: [], cards: [] };
 }
 
-export async function runAssistant(env, userId, channel, text) {
+export async function runAssistant(env, userId, channel, text, { request_id = crypto.randomUUID() } = {}) {
   const c=await context(env,userId);
-  env={...scoped(env,c.season.id),ASSISTANT_CONTEXT:{profile:c.profile,season:c.season,seasons:(await listSeasons(env,userId)).map(s=>({id:s.id,name:s.name}))}};
+  env={...scoped(env,c.season.id),ASSISTANT_REQUEST_ID:request_id,DOCUMENT_OPERATIONS:new Map(),ASSISTANT_CONTEXT:{profile:c.profile,season:c.season,seasons:(await listSeasons(env,userId)).map(s=>({id:s.id,name:s.name}))}};
   const actions = [], cards = [];
   let done = 0;
   try {
