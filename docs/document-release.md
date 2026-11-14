@@ -17,6 +17,8 @@ Chromium and mobile-size WebKit each create their own test seasons through the r
 
 All writes are restricted to that reserved identity. A `finally` block removes its sessions, seasons and records from every business table, verifies fixture cleanup, and compares the fingerprint of existing account IDs/LINE links before and after. SQL, screenshots and the result JSON stay in the private release directory. No credentials or personal values are printed. The flow sends no email, LINE or AI requests.
 
+Cleanup verification uses a single sum of scalar counts across all 12 owning tables. The first production browser pass exposed D1's lower compound-SELECT limit in the original UNION query; all fixture rows had already been deleted, and the replacement read independently confirmed zero rows. The sum avoids that platform limit and fails closed if the expected result is missing. A local SQLite regression checks 12 fixture rows, zero after cleanup, retained unrelated rows and rejection of non-fixture identifiers. Keep the pre-smoke account/link fingerprint in the private evidence directory so an interrupted verifier can be inspected without printing account data.
+
 ## Recovery
 
 Before deploying, record the active Worker version and the current app/Pages revision. If a check fails, follow the correction/rollback PR path in the release workflow. Code can be reverted without a reverse migration. Keep the new `kind='checklist_item'` records: an older UI does not manage their progress, so prefer a corrective release. Never delete records or restore an entire database merely to undo this UI release.

@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { randomBytes, createHash } from 'node:crypto';
 import { executeD1 } from './d1-query.mjs';
 import { checkDocumentFlow } from '../uat/document-flow.mjs';
+import { DOCUMENT_FIXTURE_TABLES, fixtureOwnerColumn, documentFixtureCountSql } from './document-fixture.mjs';
 
 const sha = process.argv[2], root = resolve(import.meta.dirname, '../..');
 const git = args => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
@@ -28,6 +29,7 @@ const id = 'documents-smoke-' + randomBytes(8).toString('hex'), email = id + '@e
 const token = randomBytes(32).toString('hex'), results = [], base = 'https://internmatch-api.entrace-space.workers.dev';
 const links = () => hash(JSON.stringify(query(`SELECT id,line_user_id FROM users WHERE id<>${literal(id)} ORDER BY id`)));
 const beforeLinks = links();
+writeFileSync(resolve(privateDir, 'documents-before.json'), JSON.stringify({ existing_links_fingerprint: beforeLinks }), { mode: 0o600 });
 writeFileSync(resolve(privateDir, 'documents-fixture.json'), JSON.stringify({ id, email }), { mode: 0o600 });
 let created = false;
 try {
@@ -45,11 +47,9 @@ try {
   }
 } finally {
   if (created) {
-    const tables = ['sessions','applications','tasks','documents','reminders','messages','extractions','audit_log','milestones','pending_actions','seasons','users'];
-    const key = table => table === 'users' ? 'id' : 'user_id';
-    query(tables.map(table => `DELETE FROM ${table} WHERE ${key(table)}=${literal(id)}`).join(';\n'));
-    const remaining = query(tables.map(table => `SELECT ${literal(table)} AS name,COUNT(*) AS n FROM ${table} WHERE ${key(table)}=${literal(id)}`).join(' UNION ALL '));
-    if (remaining.some(row => row.n)) throw Error('Document-smoke fixture cleanup incomplete');
+    query(DOCUMENT_FIXTURE_TABLES.map(table => `DELETE FROM ${table} WHERE ${fixtureOwnerColumn(table)}=${literal(id)}`).join(';\n'));
+    const remaining = query(documentFixtureCountSql(id));
+    if (remaining[0]?.n !== 0) throw Error('Document-smoke fixture cleanup incomplete');
   }
   if (links() !== beforeLinks) throw Error('Existing account/LINE-link fingerprint changed during smoke');
 }

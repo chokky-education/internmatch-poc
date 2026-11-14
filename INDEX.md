@@ -84,7 +84,7 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 | `scripts/release/profile-production.mjs`, `scripts/release/d1-query.mjs` | Guarded remote fingerprint and short-lived authenticated production smoke |
 | `scripts/uat/` | Isolated local test harness; never published |
 | `scripts/uat/check-documents.mjs`, `scripts/uat/document-flow.mjs` | Desktop/mobile manual document flow and reusable browser assertions |
-| `scripts/release/document-production.mjs`, `docs/document-release.md` | Reviewed, bounded document-list production smoke and recovery plan |
+| `scripts/release/document-production.mjs`, `scripts/release/document-fixture.mjs`, `docs/document-release.md` | Reviewed, bounded document-list production smoke, fixture cleanup and recovery plan |
 | `docs/test-round-1.csv` | Manual test cases, round 1 |
 | `docs/agents/*.md` | Issue tracker (GitHub Issues), triage labels, domain-doc conventions |
 | `scripts/index.mjs` | The local search index CLI |

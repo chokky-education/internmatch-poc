@@ -7,7 +7,34 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { verifyProduction } from '../verify-production.mjs';
+import { DatabaseSync } from 'node:sqlite';
+import { documentFixtureCountSql } from '../release/document-fixture.mjs';
 const commit = 'a'.repeat(40), hash = s => createHash('sha256').update(s).digest('hex');
+
+test('document cleanup count covers every business table while excluding other users', t => {
+  const db = new DatabaseSync(':memory:'); t.after(() => db.close());
+  const id = 'documents-smoke-0123456789abcdef';
+  const tables = ['sessions','applications','tasks','documents','reminders','messages','extractions','audit_log','milestones','pending_actions','seasons','users'];
+  for (const table of tables) {
+    if (table === 'users') {
+      db.exec('CREATE TABLE users(id TEXT)');
+      db.prepare('INSERT INTO users(id) VALUES (?)').run(id);
+      db.prepare('INSERT INTO users(id) VALUES (?)').run('another-user');
+    } else {
+      db.exec(`CREATE TABLE ${table}(id TEXT,user_id TEXT)`);
+      db.prepare(`INSERT INTO ${table}(id,user_id) VALUES (?,?)`).run('fixture-row', id);
+      db.prepare(`INSERT INTO ${table}(id,user_id) VALUES (?,?)`).run('another-user', 'another-user');
+    }
+  }
+  assert.equal(db.prepare(documentFixtureCountSql(id)).get().n, 12);
+  for (const table of tables) db.prepare(`DELETE FROM ${table} WHERE ${table === 'users' ? 'id' : 'user_id'}=?`).run(id);
+  assert.equal(db.prepare(documentFixtureCountSql(id)).get().n, 0);
+  for (const table of tables) assert.equal(db.prepare(`SELECT COUNT(*) n FROM ${table}`).get().n, 1);
+});
+test('document cleanup count refuses non-fixture identifiers', () => {
+  assert.throws(() => documentFixtureCountSql('real-user'), /reserved document fixture/);
+  assert.throws(() => documentFixtureCountSql("documents-smoke-0123456789abcdef' OR 1=1"), /reserved document fixture/);
+});
 async function liveFixture(t, { staleCommit = false, staleAsset = false, brokenAuth = false } = {}) {
   const server = createServer();
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
