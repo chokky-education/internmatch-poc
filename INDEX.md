@@ -61,6 +61,14 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 | `worker/scripts/richmenu.mjs`, `worker/richmenu/` | LINE rich menu builder and images |
 | `worker/wrangler.toml` | Worker config, D1 binding, cron, model vars (secrets are NOT here) |
 
+### Marketing workspace
+
+| Path | What it is |
+| --- | --- |
+| `marketing/README.md` | Entry point for customer research, strategy, content, experiments and source notes; no campaign authorized |
+| `marketing/research/`, `marketing/strategy/`, `marketing/content/`, `marketing/experiments/` | Starter briefs and recording templates |
+| `marketing/references/marketing-strategy-behavioral-design.md` | Bounded notes from the owner-provided document, with provenance and verification limits |
+
 ### Specs & docs
 
 | Path | What it is |

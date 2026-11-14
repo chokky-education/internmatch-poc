@@ -6,6 +6,8 @@ _Last updated: 2026-11-14_
 
 ## Now (what is true today)
 
+- **Marketing workspace prepared:** `marketing/` now contains starter templates for research, strategy, content and experiments plus bounded notes from the owner-provided Marketing Strategy and Behavioral Design document. No customer insight, campaign, budget, publication or product change is claimed. This documentation candidate still requires PR/CI/merge and the routine manifest release/baseline verification.
+
 - **Manual document release complete:** PR #15 merged as `eab938c`; cleanup verifier PR #16 merged as `32c1173`. Main CI/Pages runs `43590538044` and `43591558827` succeeded. Feature verification completed on `32c1173` / Worker `0ecd6a50-bb69-454f-aa51-ebb2ae266230` at 100%; this closeout changes documentation only and retains the same app/runtime bytes. Its manifest/deployment evidence is retained in the PR/task release report.
 - **Production document flow verified:** 29 baseline checks matched both manifests and all eight public asset hashes. Chromium desktop and mobile-size WebKit each passed 15 authenticated manual API/UI checks, including changed retry drafts and failed refreshes. The isolated smoke identity and all its records were removed from 12 tables; existing account/LINE-link fingerprints matched. No schema, secret, allowlist or real-user rewrite occurred and no OTP/LINE/AI messages were sent. See `docs/releases/2026-11-14-documents.md` for exact identifiers and verification limits. Handbook OCR integration remains deferred by the owner.
 - **Verifier limitation resolved:** the first production pass exposed D1's compound-SELECT limit only in the final cleanup-count query; an independent read confirmed zero rows after deletion. PR #16 replaced the query with a tested scalar aggregate and the complete smoke, cleanup and link checks then passed.
@@ -36,6 +38,8 @@ _Last updated: 2026-11-14_
 
 ## Next (suggested, not yet agreed with the owner)
 
+- Release the authorized marketing workspace through the required workflow. Further strategy, interviews and campaigns need their own owner-authorized scope.
+
 - The authorized security feature work and changed-flow verification are complete. Preserve session revocation and the same-origin boundary in future changes; do not merge unrelated open work or repeat legacy expiry on v2 sessions.
 
 1. Continue only work the owner has authorized. PR #2 and PR #5 are separate open work; review them when requested.
@@ -49,6 +53,8 @@ _Last updated: 2026-11-14_
 - `go('<screen id>')` still works for every old screen id: it opens the grouped page and scrolls (see `GROUPS` in `index.html`).
 
 ## Log
+
+- 2026-11-14: Prepared the owner-requested InternMatch marketing folder, linked its starter templates/source notes from INDEX, and preserved product positioning and current access/feature limits. No campaign launched.
 
 - 2026-11-14: Completed the manual document release through PR #15/#16, both main CI/Pages runs, matching Worker deployment, 29 production baseline checks and 15 changed-flow checks per browser. Full reserved-identity cleanup and unchanged existing LINE-link fingerprints verified; recorded the documentation closeout without changing runtime bytes.
 
