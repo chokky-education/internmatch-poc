@@ -1,5 +1,4 @@
 // Account-owned context. Capture once at request entry; never mutate the shared env.
-import { SEED_TASKS } from './seed.js';
 const iso = () => new Date().toISOString();
 const educationKeys = ['university', 'faculty', 'major', 'study_year'];
 export const educationOf = p => Object.fromEntries(educationKeys.map(k => [k, p[k] || null]));
@@ -35,7 +34,6 @@ export async function createSeason(env,userId,{name},channel) {
   const c=await context(env,userId),id=crypto.randomUUID(),now=iso();
   await env.DB.batch([
     env.DB.prepare('INSERT INTO seasons(id,user_id,name,education_json,created_at) VALUES (?,?,?,?,?)').bind(id,userId,name.trim(),JSON.stringify(educationOf(c.profile)),now),
-    ...SEED_TASKS.map((t,i)=>env.DB.prepare('INSERT INTO tasks(id,user_id,season_id,title,detail,sort,truth_level) VALUES (?,?,?,?,?,?,?)').bind(crypto.randomUUID(),userId,id,t.title,t.detail,i,'USER_REPORTED')),
     auditStatement(env,userId,id,'season',id,{op:'create',name:name.trim()},channel),
   ]);
   return {ok:true,season:decode(await env.DB.prepare('SELECT * FROM seasons WHERE id=?').bind(id).first())};

@@ -4,7 +4,7 @@ import worker from '../src/index.js';
 
 const call = (url, bindings = {}, init = {}) => worker.fetch(new Request(url, init), { ...env, LOCAL_DEV_LOGIN: 'false', ...bindings }, {});
 beforeEach(async () => {
-  await env.DB.exec('DELETE FROM tasks; DELETE FROM users; DELETE FROM sessions;');
+  await env.DB.exec('DELETE FROM tasks; DELETE FROM users; DELETE FROM sessions; DELETE FROM documents; DELETE FROM messages; DELETE FROM audit_log;');
 });
 
 describe('local development login', () => {
@@ -14,15 +14,16 @@ describe('local development login', () => {
     expect(first.status).toBe(200);
     const state = await first.json();
     expect(state.user.email).toBe('local-dev@example.test');
-    expect(state.university_checklist).toHaveLength(6);
-    const task = state.university_checklist[0];
-    const update = await call(`http://localhost:8787/api/tasks/${task.id}`, bindings, {
-      method: 'PATCH', headers: { Origin: 'http://localhost:8787', 'Content-Type': 'application/json','X-Season-Id':state.selected_season.id,'X-Selection-Version':String(state.selection_version) }, body: JSON.stringify({ done: true }),
+    expect(state.university_checklist).toHaveLength(0);
+    expect(state.checklist_items).toHaveLength(0);
+    const update = await call('http://localhost:8787/api/actions', bindings, {
+      method: 'POST', headers: { Origin: 'http://localhost:8787', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: 'doc_save', item: { title: 'รายการที่เพิ่มเอง' }, request_id: crypto.randomUUID(), season_id: state.selected_season.id, selection_version: state.selection_version }),
     });
     expect(update.status).toBe(200);
     const again = await (await call('http://127.0.0.1:8787/api/state', bindings)).json();
-    expect(again.university_checklist).toHaveLength(6);
-    expect(again.university_checklist.find(t => t.id === task.id).done).toBe(true);
+    expect(again.university_checklist).toHaveLength(0);
+    expect(again.checklist_items).toEqual([expect.objectContaining({ title: 'รายการที่เพิ่มเอง', status: 'todo', due_date: null })]);
     expect((await env.DB.prepare('SELECT COUNT(*) AS n FROM users').first()).n).toBe(1);
   });
 

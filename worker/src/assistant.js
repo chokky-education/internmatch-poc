@@ -1,6 +1,8 @@
 import { proposeProfile,proposeSeason } from './profile-proposals.js';
 import { saveMilestone } from './milestones.js';
 import { context, scoped, listSeasons } from './seasons.js';
+import { saveChecklistItem, setChecklistStatus, documentCreateFingerprint, documentRequestId } from './document-checklist.js';
+import { documentItemCard } from './cards.js';
 import { getOverview, addApplication, updateApplicationStatus, setTask, addReminder, deleteReminder } from './store.js';
 import { systemPrompt } from './prompt.js';
 
@@ -11,6 +13,13 @@ export const PARTIAL_REPLY = 'ทำรายการให้แล้วน�
 const MAX_TURNS = 5, HISTORY = 20;
 
 export const TOOLS = [{ functionDeclarations: [
+  { name: 'save_document_item', description: 'เพิ่มหรือแก้รายการเตรียมเอกสารจากสิ่งที่ผู้ใช้บอกเอง เว้นช่องที่ไม่ทราบ ถ้าแก้ให้ใช้ id/version ล่าสุดจาก get_overview ยังไม่รองรับนำผล OCR มาเพิ่มอัตโนมัติ', parameters: { type: 'object', properties: {
+    ...Object.fromEntries(['title','detail','recipient','submission_method','due_date','source','source_page','id'].map(k => [k, { type: 'string' }])),
+    version: { type: 'integer' }, from_document: { type: 'boolean', description: 'true ถ้านำเนื้อหาจากเอกสารที่ AI อ่านมาเพิ่ม' },
+  }, required: ['from_document'] } },
+  { name: 'update_document_item_status', description: 'เปลี่ยนสถานะที่ผู้ใช้รายงาน เตรียมแล้วกับส่งแล้วต่างกัน ใช้ id/version จาก get_overview ไม่ใช่การยืนยันรับจากคณะ', parameters: { type: 'object', properties: {
+    id: { type: 'string' }, version: { type: 'integer' }, status: { type: 'string', enum: ['todo','prepared','submitted'] },
+  }, required: ['id','version','status'] } },
   {name:'propose_profile',description:'เสนอแก้โปรไฟล์จากคำสั่งชัดเจนของผู้ใช้ ต้องกดยืนยันการ์ดก่อนบันทึก',parameters:{type:'object',properties:Object.fromEntries(['preferred_name','university','faculty','major','study_year'].map(k=>[k,{type:'string'}]).concat([['career_interests',{type:'array',items:{type:'string'}}]]))}},
   {name:'propose_season',description:'เสนอสร้างฤดูด้วย create_name เลือกฤดูด้วย select_name ชื่อเต็มตรงกัน หรือแก้ฤดูที่เลือกด้วย name/education/details ต้องยืนยันก่อนบันทึก ถ้าชื่อคลุมเครือถามก่อน',parameters:{type:'object',properties:{create_name:{type:'string'},select_name:{type:'string'},name:{type:'string'},education:{type:'object',properties:Object.fromEntries(['university','faculty','major','study_year'].map(k=>[k,{type:'string'}]))},details:{type:'object',properties:{type:{type:'string'},other_type:{type:'string'},hours:{type:'number'},weeks:{type:'number'},source:{type:'string'},start_date:{type:'string'},end_date:{type:'string'}}}}}},
   {name:'add_milestone',description:'บันทึกวันสำคัญแล้วเสนอเตือนให้กดยืนยัน date เว้นได้เมื่อไม่ทราบ',parameters:{type:'object',properties:{title:{type:'string'},date:{type:'string'},end_date:{type:'string'},source:{type:'string'}},required:['title']}},
@@ -25,11 +34,22 @@ export const TOOLS = [{ functionDeclarations: [
     text: { type: 'string' }, datetime: { type: 'string', description: 'ISO 8601 เวลาไทย เช่น 2026-11-19T20:00' } }, required: ['text', 'datetime'] } },
   { name: 'delete_reminder', description: 'ลบการเตือนที่ตั้งไว้ (ลบทุกรายการที่ข้อความมีคำนี้)', parameters: { type: 'object', properties: {
     text_keyword: { type: 'string', description: 'คำในข้อความเตือน' } }, required: ['text_keyword'] } },
-  { name: 'set_university_task', description: 'ติ๊กหรือยกเลิกติ๊กรายการในเช็กลิสต์คณะ', parameters: { type: 'object', properties: {
+  { name: 'set_university_task', description: 'ติ๊กรายการเก่าที่ผู้ใช้ระบุชัดเจนเท่านั้น รายการเก่าอาจเป็นตัวอย่าง ไม่ใช่ข้อกำหนดของคณะ', parameters: { type: 'object', properties: {
     task_keyword: { type: 'string', description: 'คำในชื่อรายการ' }, done: { type: 'boolean' } }, required: ['task_keyword', 'done'] } },
 ] }];
 
 const toolImpl = {
+  save_document_item: async (env, u, a, ch) => {
+    if (a.from_document !== false) return { ok: false, error: 'confirmation_required', instruction: 'ยังไม่รองรับนำผล OCR มาเพิ่มรายการ ให้ผู้ใช้ตรวจต้นฉบับแล้วบอกข้อมูลหรือเพิ่มรายการเอง' };
+    if (a.id) return saveChecklistItem(env, u, a, ch, { id: a.id, version: a.version });
+    const fingerprint = await documentCreateFingerprint(a);
+    if (!fingerprint) return { ok: false, error: 'bad_request' };
+    if (!await claimDocumentRequest(env, u)) return { ok: false, error: 'document_request_in_progress' };
+    if (!env.DOCUMENT_OPERATIONS.has(fingerprint)) env.DOCUMENT_OPERATIONS.set(fingerprint, env.DOCUMENT_OPERATIONS.size);
+    const request_id = await documentRequestId([u, env.SEASON_ID, env.ASSISTANT_REQUEST_ID], env.DOCUMENT_OPERATIONS.get(fingerprint));
+    return saveChecklistItem(env, u, a, ch, { request_id });
+  },
+  update_document_item_status: (env, u, a, ch) => setChecklistStatus(env, u, a.id, a.status, a.version, ch),
   propose_profile:(env,u,a)=>proposeProfile(env,u,a),
   propose_season:(env,u,a)=>proposeSeason(env,u,a),
   add_milestone:(env,u,a,ch)=>saveMilestone(env,u,a,ch),
@@ -61,6 +81,7 @@ export async function saveMessage(env, userId, channel, role, content, cards = n
 
 function cardFor(name, out, args) {
   if (!out?.ok) return null;
+  if (['save_document_item','update_document_item_status'].includes(name)) return documentItemCard(out.item);
   if(out.proposal)return proposalCard(out.proposal);
   if (name === 'add_application') return applicationCard({ ...out, truth_level: args.from_document ? 'AI_EXTRACTED' : 'USER_REPORTED' }, { undo: true });
   if (name === 'update_application_status') return applicationCard({ ...out, truth_level: 'USER_REPORTED' });
@@ -81,9 +102,39 @@ async function fail(env, userId, channel, text, actions, cards, done) {
   return { ok: false, reply: FALLBACK_REPLY, actions: [], cards: [] };
 }
 
-export async function runAssistant(env, userId, channel, text) {
+export async function runAssistant(env, userId, channel, text, { request_id = crypto.randomUUID() } = {}) {
   const c=await context(env,userId);
-  env={...scoped(env,c.season.id),ASSISTANT_CONTEXT:{profile:c.profile,season:c.season,seasons:(await listSeasons(env,userId)).map(s=>({id:s.id,name:s.name}))}};
+  env={...scoped(env,c.season.id),ASSISTANT_REQUEST_ID:request_id,DOCUMENT_OPERATIONS:new Map(),ASSISTANT_CONTEXT:{profile:c.profile,season:c.season,seasons:(await listSeasons(env,userId)).map(s=>({id:s.id,name:s.name}))}};
+  env.DOCUMENT_RECEIPT_ID = await documentRequestId([userId, c.season.id, request_id], 'receipt');
+  env.DOCUMENT_REQUEST_TEXT = text;
+  const cached = await cachedDocumentRequest(env, userId);
+  if (cached) return cached;
+  const result = await assistantTurn(env, userId, channel, text, c);
+  if (env.DOCUMENT_CLAIM) await env.DB.prepare("UPDATE pending_actions SET status='confirmed',result_json=? WHERE id=? AND user_id=? AND claim_token=? AND status='applying'")
+    .bind(JSON.stringify(result), env.DOCUMENT_RECEIPT_ID, userId, env.DOCUMENT_CLAIM).run();
+  return result;
+}
+
+// Only document-creating turns acquire a receipt. A retry replays the original
+// success/partial reply before Gemini can change the order of committed tools.
+async function cachedDocumentRequest(env, userId) {
+  const row = await env.DB.prepare("SELECT payload_json,status,result_json FROM pending_actions WHERE id=? AND user_id=? AND season_id=? AND kind='document_request'")
+    .bind(env.DOCUMENT_RECEIPT_ID, userId, env.SEASON_ID).first();
+  if (!row) return null;
+  if (JSON.parse(row.payload_json).text !== env.DOCUMENT_REQUEST_TEXT) return { ok: false, reply: 'ข้อความของคำขอเดิมเปลี่ยนไป ตรวจรายการที่บันทึกแล้วก่อนส่งใหม่', actions: [], cards: [] };
+  if (row.status === 'confirmed' && row.result_json) return JSON.parse(row.result_json);
+  return { ok: false, reply: 'คำขอนี้กำลังดำเนินการ หรืออาจบันทึกบางส่วนแล้ว เปิดรายการเพื่อตรวจก่อนส่งข้อความใหม่', actions: [], cards: [] };
+}
+async function claimDocumentRequest(env, userId) {
+  if (env.DOCUMENT_CLAIM) return true;
+  const token = crypto.randomUUID(), at = new Date().toISOString();
+  const r = await env.DB.prepare("INSERT OR IGNORE INTO pending_actions(id,user_id,season_id,kind,payload_json,status,claim_token,created_at,expires_at) VALUES (?,?,?,'document_request',?,'applying',?,?,?)")
+    .bind(env.DOCUMENT_RECEIPT_ID, userId, env.SEASON_ID, JSON.stringify({ text: env.DOCUMENT_REQUEST_TEXT }), token, at, new Date(Date.now() + 86400e3).toISOString()).run();
+  if (r.meta.changes) env.DOCUMENT_CLAIM = token;
+  return !!r.meta.changes;
+}
+
+async function assistantTurn(env, userId, channel, text, c) {
   const actions = [], cards = [];
   let done = 0;
   try {
@@ -105,6 +156,7 @@ export async function runAssistant(env, userId, channel, text) {
         let out;
         try { out = toolImpl[f.name] ? await toolImpl[f.name](env, userId, f.args || {}, channel) : { ok: false, error: 'unknown_tool' }; }
         catch (e) { out = { ok: false, error: e.message }; }
+        if (out?.error === 'document_request_in_progress') return await cachedDocumentRequest(env, userId);
         if (f.name !== 'get_overview') actions.push(f.name);
         if (out?.ok && f.name !== 'get_overview') done++;
         const card = cardFor(f.name, out, f.args || {}); if (card) cards.push(card);

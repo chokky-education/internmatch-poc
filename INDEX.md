@@ -28,6 +28,7 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 | --- | --- |
 | `index.html` | Web app shell. 6 menu pages + settings, grouped by `GROUPS`; `go('<screen id>')` scrolls to a section. Chat drawer `#aiFab`, `renderCard()` |
 | `profile-ui.js`, `profile-ui.css` | Guided profile/season forms and milestone dialogs |
+| `document-ui.js`, `document-ui.css` | Student-owned document list, inline manual editor and progress controls |
 | `config.js` | Worker API base URL for the web page |
 
 ### Backend: `worker/` (Cloudflare Worker `internmatch-api`)
@@ -45,7 +46,8 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 | `worker/src/ocr.js` | Paxa Labs extraction → pending `AI_EXTRACTED` record awaiting confirm |
 | `worker/src/doctypes.js` | Extraction schemas for the 4 document types |
 | `worker/src/store.js` | D1 data access: applications, tasks, reminders, documents, audit log |
-| `worker/src/seed.js` | Generic 6-item faculty checklist for new users (`USER_REPORTED`) |
+| `worker/src/seed.js` | Legacy checklist templates retained for test fixtures; no real-user seeding |
+| `worker/src/document-checklist.js` | Shared season-scoped preparation items, validation, optimistic writes, progress and provenance |
 | `worker/src/auth.js` | Email + OTP login, sessions, `ALLOWED_EMAILS` gate, LINE linking |
 | `worker/src/email.js` | OTP email via Brevo |
 | `worker/src/reminders.js` | Cron: push due reminders on LINE, fall back to web banner |
@@ -69,6 +71,8 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 | `docs/STATUS.md` | Handoff: current state, in-flight work, next steps, gotchas |
 | `PRD.md` | Product requirements, truth hierarchy, data pipeline |
 | `UI_UX_SPEC.md` | Screen specs and design tokens |
+| `docs/superpowers/specs/2026-11-14-student-document-checklist.md` | Manual student-owned document list; handbook OCR integration deferred |
+| `docs/uat/2026-11-14-documents.md` | Labeled manual document API/web verification and production limits |
 | `docs/superpowers/specs/2026-11-11-line-primary-web-fallback-design.md` | Design of the LINE-primary / web-fallback architecture |
 | `docs/superpowers/plans/2026-11-11-line-primary-web-fallback.md` | Implementation plan for the above |
 | `docs/line-setup.md` | How to set up LINE OA, secrets, deploy |
@@ -79,6 +83,8 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 | `docs/profile-release.md` | Reviewed backup, maintenance, migration, smoke and recovery procedure |
 | `scripts/release/profile-production.mjs`, `scripts/release/d1-query.mjs` | Guarded remote fingerprint and short-lived authenticated production smoke |
 | `scripts/uat/` | Isolated local test harness; never published |
+| `scripts/uat/check-documents.mjs`, `scripts/uat/document-flow.mjs` | Desktop/mobile manual document flow and reusable browser assertions |
+| `scripts/release/document-production.mjs`, `docs/document-release.md` | Reviewed, bounded document-list production smoke and recovery plan |
 | `docs/test-round-1.csv` | Manual test cases, round 1 |
 | `docs/agents/*.md` | Issue tracker (GitHub Issues), triage labels, domain-doc conventions |
 | `scripts/index.mjs` | The local search index CLI |

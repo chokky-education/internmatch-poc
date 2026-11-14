@@ -46,7 +46,7 @@ export default {
       if (!u) return J({ error: 'unauthorized' }, 401);
       return handleApi(req, env, u, url);
     }
-    if (env.ASSETS && ['GET', 'HEAD'].includes(req.method) && ['/', '/index.html', '/config.js', '/profile-ui.js', '/profile-ui.css', '/release.json'].includes(p)) {
+    if (env.ASSETS && ['GET', 'HEAD'].includes(req.method) && ['/', '/index.html', '/config.js', '/profile-ui.js', '/profile-ui.css', '/document-ui.js', '/document-ui.css', '/release.json'].includes(p)) {
       const assetUrl = new URL(req.url);
       if (p === '/') assetUrl.pathname = '/index.html';
       const asset = await env.ASSETS.fetch(new Request(assetUrl, req));

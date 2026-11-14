@@ -74,14 +74,17 @@ export async function handleApi(req, env, user, url) {
     return r.ok?J(r):fail(J,r.error);
   }
   if (p === '/api/chat' && m === 'POST') {
-    const { text } = await readJson(req);
+    const { text, request_id } = await readJson(req);
     if (!text || !String(text).trim()) return J({ error: 'empty' }, 400);
-    return J(await runAssistant(env, user.id, 'web', String(text).trim()));
+    if (request_id !== undefined && (typeof request_id !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(request_id))) return J({ error: 'bad_request' }, 400);
+    return J(await runAssistant(env, user.id, 'web', String(text).trim(), { request_id }));
   }
   if (p === '/api/actions' && m === 'POST') {
-    const { data, reminders } = await readJson(req);
+    const b = await readJson(req);
+    const { data, reminders } = b || {};
     if (!data || typeof data !== 'string') return J({ error: 'bad_request' }, 400);
-    return J(await runCardAction(env, user.id, 'web', data, {reminders}));
+    if (data.split(':')[0] === 'doc_save' && !data.split(':')[1] && (b.season_id !== captured.season.id || b.selection_version !== captured.selection_version)) return fail(J, 'conflict');
+    return J(await runCardAction(env, user.id, 'web', data, {reminders, item: b.item, version: b.version, request_id: b.request_id, season_id: b.season_id, selection_version: b.selection_version}));
   }
   if (p === '/api/ocr' && m === 'POST') {
     let fd; try { fd = await req.formData(); } catch { return J({ error: 'bad_form' }, 400); }

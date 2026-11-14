@@ -51,6 +51,43 @@ describe('delete_reminder tool', () => {
 });
 
 describe('cards from tools', () => {
+  it('replays a partial document request before asking the model for a reordered tool plan', async () => {
+    const { getOverview } = await import('../src/store.js');
+    const a = { title: 'รายการ A', from_document: false }, b = { title: 'รายการ B', from_document: false };
+    queue = [fc('save_document_item', a), 'ERR'];
+    const first = await runAssistant(env, U, 'web', 'เพิ่มรายการ A และ B', { request_id: 'partial-document-request' });
+    expect(first.partial).toBe(true);
+    const modelCalls = geminiBodies.length;
+    queue = [fc('save_document_item', b), fc('save_document_item', a), text('บันทึกแล้ว')];
+    const retry = await runAssistant(env, U, 'web', 'เพิ่มรายการ A และ B', { request_id: 'partial-document-request' });
+    expect(retry).toEqual(first);
+    expect(geminiBodies).toHaveLength(modelCalls);
+    expect((await getOverview(env, U)).checklist_items).toEqual([expect.objectContaining({ title: 'รายการ A' })]);
+  });
+  it('replays a manual document command with the same request id without creating a second item', async () => {
+    const { getOverview } = await import('../src/store.js');
+    const command = { title: 'รายการที่บอกเอง', from_document: false };
+    for (let n = 0; n < 2; n++) {
+      queue = [fc('save_document_item', command), text('บันทึกแล้ว')];
+      await runAssistant(env, U, 'web', 'ช่วยจดรายการนี้', { request_id: 'same-document-command' });
+    }
+    expect((await getOverview(env, U)).checklist_items).toEqual([expect.objectContaining({ title: 'รายการที่บอกเอง' })]);
+    queue = [fc('save_document_item', { ...command, title: 'ข้อความที่ต่างจากคำขอเดิม' }), text('ร่างเปลี่ยนไป ตรวจรายการก่อนนะ')];
+    const changed = await runAssistant(env, U, 'web', 'ช่วยจดรายการนี้', { request_id: 'same-document-command' });
+    expect(changed.cards[0].title).toBe('รายการที่บอกเอง');
+    expect((await getOverview(env, U)).checklist_items).toEqual([expect.objectContaining({ title: 'รายการที่บอกเอง' })]);
+  });
+  it('adds a student document item through LINE and keeps document-derived content behind confirmation', async () => {
+    const { getOverview } = await import('../src/store.js');
+    queue = [fc('save_document_item', { title: 'ส่งคำร้อง', source: 'คำแนะนำที่ได้รับจากคณะ', from_document: false }), text('เพิ่มรายการแล้ว')];
+    const result = await runAssistant(env, U, 'line', 'ช่วยจดว่าต้องส่งคำร้อง ยังไม่รู้วันส่ง');
+    expect(result.cards[0]).toMatchObject({ kind: 'checklist_item', truth: 'USER_REPORTED' });
+    expect((await getOverview(env, U)).checklist_items[0]).toMatchObject({ title: 'ส่งคำร้อง', due_date: null });
+    queue = [fc('save_document_item', { title: 'รายการจากคู่มือ', from_document: true }), text('ตรวจรายการจากคู่มือก่อนนะ')];
+    const blocked = await runAssistant(env, U, 'line', 'เพิ่มจากคู่มือเลย');
+    expect(blocked.cards).toEqual([]);
+    expect((await getOverview(env, U)).checklist_items).toHaveLength(1);
+  });
   it('add_application returns one application card with undo and saves it in cards_json', async () => {
     queue = [fc('add_application', { company: 'บริษัท Z', role: 'Data Intern', status: 'Applied' }), text('บันทึกแล้ว')];
     const r = await runAssistant(env, U, 'line', 'สมัครบริษัท Z แล้ว');

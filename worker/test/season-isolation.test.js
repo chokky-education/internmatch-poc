@@ -8,11 +8,13 @@ beforeEach(async()=>{
  await env.DB.prepare('INSERT INTO users(id,email,created_at) VALUES (?,?,?)').bind(U,'isolation@example.test',new Date().toISOString()).run();
  await seedUser(env,U);
 });
-it('isolates same-company applications, checklist, documents and reminder keywords',async()=>{
+it('isolates same-company applications, retained legacy checklist, documents and reminder keywords',async()=>{
  const a=(await context(env,U)).season.id;
  const b=(await createSeason(env,U,{name:'สหกิจ'},'web')).season.id;
  for(const id of [a,b]) {
   const e=scoped(env,id);
+  // A pre-existing legacy task is a fixture, not a newly seeded requirement.
+  await env.DB.prepare("INSERT INTO tasks(id,user_id,season_id,title,truth_level) VALUES (?,?,?,'ลงทะเบียนรายวิชาฝึกงาน','USER_REPORTED')").bind(crypto.randomUUID(),U,id).run();
   expect((await addApplication(e,U,{company:'Same Company',status:'Applied',truth_level:'USER_REPORTED'},'web')).ok).toBe(true);
   await addReminder(e,U,{text:'ส่งใบตอบรับ',datetime:'2027-03-01T09:00'},'line');
   await addDocument(e,U,{kind:'transcript',title:id,truth_level:'AI_EXTRACTED'},'web');
