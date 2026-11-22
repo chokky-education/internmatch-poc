@@ -1,6 +1,6 @@
 # Release workflow
 
-Owner decision (2026-11-12): agents own authorized work through **PR → CI → merge → deploy → production verification**. Routine merge/deploy needs no second approval. A request for review-only or a draft still stops at that requested boundary. Do not merge unrelated open PRs.
+Owner decision (2026-11-22, ADR 0006, replaces the 2026-11-12 agent-owned policy): the path is still **PR → CI → merge → deploy → production verification**, but **agents never merge or deploy**. Agents prepare, validate, open the PR when asked, and verify production after the owner says the deploy is done. The owner merges and runs every command that changes production. Commit and push only when the owner asks.
 
 ## 1. Prepare and validate
 
@@ -22,17 +22,17 @@ CI repeats these checks, including the local tooling regression tests. Secret sc
 
 ## 2. PR, review and merge
 
-1. Commit only this task's files; push the task branch. Create/update a PR with the problem, final behavior, validation, operational steps and verification limits. Use `--body-file` for a multiline body.
+1. When the owner asks, commit only this task's files and push the task branch. Create/update a PR with the problem, final behavior, validation, operational steps and verification limits. Use `--body-file` for a multiline body.
 2. Review the final diff; fix substantive findings. Run `gh pr checks <number> --watch --fail-fast` and verify `check` passed for the latest head. An older run is not evidence for new commits.
-3. Required policy is stored in `.github/main-protection.json`: PRs, up-to-date required `check` from GitHub Actions (app 15368), resolved conversations, no force push/deletion, including administrators. Zero mandatory human approvals lets an authorized agent merge after review and CI; it does not waive review. Use the app-bound `checks` field only; GitHub rejects a payload that also includes the legacy `contexts` field.
-4. Merge with `gh pr merge <number> --merge --match-head-commit <reviewed-head-sha>`. Never use `--admin`, disable protection or push to `main` to finish a task. If the base changes, bring it into the branch and repeat checks.
-5. Fetch the merged SHA from the PR and use a clean checkout of that exact commit for release commands. Unmerged local code must not reach production.
+3. Required policy is stored in `.github/main-protection.json`: PRs, up-to-date required `check` from GitHub Actions (app 15368), resolved conversations, no force push/deletion, including administrators. Zero mandatory human approvals is a GitHub setting only; by policy the owner performs the merge. Use the app-bound `checks` field only; GitHub rejects a payload that also includes the legacy `contexts` field.
+4. **Stop here and hand over.** Report the PR URL, the reviewed head SHA, the passing `check` run and the deploy commands from section 3. The owner merges (for example `gh pr merge <number> --merge --match-head-commit <reviewed-head-sha>`). Agents never run `gh pr merge`, use `--admin`, disable protection or push to `main`. If the base changes, bring it into the branch and repeat checks.
+5. Release commands run from a clean checkout of the exact merged SHA. Unmerged local code must not reach production.
 
-The agent checks settings using `gh api repos/chokky-education/internmatch-poc/branches/main/protection`. Authorized policy repairs use the reviewed JSON with `gh api --method PUT repos/chokky-education/internmatch-poc/branches/main/protection --input .github/main-protection.json`; verify the returned settings. Do not weaken protection to work around a failure.
+The agent may read settings using `gh api repos/chokky-education/internmatch-poc/branches/main/protection`. Policy repairs are run by the owner with `gh api --method PUT repos/chokky-education/internmatch-poc/branches/main/protection --input .github/main-protection.json`; verify the returned settings. Do not weaken protection to work around a failure.
 
-## 3. Deploy the merged change
+## 3. Deploy the merged change (owner runs; agent writes the steps into the PR)
 
-| Change | Agent responsibility after merge |
+| Change | What the owner runs after merge (the agent lists it in the PR) |
 | --- | --- |
 | Any repository change | Follow the `CI` run for the **merged SHA**. `check` gates `deploy-pages`. Pages publishing source is GitHub Actions, not legacy branch publishing. Pages ships only the credential-cleanup launcher (`index.html`, `legacy-redirect.js`, `release.json`). The Worker hosts the four application assets and its own merged-SHA manifest; see ADR 0005. |
 | `worker/src/`, `worker/package*.json`, `worker/wrangler.toml` | For every merged release (including app assets/manifests), after the required `check` job passes (do not wait for the Pages job, which waits for the Worker), run project-local `npx wrangler deploy --message "PR #<number> <merged-sha>"` from `worker/`. Check account, Worker and D1 binding first; preserve deployed secrets. Verify the active deployment version and its message identify the merged SHA. |
@@ -40,9 +40,9 @@ The agent checks settings using `gh api repos/chokky-education/internmatch-poc/b
 | Secret, allowlist or production data change | Put a **non-secret** operational plan in the PR: target, intended change, expected invariants, verification and rollback. Merge it first; apply through the appropriate secret/data tool using protected input. `wrangler secret put` deploys immediately. Preserve all intended members when replacing an allowlist. Verify affected and unaffected access without printing secrets. |
 | Docs-only | Pages deployment and baseline production checks still run. The app asset manifest is tied to the merged SHA, so deploy the Worker asset release after `check` even for docs-only releases; Pages waits for the matching Worker app before publishing. |
 
-Cloudflare deployment currently uses the agent's existing local Wrangler login. GitHub Actions has no Cloudflare deployment credential, so Worker deployment is **agent-owned**, not an unattended CI job. A successful Pages job does not prove Worker changes were deployed. Do not copy the local OAuth token into GitHub secrets or ask the user to repeat routine deployment commands.
+Cloudflare deployment uses the owner's local Wrangler login. GitHub Actions has no Cloudflare deployment credential, so Worker deployment is a manual step the **owner** runs; agents must not run `wrangler deploy`, `wrangler d1 migrations apply`, `wrangler secret put` or any other production-changing command, even when a login is available. A successful Pages job does not prove Worker changes were deployed. Do not copy the local OAuth token into GitHub secrets.
 
-## 4. Production verification and evidence
+## 4. Production verification and evidence (agent, after the owner reports the deploy)
 
 - Pages deploy waits for `check`, then runs `node scripts/verify-production.mjs <merged-sha>`. It retries up to six times for CDN propagation and fails the job if checks still fail. Inspect the exact run with `gh run view <run-id>`; `gh run list --commit <merged-sha>` locates it.
 - The verifier checks the live manifest SHA, HTML/config hashes, login shell, API URL/health, same-origin cookie preflight and rejection of untrusted mutations, authentication barriers, a nonexistent OTP against D1, and rejection of an invalid LINE signature. It sends no OTP email or LINE message and does not create a session or change real user records.

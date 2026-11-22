@@ -2,7 +2,7 @@
 
 The one file that says where the work stands. **Read it first; update it last.** Every agent that finishes a chunk of work rewrites the "Now" and "Next" sections and adds one line to the log at the bottom, in the same commit as the work.
 
-_Last updated: 2026-11-14_
+_Last updated: 2026-11-22_
 
 ## Now (what is true today)
 
@@ -23,7 +23,7 @@ _Last updated: 2026-11-14_
 - **Live feature verification:** authenticated production API smoke passed blank profile, snapshot education, season isolation, milestone confirmation/replay and atomic rescheduling. The short-lived smoke identity and its records were removed; no OTP/LINE/AI test messages were sent. Web revision and four asset hashes plus 16 baseline API/auth/CORS/signature checks passed for `0eec60a`. See `docs/releases/2026-11-13-profile.md`.
 - **CI follow-up:** `PR #10` merged as `f1a0843`; main CI run `43284287883` (`check` + Pages) completed with `success`.
 - **Labeled Seam 2 & Seam 3 UAT:** Ran Seam 2 (`worker` Vitest: 18 files, 139 tests including a new `runAssistant` `get_overview` unconfirmed-milestone isolation seam test) and Seam 3 (`scripts/test/*.test.mjs`: 14 tests + guardrails/syntax/Pages build + live `verify-production.mjs` 16/16 baseline checks for `f1a0843`), documented with explicit tester/model/scope labels in `docs/uat/2026-11-13-uat-labeled-report.md`.
-- **Release policy:** agent-owned PR → CI → merge → deploy → verify, including admins. Public-only Pages artifacts carry a revision manifest; Worker operations remain agent-owned using existing local credentials. Secrets/allowlist and real LINE links were preserved.
+- **Release policy (changed 2026-11-22, ADR 0006):** agents prepare PRs and verify production; the owner merges and runs every deploy/migration/secret command. Agents commit and push only when asked. Public-only Pages artifacts carry a revision manifest.
 
 ## In flight
 
@@ -55,6 +55,8 @@ _Last updated: 2026-11-14_
 - `go('<screen id>')` still works for every old screen id: it opens the grouped page and scrolls (see `GROUPS` in `index.html`).
 
 ## Log
+
+- 2026-11-22: Moved to the shared agent-memory template: agents no longer merge or deploy (ADR 0006); AGENTS.md gained LLM Wiki and handoff sections; release workflow and kickoff prompts updated. Docs only, no app change.
 
 - 2026-11-14: Surveyed Thai/international internship journey sources for the owner’s marketing exploration, recorded scoped evidence and untested phase-based hypotheses, and linked the research note from the marketing workspace.
 

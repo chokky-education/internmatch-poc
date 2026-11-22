@@ -44,7 +44,7 @@ npx wrangler secret put BREVO_SENDER_EMAIL
 
 ## ขั้นที่ 3: Deploy ครั้งแรก
 
-การแก้ระบบที่มีอยู่แล้วต้องผ่าน [release workflow](release-workflow.md) ก่อน ใช้คำสั่งด้านล่างจาก merged checkout เท่านั้น Agent ทำ merge/deploy และตรวจจริงต่อเองภายในงานที่อนุมัติแล้ว
+การแก้ระบบที่มีอยู่แล้วต้องผ่าน [release workflow](release-workflow.md) ก่อน ใช้คำสั่งด้านล่างจาก merged checkout เท่านั้น เจ้าของเป็นคน merge และรันคำสั่ง deploy เอง Agent ตรวจระบบจริงหลังเจ้าของบอกว่า deploy แล้ว (ADR 0006)
 ```bash
 cd worker
 npx wrangler d1 migrations apply internmatch --remote
