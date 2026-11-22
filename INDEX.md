@@ -101,7 +101,7 @@ One backend, two front doors. `worker/` (Cloudflare Worker + D1) holds all logic
 | `scripts/check-docs.mjs` | Guardrails run by CI and locally: INDEX covers `worker/src`, pointer files stay pointers, ADR numbering, secret scan, code change ⇒ STATUS change |
 | `.github/workflows/ci.yml` | Required CI; Pages deploy after main checks pass, followed by live verification |
 | `.github/main-protection.json` | Versioned main branch policy, including administrators |
-| `docs/release-workflow.md` | Agent-owned PR → CI → merge → deploy → production verification, including config/secrets |
+| `docs/release-workflow.md` | Agent prepares PR + verifies; owner merges and deploys (ADR 0006), including config/secrets |
 | `scripts/build-pages.mjs` | Publish only public assets with a commit/hash manifest |
 | `scripts/release/security-production.mjs`, `docs/releases/2026-11-13-session-security.md` | Reviewed legacy-session expiry and isolated Chromium/mobile-WebKit production verification |
 | `scripts/test/web-security.test.mjs`, `worker/test/session-security.test.js` | Stored-text/attribute rendering, cookie-only lifecycle and cross-origin regression checks |

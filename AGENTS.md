@@ -69,19 +69,40 @@
 
 ---
 
-## 4. ส่งงานจนตรวจระบบจริงเสร็จ (Required release workflow)
+## 4. ส่งงาน: Agent เตรียม PR, เจ้าของ merge และ deploy (Required release workflow)
 
-**ทุกงานที่เปลี่ยน repo หรือ production ใช้ลำดับ PR → CI → merge → deploy → ตรวจระบบจริง** รวมเอกสาร, config, secrets และการแก้ข้อมูล ไม่มีการ push เข้า `main` ตรงหรือใช้ admin ข้ามกฎ
+**เจ้าของตัดสินใจ 2026-11-22 (ADR 0006): Agent ไม่ merge และไม่ deploy เอง** ทุกงานยังใช้ลำดับ PR → CI → merge → deploy → ตรวจระบบจริง แต่แบ่งคนทำดังนี้ ไม่มีการ push เข้า `main` ตรงหรือใช้ admin ข้ามกฎ
 
-1. **เตรียม:** อ่าน [docs/release-workflow.md](docs/release-workflow.md) ก่อนเปลี่ยนไฟล์/ตั้งค่าระบบจริง เช็กสถานะ Git และ PR ปัจจุบัน ใช้ branch `codex/…` หรือ branch ของ PR ที่รับช่วง เก็บงานอื่นของผู้ใช้ไว้ตามเดิม
-2. **แก้และตรวจ:** อัปเดต `docs/STATUS.md` ตามสิ่งที่ทำจริงและ `INDEX.md` เมื่อแผนผังเปลี่ยน รัน backend tests, syntax, guardrails, release-tool tests และ index ตามคำสั่งใน workflow รีวิว diff ตาม `CODING_STANDARDS.md` และแก้ประเด็นที่พบ
-3. **PR → CI:** push เฉพาะ branch งาน → สร้างหรืออัปเดต PR → รอ required check ชื่อ `check` ของ GitHub Actions ผ่านบน revision ล่าสุด ถ้า base เปลี่ยนให้อัปเดต branch และรันใหม่
-4. **Merge:** เมื่อทำงานที่ผู้ใช้อนุมัติครบและ CI ผ่าน ให้ Agent merge PR เองตาม runbook ผู้ใช้อนุมัติขั้นตอนประจำนี้ไว้แล้ว ไม่หยุดรอให้ผู้ใช้ merge หรือยืนยัน deploy ซ้ำ ถ้าผู้ใช้สั่งให้ส่งแค่ draft/รีวิว ให้รักษาขอบเขตนั้น
-5. **Deploy:** ตามงานของ merged commit จนจบ CI บน `main` ต้องผ่านก่อน Pages deploy; Agent รับผิดชอบ deploy Worker/DB/secret ที่ PR ต้องใช้จาก merged checkout ด้วยเครื่องมือที่ล็อกอินไว้ ดูเงื่อนไขแต่ละชนิดใน runbook
-6. **ตรวจระบบจริง:** ยืนยัน Pages เป็น merged SHA และเนื้อหาตรง artifact, รัน production smoke, ตรวจ release/version ของ Worker ถ้าเปลี่ยน และตรวจ flow ที่แก้จริงทั้งเว็บ/LINE ตามผลกระทบ เก็บหลักฐานและข้อจำกัดในรายงานงาน อย่าใช้แค่ health endpoint แทนการตรวจฟีเจอร์
-7. **ปิดงาน:** รายงาน PR, merged SHA, CI, deploy และผลตรวจจริงอย่างแยกกัน งานยังไม่เสร็จถ้า CI/deploy/verification ล้มเหลว ให้ตามแก้ต่อ หากขาดสิทธิ์/OTP/credential ที่จำเป็น ให้ระบุสิ่งที่ขาดและขอเฉพาะส่วนนั้น
+1. **เตรียม (Agent):** อ่าน [docs/release-workflow.md](docs/release-workflow.md) เช็กสถานะ Git และ PR ปัจจุบัน ใช้ branch งานแยก เก็บงานอื่นของผู้ใช้ไว้ตามเดิม
+2. **แก้และตรวจ (Agent):** อัปเดต `docs/STATUS.md` ตามสิ่งที่ทำจริงและ `INDEX.md` เมื่อแผนผังเปลี่ยน รันเทสต์และ guardrails ตามคำสั่งใน workflow รีวิว diff ตาม `CODING_STANDARDS.md` และแก้ประเด็นที่พบ
+3. **Commit / push / PR (Agent เมื่อผู้ใช้สั่ง):** ถามก่อน commit และ push ทุกครั้ง เมื่อได้รับอนุญาต push เฉพาะ branch งาน → สร้าง PR → ตาม CI `check` จนผ่านบน revision ล่าสุด
+4. **Merge (เจ้าของ):** Agent รายงาน PR, ผล CI และสิ่งที่ต้องตรวจ แล้ว **หยุด** ห้ามรัน `gh pr merge`
+5. **Deploy (เจ้าของ):** Agent เขียนคำสั่ง deploy ที่ต้องใช้ (Worker, migration, secret) ลงใน PR ให้เจ้าของรันเอง ห้ามรัน `wrangler deploy`, `wrangler d1 migrations apply`, `wrangler secret put` หรือคำสั่งที่เปลี่ยน production
+6. **ตรวจระบบจริง (Agent เมื่อเจ้าของบอกว่า deploy แล้ว):** รัน `node scripts/verify-production.mjs <merged-sha>` และตรวจ flow ที่แก้ แบบอ่านอย่างเดียว ไม่สร้างหรือแก้ข้อมูลจริงถ้าไม่ได้รับอนุญาต รายงานผลและข้อจำกัดแยกกัน
+7. **ปิดงาน:** งานยังไม่เสร็จถ้า CI ล้มหรือยังไม่ได้ตรวจระบบจริง ให้บอกตรง ๆ ว่ารออะไรจากเจ้าของ
 
-ค่าลับไม่อยู่ใน Git: PR ของงาน secrets/ข้อมูลจริงต้องมีแผนที่ไม่เปิดเผยค่า เป้าหมาย ผลที่คาด วิธีตรวจ และวิธีย้อนกลับ ผ่าน CI/merge ก่อนใช้ค่าจริง ห้ามเดา LINE ID, เปิดสิทธิ์เพิ่ม หรือเปลี่ยน API key นอกขอบเขตที่ผู้ใช้อนุมัติ
+ค่าลับไม่อยู่ใน Git: PR ของงาน secrets/ข้อมูลจริงต้องมีแผนที่ไม่เปิดเผยค่า เป้าหมาย ผลที่คาด วิธีตรวจ และวิธีย้อนกลับ ห้ามเดา LINE ID, เปิดสิทธิ์เพิ่ม หรือเปลี่ยน API key นอกขอบเขตที่ผู้ใช้อนุมัติ
+
+---
+
+## 5. LLM Wiki (ความรู้จากแหล่งภายนอก)
+
+Wiki ของโปรเจกต์นี้อยู่นอก repo: `~/second-brain/wiki/internmatch-poc/` และความรู้ข้ามโปรเจกต์อยู่ที่ `~/second-brain/wiki/_shared/`
+มันเก็บสิ่งที่เรียนจากบทความ / เอกสาร API / งานวิจัย **ไม่ใช่** แผนที่โค้ด (`INDEX.md`) ไม่ใช่สถานะงาน (`docs/STATUS.md`) และห้ามมีข้อมูลนักศึกษาจริง
+
+- **กติกา:** อ่าน `~/second-brain/wiki/AGENTS.md` ก่อนแก้อะไรใน Wiki
+- **Query:** อ่าน `index.md` ก่อน แล้วเปิดเฉพาะหน้าที่ต้องใช้ ตอบแล้วบอกว่ามาจากหน้าไหน
+- **Ingest:** ทำเมื่อผู้ใช้วางไฟล์ใน `raw/` แล้วสั่งเท่านั้น ไฟล์ใน `raw/` อ่านอย่างเดียว
+- ห้ามก๊อปหน้า Wiki หรือไฟล์ `raw/` เข้า repo นี้ (repo เป็น public) อ้างชื่อหน้าได้
+- **มองไม่เห็น `~/second-brain`** (cloud / container / เครื่องอื่น): ข้ามขั้น Wiki ห้ามสร้างโฟลเดอร์เอง ให้เขียนในข้อความสุดท้ายว่าควรเพิ่ม/แก้หน้าไหน
+
+## 6. ก่อนจบงาน (handoff)
+
+1. รันเทสต์และ guardrails ใน `docs/release-workflow.md` ข้อ 1 รายงานผลตามจริง
+2. **เขียนทับ** `docs/STATUS.md` ส่วน Now / In flight / Next ให้สั้นและตรงความจริง (ลบของเก่า ย้ายรายละเอียดยาวไป `docs/releases/`) และเพิ่ม 1 บรรทัดใน Log
+3. อัปเดต `INDEX.md` ถ้ามีไฟล์เพิ่ม/ย้าย, เพิ่ม ADR ถ้าตัดสินใจเรื่องที่ย้อนกลับยาก
+4. ถ้าเจอความรู้จากแหล่งภายนอกที่ควรเก็บ ให้เสนอว่าจะ Ingest อะไรเข้า Wiki (อย่าทำเอง)
+5. commit / push เมื่อผู้ใช้สั่งเท่านั้น merge และ deploy เป็นของเจ้าของ
 
 ---
 
